@@ -9,6 +9,9 @@
 #include <TBenchmark.h>
 #include <TCanvas.h>
 
+inline constexpr std::array<double,4>  rad::beams::BeamIonComponents() {return {0.,0.,100.,0.93827210};}
+inline constexpr std::array<double,4>  rad::beams::BeamEleComponents() {return {0.,0.,-10.,0.00051099900};}
+
 void ProcessMCTCS(){
   gBenchmark->Start("df");
 

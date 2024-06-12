@@ -9,17 +9,19 @@
 #include <TBenchmark.h>
 #include <TCanvas.h>
 
+inline constexpr std::array<double,4>  rad::beams::BeamIonComponents() {return {0.,0.,100.,0.93827210};}
+inline constexpr std::array<double,4>  rad::beams::BeamEleComponents() {return {0.,0.,-10.,0.00051099900};}
+
 void ProcessMCMatchedTCS(){
   gBenchmark->Start("df");
 
   rad::config::ePICReaction epic{"events", "/home/dglazier/EIC/data/sim/TCS_gen_ab_hiDiv_10x100m_s354_novtx.0070.eicrecon.tree.edm4eic.root"};
-  // epic.AliasColumnsAndMatchWithMC(false);
-  epic.AliasColumnsMC();
+  epic.AliasColumnsAndMatchWithMC(false);
    
   //Assign particles names and indices
   //indicing comes from ordering in hepmc file
-  epic.setBeamIonIndex(3);
-  epic.setBeamElectronIndex(0);
+  epic.setBeamIonIndex(rad::beams::BeamEleFix());
+  epic.setBeamElectronIndex(rad::beams::BeamIonFix());
   epic.setScatElectronIndex(1);
   //give final state hadrons names,
   //if we give a PDG code it will generate el_OK branches etc
