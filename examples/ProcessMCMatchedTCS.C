@@ -45,7 +45,7 @@ void ProcessMCMatchedTCS(){
   //  epic.Filter("el_OK==1&&po_OK==1","partFilter");
   
   //masses column name, {+ve particles}, {-ve particles}
-  rad::rdf::Mass(epic,"W","{beam_ion,beam_ele}","{scat_ele}");
+  rad::rdf::MissMass(epic,"W","{scat_ele}");
   rad::rdf::Mass(epic,"Whad","{el,po,p}");
   rad::rdf::Mass(epic,"MMass","{el,po}");
 
