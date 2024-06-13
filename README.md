@@ -93,6 +93,8 @@ Second in ReactionKinemticsRDF.h we interface to RDataFrame :
       cr.DefineForAllTypes(name, Form("rad::MissMass(%s,%s,components_p4)",names::ReactionMap().data(),neg.data()));
     }
 
+Note components_p4 => px,py,pz,pm. Using components_p4 allows DefineForAllTypes to switch in the approriate componenets for rec or truth. 
+
 Here use of DefineForAllTypes adds columns for both rec_ and tru_ variables. "name" will be the name of the new column, and neg
 is the list of particles to be subtracted e.g. "{el,po}" . rad is able to use this to find the actual index of the electron and 
 positron for the event and subtract those particles.
