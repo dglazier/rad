@@ -80,6 +80,7 @@ To sum the beams we start with the ion beams:: means this function is defined in
 event, this can be useful for processing simulated or generated data.
 The function SubtractFourVector is part of BasicKinematics.h and it just subtracted the four-momentum components indiced in ineg,
 which the user will define in their script.
+Note the object react which is RVecIndex map allows you to find the indice for specific parts of your final state. The approriate functions to use as a key in the map are given in [DefineNames](https://github.com/dglazier/rad/blob/master/include/DefineNames.h) . So you can replace BeamIonIdx with any of the other Idx functions to get the indices for those particles.
 
 Second in ReactionKinemticsRDF.h we interface to RDataFrame :
 
