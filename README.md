@@ -12,6 +12,11 @@ Goals :
 6. Automate MC matching and calculation of equivalent truth variables.
 7. Automate combinitorial analysis (!!! To be done)
 
+To install just download the code from git and add the path to ROOT_INCLUDE_PATH
+
+      git clone https://github.com/dglazier/rad
+      setenv ROOT_INCLUDE_PATH /to/where/is/rad  or  setenv ROOT_INCLUDE_PATH ${ROOT_INCLUDE_PATH}:/to/where/is/rad
+      
   Example code :
 
         // create an epic reaction
