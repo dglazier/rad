@@ -102,3 +102,22 @@ positron for the event and subtract those particles.
 When creating these 2 files you should adhere to the namespacing convention. c++ functions are in namespace rad, Rdataframe 
 interfaces are in namespace rad::rdf.
  
+
+# Snapshot Tree
+
+If you create a snapshot via something like
+
+      epic.Snapshot("output.root");
+
+Then the tree will contain all aliased or nnewly defined columns. In particular momentum components and any calculation which was requested. The tree will just be flat single entry per calculation, and multi-entries for momentum components, one for each particle. If you are using MCMatching there will be both a truth branch and reconstructed, allowing you to determine resolutions of all quantities etc. To access a particular particles components you just need to index by the name you gave it e.g.
+
+      //plot the reconstuceted momentum of the electron
+      rad_tree->Draw("rec_pmag[el]>>p(100,0,20)");
+      //plot the truth W
+      rad_tree->Draw("tru_W>>w(100,0,50)");
+
+
+
+
+
+
