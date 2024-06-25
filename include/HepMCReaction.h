@@ -20,18 +20,21 @@ namespace rad{
 
   public:
 
-  HepMCReaction(const std::string_view treeName, const std::string_view fileNameGlob) : ConfigReaction{treeName,fileNameGlob} {
+      HepMCReaction(const std::string_view treeName, const std::string_view fileNameGlob) : ConfigReaction{treeName,fileNameGlob,{}} {
 
     }
 
     void AliasMomentumComponents(){
-      AddType("mc")
+      AddType("mc");
       setBranchAlias("particles.momentum.m_v1","mc_px");
       setBranchAlias("particles.momentum.m_v2","mc_py");
       setBranchAlias("particles.momentum.m_v3","mc_pz");
       setBranchAlias("particles.mass","mc_m");
 
-      DefineForAllTypes("pmag", Form("compute::VecMag(components_p3)"));
+      DefineForAllTypes("phi", Form("rad::ThreeVectorPhi(mc_px,mc_py,mc_pz)"));
+      DefineForAllTypes("theta", Form("rad::ThreeVectorTheta(mc_px,mc_py,mc_pz)"));
+      DefineForAllTypes("eta", Form("rad::ThreeVectorEta(mc_px,mc_py,mc_pz)"));
+      DefineForAllTypes("pmag", Form("rad::ThreeVectorMag(mc_px,mc_py,mc_pz)"));
     }
 
 
