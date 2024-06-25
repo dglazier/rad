@@ -61,6 +61,33 @@ realistic you need to add algorithms for choosing which particle is associated w
 Some examples of this are given in the examples! e.g. choose the first electron in ReconstructedParticles for the scattered electron, 
 or choose the electron with the highest momentum. Ultimately this will require full combinitiral analysis to be implemented.
 
+To find the mcmatch index, you need to know the order of the particles in the hepmc3 file. This can be found by checking the MCParticles branch in the reconstructed tree. Open the file in root and get events tree,
+
+      events->Scan("MCParticles.PDG:MCParticles.generatorStatus")
+
+      ***********************************************
+      *    Row   * Instance * MCParticl * MCParticl *
+      ***********************************************
+      *        0 *        0 *        11 *         4 *
+      *        0 *        1 *      2212 *         4 *
+      *        0 *        2 *        11 *         1 *
+      *        0 *        3 *       -11 *         1 *
+      *        0 *        4 *       211 *         1 *
+      *        0 *        5 *      2112 *         1 *
+      *        0 *        6 *        11 *         1 *
+      *        0 *        7 *        11 *         0 *
+      *        0 *        8 *        22 *         0 *
+      *        0 *        9 *        11 *         0 *
+      *        0 *       10 *        11 *         0 *
+      *        0 *       11 *        22 *         0 *
+      *        0 *       12 *        22 *         0 *
+      *        0 *       13 *        22 *         0 *
+
+
+The particles with generatorStatus = 4 are the beams. generatorStatus=1 are the final state particles which have been thrown in genat4. generatorStatus=0 are secondaries which should be ignored. You can match the Status=1 PDG values with the particles in your reaction.
+
+
+
 ## Developing your own column calculations
 
 To create the user-friendly function rad::rdf::Mass etc, requires 2 steps. Currently this is organised in 2 seperate files.
