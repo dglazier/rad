@@ -18,7 +18,9 @@ namespace rad{
       PxPyPzMVector BeamIonFourVector(const uint idx,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
       //If beam ion 4-vector fixed use fixed values
       //if not use idx given
-      return idx!= BeamIonFix()?
+     auto check = (idx!= BeamIonFix());
+     //if(check==1&&idx>px.size()) //should probably assert here...
+     return check ?
 	PxPyPzMVector(px[idx], py[idx], pz[idx], m[idx]) :
 	PxPyPzMVector(BeamIonComponents()[0],BeamIonComponents()[1],
 		      BeamIonComponents()[2],BeamIonComponents()[3]);
@@ -30,7 +32,8 @@ namespace rad{
      PxPyPzMVector BeamEleFourVector(const uint idx,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
      //If beam ion 4-vector fixed use fixed values
      //if not use idx given
-     return idx!= BeamEleFix()?
+     auto check = (idx!= BeamEleFix());
+     return check?
        PxPyPzMVector(px[idx], py[idx], pz[idx], m[idx]) :
        PxPyPzMVector(BeamEleComponents()[0],BeamEleComponents()[1],
 		     BeamEleComponents()[2],BeamEleComponents()[3]);

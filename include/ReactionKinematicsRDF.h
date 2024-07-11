@@ -9,7 +9,7 @@ namespace rad{
 
   void MissMass(config::ConfigReaction& cr,const string& name, const string_view neg){
     cr.DefineForAllTypes(name, Form("rad::MissMass(%s,%s,components_p4)",names::ReactionMap().data(),neg.data()));
-  }
+   }
   void TBot(config::ConfigReaction& cr,const string& name){
     cr.DefineForAllTypes(name, Form("rad::TBot(%s,components_p4)",names::ReactionMap().data()));
   }

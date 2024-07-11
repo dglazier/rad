@@ -1,5 +1,6 @@
 #pragma once
 #include <ROOT/RVec.hxx>
+#include <algorithm>
 
 namespace rad{
   namespace helpers{
@@ -47,18 +48,46 @@ namespace rad{
      *reorder vec to elements of matchid, with missing elements set to 0
      */
     template<typename T>
-    ROOT::VecOps::RVec<T> Reorder(const ROOT::VecOps::RVec<T>& vec0,const ROOT::RVecU& iorder0,const ROOT::RVecU& iorder1,const RVecI& size_vec){
-      //create new vector same sized as size_vec branch e.g. tru_pid 
-      size_t target_size = size_vec.size();
-      ROOT::VecOps::RVec<T> vec1(target_size); //create new vector same sized as old
-      //Fill new vector by looping over matched indexes and checking if
-      //particle exists in recID
-       size_t Nentries = iorder1.size(); //just loop over order1 indexes
-      for(size_t i=0;i<Nentries;++i){
-	vec1[iorder1[i]]=vec0[iorder0[i]]; //give vec1[iorder1] value of vec0[iorder0] 
+    ROOT::VecOps::RVec<T> Reorder(const ROOT::VecOps::RVec<T>& vec0,const ROOT::RVecU& iorder0,const ROOT::RVecU& iorder1,const size_t n){
+      //create new vector size  n
+      ROOT::VecOps::RVec<T> vec1(n); //create new vector same sized as old
+      //need to loop over order0
+      size_t target_size = iorder1.size();
+      for(size_t i=0;i<target_size;++i){
+	//add value of vec0 at iorder1
+	vec1[iorder1[i]]=vec0[iorder0[i]]; //give vec1[iorder1] value of vec0[iorder0]
       }
       return vec1;
     }
+
+    template <typename T>
+     ROOT::RVec<T> Enumerate(size_t size)
+    //  ROOT::RVec<typename  ROOT::RVec<T>::size_type> Enumerate(size_t size)
+    {
+      ROOT::RVec<T> ret;
+      ret.reserve(size);
+      for (auto i = 0UL; i < size; ++i) {
+	ret.emplace_back(i);
+      }
+      return ret;
+    }
+   /**
+     * Truncate vec at n
+     */
+    template<typename T>
+    ROOT::VecOps::RVec<T> Truncate(const ROOT::VecOps::RVec<T>& vec,const size_t size){
+      ROOT::RVec<T> ret;
+      ret.reserve(size);
+      for (auto i = 0UL; i < size; ++i) {
+	ret.emplace_back(vec[i]);
+      }
+      return ret;
+    }
+
+    template<typename T>
+   size_t Count(const ROOT::VecOps::RVec<T>& vec,const T& val){
+     return std::count(vec.begin(), vec.end(), val);
+   }
     
   }//helpers
   

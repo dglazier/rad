@@ -8,14 +8,15 @@ void ReactionKinematics(){}
 namespace rad{
   
   ///\brief missing mass fo reaction = ion+electron -  neg[i]
+  //const config::RVecIndexMap react must be copied for thread safety.
   template<typename Tp, typename Tm>
-    Tp MissMass(const config::RVecIndexMap& react,const RVecI &ineg,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m)
-    { 
+    Tp MissMass(const config::RVecIndexMap react,const RVecI ineg,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m)
+    {
       auto psum = beams::BeamIonFourVector(react[names::BeamIonIdx()][0],px,py,pz,m);
       psum+=beams::BeamEleFourVector(react[names::BeamEleIdx()][0],px,py,pz,m);
       SubtractFourVector(psum,ineg,px,py,pz,m);
       return psum.M();
-    }
+     }
   
   ///\brief functions to compute standard reaction kinematics
   template<typename Tp, typename Tm>

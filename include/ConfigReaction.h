@@ -134,9 +134,11 @@ namespace rad{
        */
       void Snapshot(const string_view filename){
 	auto cols = CurrFrame().GetDefinedColumnNames();
-	cols.erase(std::remove(cols.begin(), cols.end(), names::ReactionMap() ), cols.end());
-	//	cols.erase(std::remove(cols.begin(), cols.end(), names::ReactionMap() ), cols.end());
+	RemoveSnapshotColumns(cols);
 	CurrFrame().Snapshot("rad_tree",filename, cols );
+      }
+      virtual void RemoveSnapshotColumns(std::vector<string>& cols){
+	cols.erase(std::remove(cols.begin(), cols.end(), names::ReactionMap() ), cols.end());
       }
       /** 
        * Set constant index in collection for particle
@@ -167,7 +169,13 @@ namespace rad{
        */
       void makeParticleMap(){
 	//note, ordering in arguments, map and names must be maintained
-	Define(names::ReactionMap(),
+	// Define(names::ReactionMap(),
+	//        [](const int& beamion, const int& beamel,const int& scatel,
+	// 	  const RVecI& baryons,const RVecI& mesons){
+	// 	 return RVecIndexMap{{beamion},{beamel},{scatel},baryons,mesons};},
+	//        {names::BeamIon().data(),names::BeamEle().data(),
+	// 	names::ScatEle().data(),names::Baryons().data(),names::Mesons().data()});
+   	Define(names::ReactionMap(),
 	       [](const int& beamion, const int& beamel,const int& scatel,
 		  const RVecI& baryons,const RVecI& mesons){
 		 return RVecIndexMap{{beamion},{beamel},{scatel},baryons,mesons};},
