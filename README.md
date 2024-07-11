@@ -138,13 +138,29 @@ If you create a snapshot via something like
 
 Then the tree will contain all aliased or nnewly defined columns. In particular momentum components and any calculation which was requested. The tree will just be flat single entry per calculation, and multi-entries for momentum components, one for each particle. If you are using MCMatching there will be both a truth branch and reconstructed, allowing you to determine resolutions of all quantities etc. To access a particular particles components you just need to index by the name you gave it e.g.
 
-      //plot the reconstuceted momentum of the electron
+      //plot the reconstructed momentum of the electron
       rad_tree->Draw("rec_pmag[el]>>p(100,0,20)");
       //plot the truth W
       rad_tree->Draw("tru_W>>w(100,0,50)");
 
 
 
+## Matching detector information
 
+For ePIC analysis we can match the detector information to each particle.
+To do this you must use the ePICDetectorReaction rather than just ePICReaction.
+To specify what information you want to use (for example to save linked info synchronised to tree) :
 
+       //Add some detector associations
+       //From TaggerTrackerTracks use "momentum.x"
+       epic.AssociateTracks({"TaggerTrackerTracks"},
+   		       {"momentum.x"});
+       //From various calorimeters use "energy"	       
+       epic.AssociateClusters({"EcalBarrelClusters","EcalBarrelImagingClusters",
+       	"EcalBarrelScFiClusters",
+      	"EcalEndcapNClusters","EcalEndcapPClusters","EcalEndcapPInsertClusters",
+      	"HcalBarrelClusters","HcalEndcapNClusters","LFHCALClusters",
+      	"EcalFarForwardZDCClusters","HcalFarForwardZDCClusters"},
+    	{"energy"});
+ 
 
