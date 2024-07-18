@@ -88,9 +88,6 @@ void ProcessMCMatchedDetectorZ(){
   // //CM production angles
   rad::rdf::CMAngles(epic,"CM");
   
- //decay angles
-  rad::rdf::HelicityAngles(epic,"Heli");
-  rad::rdf::GJAngles(epic,"GJ");
 
   ///////////////////////////////////////////////////////////
   //Define histograms
