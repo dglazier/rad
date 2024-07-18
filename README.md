@@ -15,7 +15,7 @@ Goals :
 To install just download the code from git and add the path to ROOT_INCLUDE_PATH
 
       git clone https://github.com/dglazier/rad
-      setenv ROOT_INCLUDE_PATH /to/where/is/rad  or  setenv ROOT_INCLUDE_PATH ${ROOT_INCLUDE_PATH}:/to/where/is/rad
+      setenv ROOT_INCLUDE_PATH /to/where/is/rad/include  or  setenv ROOT_INCLUDE_PATH ${ROOT_INCLUDE_PATH}:/to/where/is/rad/include
       
   Example code :
 

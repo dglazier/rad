@@ -1,16 +1,18 @@
 //need to use reconstructed variables for all particles
 //rather than set index by number, need to use lambda method like is done for positron.
 
-#include "include/ePICDetectorReaction.h"
-#include "include/Indicing.h"
-#include "include/BasicKinematicsRDF.h"
-#include "include/ReactionKinematicsRDF.h"
-#include "include/ElectronScatterKinematicsRDF.h"
+#include "ePICDetectorReaction.h"
+#include "Indicing.h"
+#include "BasicKinematicsRDF.h"
+#include "ReactionKinematicsRDF.h"
+#include "ElectronScatterKinematicsRDF.h"
+#include "gammaN_2_Spin0Spin0SpinHalfRDF.h"
+
 #include <TBenchmark.h>
 #include <TCanvas.h>
 
-inline constexpr std::array<double,4>  rad::beams::BeamIonComponents() {return {0.,0.,100.,0.93827210};}
-inline constexpr std::array<double,4>  rad::beams::BeamEleComponents() {return {0.,0.,-10.,0.00051099900};}
+inline constexpr std::array<double,4>  rad::beams::InitBotComponents() {return {0.,0.,100.,0.93827210};}
+inline constexpr std::array<double,4>  rad::beams::InitTopComponents() {return {0.,0.,-10.,0.00051099900};}
 
 void ProcessMCMatchedDetectorZ(){
   auto verbosity = ROOT::Experimental::RLogScopedVerbosity(ROOT::Detail::RDF::RDFLogChannel(), ROOT::Experimental::ELogLevel::kInfo);
@@ -25,10 +27,16 @@ void ProcessMCMatchedDetectorZ(){
    
   //Assign particles names and indices
   //indicing comes from ordering in hepmc file
-  epic.setBeamIonIndex(rad::beams::BeamIonFix());
-  epic.setBeamElectronIndex(rad::beams::BeamEleFix());
+  //epic.setBeamIonIndex(rad::beams::InitBotFix());
+  //epic.setBeamElectronIndex(rad::beams::InitTopFix());
+  //epic.setScatElectronIndex(6);
+
+  //Assign particles names and indices
+  //indicing comes from ordering in hepmc file
+  epic.setBeamIonIndex(1);
+  epic.setBeamElectronIndex(0);
   epic.setScatElectronIndex(6);
-  //give final state hadrons names,
+
   //if we give a PDG code it will generate el_OK branches etc
   //el_OK = 1 if electron reconstructed with right PDG
   epic.setParticleIndex("el",2,11);
@@ -69,11 +77,20 @@ void ProcessMCMatchedDetectorZ(){
   rad::rdf::Mass(epic,"ZMass","{el,po,pi}");
 
   // //t distribution, column name
-  rad::rdf::TBot(epic,"t_pn");
-  rad::rdf::TPrime(epic,"tp_pn");
+  rad::rdf::Q2(epic,"Q2");
+
+  // //t distribution, column name
+  rad::rdf::TBot(epic,"tb_pn");
+  rad::rdf::TPrimeBot(epic,"tbp_pn");
+  rad::rdf::TTop(epic,"tt_pn");
+  rad::rdf::TPrimeTop(epic,"ttp_pn");
 
   // //CM production angles
   rad::rdf::CMAngles(epic,"CM");
+  
+ //decay angles
+  rad::rdf::HelicityAngles(epic,"Heli");
+  rad::rdf::GJAngles(epic,"GJ");
 
   ///////////////////////////////////////////////////////////
   //Define histograms
