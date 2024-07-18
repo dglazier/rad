@@ -7,32 +7,22 @@
   for particular hadronic final states.
   This derived class is configured for ePIC files with fixed particle order
 */
-#include "ConfigReaction.h"
-#include "RVecHelpers.h"
-
-// #include <edm4hep/MCParticle.h>
-// #include <edm4hep/utils/vector_utils.h>
+#include "ElectroIonReaction.h"
 
 namespace rad{
   namespace config{
-    
-    // template <typename T>
-    // auto getMag = [](ROOT::VecOps::RVec<T> momenta) {
-    //   return ROOT::VecOps::Map(momenta, [](const T& p) { return edm4hep::utils::magnitude(p.momentum); });
-    // };
-  
 
     //! Class definition
 
-    class ePICReaction : public ConfigReaction {
+    class ePICReaction : public ElectroIonReaction {
 
 
     public:
 
-      ePICReaction(const std::string_view treeName, const std::string_view fileNameGlob, const ROOT::RDF::ColumnNames_t&  columns ={} ) : ConfigReaction{treeName,fileNameGlob,columns} {
+      ePICReaction(const std::string_view treeName, const std::string_view fileNameGlob, const ROOT::RDF::ColumnNames_t&  columns ={} ) : ElectroIonReaction{treeName,fileNameGlob,columns} {
 
       }
-     ePICReaction(const std::string_view treeName, const std::vector<std::string> &filenames, const ROOT::RDF::ColumnNames_t&  columns ={} ) : ConfigReaction{treeName,filenames,columns} {
+     ePICReaction(const std::string_view treeName, const std::vector<std::string> &filenames, const ROOT::RDF::ColumnNames_t&  columns ={} ) : ElectroIonReaction{treeName,filenames,columns} {
 
       }
 
@@ -142,7 +132,8 @@ namespace rad{
 	  else{
 	    RedefineViaAlias(alias,std::string_view(Form("helpers::Truncate(%s,tru_n)",alias.data())));
 	    }*/
-	  
+	  //Note expression function does not work due to some epic branches having
+	  // a . in the name, so must do this ugly check all types method
 	    switch(static_cast<int>(DeduceColumnVectorType(col.second))) {
 	    //    enum class ColType{Undef,Int,UInt,Float,Double,Short,Bool,Long};
 	    case static_cast<int>(ColType::Undef):

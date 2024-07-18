@@ -166,39 +166,13 @@ namespace rad{
        * Make map that links particle names to indices in user functions
        * in C++ functions you can use the RVecIndexMap object indexed by 
        * name of the reaction component you need
+       *
+       * This function must be implmented by a derived class
        */
-      void makeParticleMap(){
-	//note, ordering in arguments, map and names must be maintained
-	// Define(names::ReactionMap(),
-	//        [](const int& beamion, const int& beamel,const int& scatel,
-	// 	  const RVecI& baryons,const RVecI& mesons){
-	// 	 return RVecIndexMap{{beamion},{beamel},{scatel},baryons,mesons};},
-	//        {names::BeamIon().data(),names::BeamEle().data(),
-	// 	names::ScatEle().data(),names::Baryons().data(),names::Mesons().data()});
-   	Define(names::ReactionMap(),
-	       [](const int& beamion, const int& beamel,const int& scatel,
-		  const RVecI& baryons,const RVecI& mesons){
-		 return RVecIndexMap{{beamion},{beamel},{scatel},baryons,mesons};},
-	       {names::BeamIon().data(),names::BeamEle().data(),
-		names::ScatEle().data(),names::Baryons().data(),names::Mesons().data()});
-      }
+      virtual void makeParticleMap() = 0;
 
 
-      /** 
-       * Set constant index for beam electron, scattered electron and beam ion
-       * This assumes constant position in collection (e.g in some HepMC3 files)
-       * and update the current frame to the aliased one
-       */
-      void setBeamElectronIndex(const int idx){
-	setParticleIndex(names::BeamEle(),idx);
-      }
-      void setScatElectronIndex(const int idx){
-	setParticleIndex(names::ScatEle(),idx);
-      }
-      void setBeamIonIndex(const int idx){
-	setParticleIndex(names::BeamIon(),idx);
-      }
-      /**
+       /**
        * Collect constant indices for final state mesons and baryons
        */
       void setMesonIndices(const RVecI& indices){
@@ -208,18 +182,7 @@ namespace rad{
 	Define(names::Baryons(),[indices](){return indices;},{});
       }
 
-      /**
-       * Collect variable indices for beams and scattered electron
-       */
-      template<typename Lambda>
-      void setBeamElectron(Lambda&& func,const ROOT::RDF::ColumnNames_t & columns = {} ){
-	setParticleIndex(names::BeamEle(),func, columns);
-      }
-     template<typename Lambda>
-      void setScatElectron(Lambda&& func,const ROOT::RDF::ColumnNames_t & columns = {} ){
-	setParticleIndex(names::ScatEle(),func, columns);
-      }
-      /**
+       /**
        * Collect variable indices for final state mesons and baryons
        */
       void setMesonParticles(const  ROOT::RDF::ColumnNames_t& particles){
@@ -308,7 +271,9 @@ namespace rad{
 	  return ROOT::VecOps::Where(mask,pid,-1);},
 	  {type+"_"+"pid",mask_name.data()});
       }
-
+      /**
+       * create shortcut string for 3 and 4 momentum components
+       */
       void AddType(const string atype){
 	_type_comps[atype]["components_p4"] = Form("%s_px,%s_py,%s_pz,%s_m",atype.data(),atype.data(),atype.data(),atype.data());
 	_type_comps[atype]["components_p3"] = Form("%s_px,%s_py,%s_pz",atype.data(),atype.data(),atype.data());
