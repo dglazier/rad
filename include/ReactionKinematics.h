@@ -93,7 +93,7 @@ namespace rad{
     template<typename Tp, typename Tm>
     Tp TTop(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
     
-      auto psum = beams::InitialFourVector(react[names::InitialTopIdx()][0],px,py,pz,m);;   
+      auto psum = beams::InitialFourVector(react[names::InitialTopIdx()][0],px,py,pz,m);
       SubtractFourVector(psum,react[names::MesonsIdx()],px,py,pz,m);
       return - (psum.M2());
     }
