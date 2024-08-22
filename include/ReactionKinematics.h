@@ -8,17 +8,55 @@ void ReactionKinematics(){}
 namespace rad{
   namespace reactkine{
   
-   
+    ///\brief create a new particle and add it to the momentum vectors
+    ///return the index to be used to access the components
+    ///this also allows it to be used with Define which requires a return
+    template<typename Tp, typename Tm>
+    int ParticleCreateBySum(const RVecI& isum, RVec<Tp> &px, RVec<Tp> &py, RVec<Tp> &pz, RVec<Tm> &m,const RVecI& iafter){
+      //sum the 4-vectors
+      // std::cout<<"ParticleCreateBySum "<<isum<<m<<" "<<m.size()<<std::endl;
+      PxPyPzMVector p4;
+      SumFourVector(p4,isum,px,py,pz,m);
+      //make particle id = last entry
+      auto idx = px.size();
+      //add new components
+      px.push_back(p4.X());
+      py.push_back(p4.Y());
+      pz.push_back(p4.Z());
+      m.push_back(p4.M());
+      return idx;
+    }
+    ///\brief create a new particle and add it to the momentum vectors
+    ///return the index to be used to access the components
+    ///this also allows it to be used with Define which requires a return
+    //const config::RVecIndexMap react must be copied for thread safety.
+    template<typename Tp, typename Tm>
+    int  ParticleCreateByMiss(const config::RVecIndexMap react,const RVecI& ineg, RVec<Tp> &px, RVec<Tp> &py, RVec<Tp> &pz, RVec<Tm> &m){
+      //sum the 4-vectors
+      auto p4 = beams::InitialFourVector(react[names::InitialTopIdx()][0],px,py,pz,m);
+      p4+=beams::InitialFourVector(react[names::InitialBotIdx()][0],px,py,pz,m);
+       
+      SubtractFourVector(p4,ineg,px,py,pz,m);
+
+      //make particle id = last entry
+      auto idx = px.size();
+      
+      //add new components
+      px.push_back(p4.X());
+      py.push_back(p4.Y());
+      pz.push_back(p4.Z());
+      m.push_back(p4.M());
+      return idx;
+    }
+ 
+    
    ///\brief missing mass fo reaction = top+bot -  neg[i]
     //const config::RVecIndexMap react must be copied for thread safety.
     template<typename Tp, typename Tm>
-    Tp MissMass(const config::RVecIndexMap react,const RVecI ineg,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m)
+    Tp FourVectorMissMassCalc(const config::RVecIndexMap react,const RVecI ineg,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m)
     {
       auto psum = beams::InitialFourVector(react[names::InitialTopIdx()][0],px,py,pz,m);
       psum+=beams::InitialFourVector(react[names::InitialBotIdx()][0],px,py,pz,m);
-      //auto psum = beams::InitialFourVector(react[names::ElectroIonIdx()][0],px,py,pz,m);
-      //psum+=beams::InitialFourVector(react[names::ElectroEleIdx()][0],px,py,pz,m);
-      
       SubtractFourVector(psum,ineg,px,py,pz,m);
       return psum.M();
     }
@@ -26,13 +64,10 @@ namespace rad{
    ///\brief missing mass sqaured of reaction = top+bot -  neg[i]
     //const config::RVecIndexMap react must be copied for thread safety.
     template<typename Tp, typename Tm>
-    Tp MissMass2(const config::RVecIndexMap react,const RVecI ineg,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m)
+    Tp FourVectorMissMass2Calc(const config::RVecIndexMap react,const RVecI ineg,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m)
     {
       auto psum = beams::InitialFourVector(react[names::InitialTopIdx()][0],px,py,pz,m);
       psum+=beams::InitialFourVector(react[names::InitialBotIdx()][0],px,py,pz,m);
-      //auto psum = beams::InitialFourVector(react[names::ElectroIonIdx()][0],px,py,pz,m);
-      //psum+=beams::InitialFourVector(react[names::ElectroEleIdx()][0],px,py,pz,m);
-      
       SubtractFourVector(psum,ineg,px,py,pz,m);
       return psum.M2();
     }
@@ -84,17 +119,23 @@ namespace rad{
     ///\brief return 4 momentum transfer squared of "in particles" - "out particles" on bottom vertex
     template<typename Tp, typename Tm>
     Tp TBot(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
-    
-      auto psum = beams::InitialFourVector(react[names::InitialBotIdx()][0],px,py,pz,m);;   
+      //std::cout<<" TBot "<<react[names::InitialBotIdx()][0]<<" "<<react[names::BaryonsIdx()]<<" "<<pz<<m<<std::endl;
+      auto psum = beams::InitialFourVector(react[names::InitialBotIdx()][0],px,py,pz,m);
+      //std::cout<<psum<<std::endl;
       SubtractFourVector(psum,react[names::BaryonsIdx()],px,py,pz,m);
+      //std::cout<<psum<<" "<<- (psum.M2())<<std::endl;
       return - (psum.M2());
     }
     ///\brief return 4 momentum transfer squared of "in particles" - "out particles" on top vertex
     template<typename Tp, typename Tm>
     Tp TTop(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
     
-      auto psum = beams::InitialFourVector(react[names::InitialTopIdx()][0],px,py,pz,m);
+      //std::cout<<" TTop "<<react[names::InitialTopIdx()][0]<<" "<<react[names::MesonsIdx()]<<" "<<pz<<m<<std::endl;
+      auto psum = PhotoFourVector(react,px,py,pz,m);//beams::InitialFourVector(react[names::InitialTopIdx()][0],px,py,pz,m);
+      //std::cout<<psum<<" "<< FourVector(react[names::MesonsIdx()],px,py,pz,m)<<std::endl;
+      
       SubtractFourVector(psum,react[names::MesonsIdx()],px,py,pz,m);
+      //      std::cout<<psum<<" "<<- (psum.M2())<<std::endl;
       return - (psum.M2());
     }
 

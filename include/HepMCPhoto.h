@@ -15,15 +15,15 @@ namespace rad{
 
     //! Class definition
 
-    class HepMCElectro : public PhotoIonReaction {
+    class HepMCPhoto : public PhotoIonReaction {
 
 
     public:
 
-    HepMCElectro(const std::string_view treeName, const std::string_view fileNameGlob, const ROOT::RDF::ColumnNames_t&  columns ={}) : PhotoIonReaction{treeName,fileNameGlob,columns} {
+    HepMCPhoto(const std::string_view treeName, const std::string_view fileNameGlob, const ROOT::RDF::ColumnNames_t&  columns ={}) : PhotoIonReaction{treeName,fileNameGlob,columns} {
 	
       }
-    HepMCElectro(const std::string_view treeName, const std::vector<std::string> &filenames, const ROOT::RDF::ColumnNames_t&  columns ={} ) : PhotoIonReaction{treeName,filenames,columns} {
+    HepMCPhoto(const std::string_view treeName, const std::vector<std::string> &filenames, const ROOT::RDF::ColumnNames_t&  columns ={} ) : PhotoIonReaction{treeName,filenames,columns} {
 
       }
 

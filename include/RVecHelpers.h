@@ -52,7 +52,6 @@ namespace rad{
     template<typename T>
     ROOT::VecOps::RVec<T> Reorder(const ROOT::VecOps::RVec<T>& vec0,const ROOT::RVecU& iorder0,const ROOT::RVecU& iorder1,const size_t n){
       //create new vector size  n
-      // cout<<"reorder "<< vec0<<iorder0<<iorder1<<" "<<n<<endl;
       ROOT::VecOps::RVec<T> vec1(n); //create new vector size n=iorder1.size
       //need to loop over order0
       size_t target_size = iorder1.size();
@@ -101,6 +100,22 @@ namespace rad{
       if(vec.size()==0) return ;
       std::for_each(vec.begin(), vec.end(), [&off](T &val) { val+=off; });
      
+    }
+    /**
+     * increment the values in vec
+     */
+    template<typename T>
+    void Append(const T& val, ROOT::VecOps::RVec<T>& vec){
+      vec.push_back(val);
+    }
+    /**
+     * increment the values in vec
+     */
+    template<typename T>
+    ROOT::VecOps::RVec<T> AppendToCopy(const T& val, const ROOT::VecOps::RVec<T>& vec){
+      auto result = vec;
+      result.push_back(val);
+      return result;
     }
     /**
      * increment the values in vec and return a copy

@@ -40,7 +40,7 @@ namespace rad{
        */
       void makeParticleMap() override{
 	//note, ordering in arguments, map and names must be maintained
-  	Define(names::ReactionMap(),
+  	Define(names::ReactionMap().data(),
 	       [](const int& tar_ion, const int& beam_gam,
 		  const RVecI& baryons,const RVecI& mesons){
 		 return RVecIndexMap{{tar_ion},{beam_gam},baryons,mesons};},
@@ -54,10 +54,10 @@ namespace rad{
        * and update the current frame to the aliased one
        */
       void setBeamGammaIndex(const int idx){
-	setParticleIndex(names::BeamGamma(),idx);
+	setParticleIndex(names::BeamGamma().data(),idx);
       }
       void setTargetIonIndex(const int idx){
-	setParticleIndex(names::TargetIon(),idx);
+	setParticleIndex(names::TargetIon().data(),idx);
       }
 
     };//PhotoIonReaction

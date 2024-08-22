@@ -38,7 +38,7 @@ namespace rad{
        */
       void makeParticleMap() override {
 	//note, ordering in arguments, map and names must be maintained
-  	Define(names::ReactionMap(),
+  	Define(names::ReactionMap().data(),
 	       [](const int& beamion, const int& beamel,
 		  const RVecI& baryons,const RVecI& mesons,const int& scatel){
 		 return RVecIndexMap{{beamion},{beamel},baryons,mesons,{scatel}};},
@@ -51,13 +51,13 @@ namespace rad{
        * and update the current frame to the aliased one
        */
       void setBeamElectronIndex(const int idx){
-	setParticleIndex(names::BeamEle(),idx);
+	setParticleIndex(names::BeamEle().data(),idx);
       }
       void setScatElectronIndex(const int idx){
-	setParticleIndex(names::ScatEle(),idx);
+	setParticleIndex(names::ScatEle().data(),idx);
       }
       void setBeamIonIndex(const int idx){
-	setParticleIndex(names::BeamIon(),idx);
+	setParticleIndex(names::BeamIon().data(),idx);
       }
       /**
        * Collect variable indices for scattered electron

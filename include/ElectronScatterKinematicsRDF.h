@@ -13,13 +13,13 @@ namespace rad{
     //   cr.DefineForAllTypes(name+"_Phi", []( const rad::ElCMDecay_t& cm){ return cm.Phi;} , {name});
     // }
     
-    void Q2(config::ConfigReaction& cr,const string_view& name){
+    void Q2(config::ConfigReaction& cr,const string& name){
       cr.DefineForAllTypes(name, Form("rad::electro::Q2(%s,components_p4)",names::ReactionMap().data()));
     }
-    void CosThetaCM(config::ConfigReaction& cr,const string_view& name){
+    void CosThetaCM(config::ConfigReaction& cr,const string& name){
       cr.DefineForAllTypes(name, Form("rad::electro::CosThetaCM(%s,components_p4)",names::ReactionMap().data()));
     }
-    void PhiCM(config::ConfigReaction& cr,const string_view& name){
+    void PhiCM(config::ConfigReaction& cr,const string& name){
       cr.DefineForAllTypes(name, Form("rad::electro::PhiCM(%s,components_p4)",names::ReactionMap().data()));
     }
     void CMAngles(config::ConfigReaction& cr,const string& name){

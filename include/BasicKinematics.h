@@ -58,11 +58,13 @@ void BasicKinematics(){}
     }
     ///\brief return mass of combined 4-vectors, adding particles with indices ipos and subtracting ineg
     template<typename Tp, typename Tm>
-    Tp Mass(const RVecI &ipos, const RVecI &ineg,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m)
+    Tp FourVectorMassCalc(const RVecI &ipos, const RVecI &ineg,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m)
     {
       PxPyPzMVector psum(0,0,0,0);
       SumFourVector(psum,ipos,px,py,pz,m);
       SubtractFourVector(psum,ineg,px,py,pz,m);
+      // std::cout<<"FourVectorMassCalc "<<ipos<<psum<<std::endl
+      //  	       <<px<<py<<std::endl<<pz<<m<<std::endl;
       return psum.M();
     }
     ///\brief return magnitude of momentum
@@ -87,6 +89,21 @@ void BasicKinematics(){}
     RVec<T> ThreeVectorEta(const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
       auto theta = ThreeVectorTheta(x,y,z);
       return -log(tan(0.5 * theta));//will use vectorised version
+    }
+    ///\brief return x-component
+    template<typename T>
+    RVec<T> ThreeVectorX(const RVec<T> &p, const RVec<T> &theta, const RVec<T> &phi){
+      return p*sin(theta)*cos(phi);
+    }
+    ///\brief return x-component
+    template<typename T>
+    RVec<T> ThreeVectorY(const RVec<T> &p, const RVec<T> &theta, const RVec<T> &phi){
+      return p*sin(theta)*sin(phi);
+    }
+    ///\brief return x-component
+    template<typename T>
+    RVec<T> ThreeVectorZ(const RVec<T> &p, const RVec<T> &theta, const RVec<T> &phi){
+      return p*cos(theta);
     }
 
     /* NOTE : we might want to change to using edm4hep functions. Then VecMag would change to 
