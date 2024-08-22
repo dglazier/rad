@@ -31,16 +31,16 @@ namespace rad{
     ///this also allows it to be used with Define which requires a return
     //const config::RVecIndexMap react must be copied for thread safety.
     template<typename Tp, typename Tm>
-    int  ParticleCreateByMiss(const config::RVecIndexMap react,const RVecI& ineg, RVec<Tp> &px, RVec<Tp> &py, RVec<Tp> &pz, RVec<Tm> &m){
+    int  ParticleCreateByMiss(const config::RVecIndexMap react,const RVecI& ineg, RVec<Tp> &px, RVec<Tp> &py, RVec<Tp> &pz, RVec<Tm> &m,const RVecI& iafter){
       //sum the 4-vectors
       auto p4 = beams::InitialFourVector(react[names::InitialTopIdx()][0],px,py,pz,m);
       p4+=beams::InitialFourVector(react[names::InitialBotIdx()][0],px,py,pz,m);
-       
+        
       SubtractFourVector(p4,ineg,px,py,pz,m);
 
       //make particle id = last entry
       auto idx = px.size();
-      
+
       //add new components
       px.push_back(p4.X());
       py.push_back(p4.Y());

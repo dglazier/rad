@@ -21,7 +21,7 @@ namespace rad{
        //////////////////////////////////////////////////////////////////
       void Miss(const string& name,const std::vector<std::string>& parts){
 	//THIS DOES NOT WORK YET!!!!!
-	DefineParticle(name,parts,Form("rad::reactkine::ParticleCreateByMiss(%s",names::ReactionMap().data()));
+	DefineParticle(name,parts,Form("rad::reactkine::ParticleCreateByMiss(%s,",names::ReactionMap().data()));
       }
       //////////////////////////////////////////////////////////////////
       void DefineParticle(const string& name,const std::vector<std::string> parts,const string& funcExpr){
@@ -52,12 +52,12 @@ namespace rad{
 	  
 	  //format args "func(idxs,name,components,after_idxs")
  	  TString type_expr = Form("%s%s,%s,%s)",funcExpr.data(),sum.data(),atype.second["components_p4"].data(),after_cols.data());
+	  std::cout<<"DefineParticle "<<type_expr<<std::endl;
 	  names.push_back(atype.first + name.data());
 	  _reaction->Define(atype.first + name.data(),type_expr.Data());
 	}
-	//_created.push_back(name);
-	//_reaction->CopyToPrimaryType(name);
-      
+	_created.push_back(name);
+	
 	auto snames = VectorToString(names);
 	//define name as the first type entry in names
 	//this function ensures all type create particles are called at same time

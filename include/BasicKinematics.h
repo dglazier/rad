@@ -64,7 +64,7 @@ void BasicKinematics(){}
       SumFourVector(psum,ipos,px,py,pz,m);
       SubtractFourVector(psum,ineg,px,py,pz,m);
       // std::cout<<"FourVectorMassCalc "<<ipos<<psum<<std::endl
-      //  	       <<px<<py<<std::endl<<pz<<m<<std::endl;
+      //  	       <<std::endl<<pz<<m<<std::endl;
       return psum.M();
     }
     ///\brief return magnitude of momentum

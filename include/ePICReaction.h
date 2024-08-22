@@ -47,24 +47,6 @@ namespace rad{
      void AliasColumnsAndMC(Bool_t IsEnd=kTRUE){
 	AliasColumns(kFALSE);
 	AliasColumnsMC(kFALSE);
-	/*
-	AddType("rec_");
-	setBranchAlias("ReconstructedParticles.momentum.x","rec_px");
-	setBranchAlias("ReconstructedParticles.momentum.y","rec_py");
-	setBranchAlias("ReconstructedParticles.momentum.z","rec_pz");
-	setBranchAlias("ReconstructedParticles.mass","rec_m");
-	setBranchAlias("ReconstructedParticles.PDG","rec_pid");
-	*/
-	/*
-	AddType("tru_");
-	setBranchAlias("MCParticles.momentum.x","tru_px");
-	setBranchAlias("MCParticles.momentum.y","tru_py");
-	setBranchAlias("MCParticles.momentum.z","tru_pz");
-	setBranchAlias("MCParticles.mass","tru_m");
-	setBranchAlias("MCParticles.PDG","tru_pid");
-
-	setBranchAlias("MCParticles.generatorStatus","tru_genStat");
-	*/
 	
 	//remove all but true generated beam+final state particles
 	//rec_match_id : 0,1,2,...N=number beam+final particles 
@@ -135,7 +117,6 @@ namespace rad{
 	AliasColumnsAndMC(kFALSE);
 
 	for(const auto& col : AliasMap()){
-	  cout<<"synch "<<col.first<<endl;
 	  const auto& alias = col.first;
 	  
 	  switch(static_cast<int>(DeduceColumnVectorType(col.second )) ) {
@@ -210,12 +191,12 @@ namespace rad{
       /**
        * Case Reconstructed and truth synched via AliasColumnsAndMatchWithMC()
        */
-      void ResolutionSynched(const string& var){
+      void Resolution(const string& var){
 	Define(string("res_")+var,[](const ROOT::RVecF &rec,const ROOT::RVecF &tru){
 	  return (rec - tru);
 	},{string("rec_")+var,string("tru_")+var});
       }
-      void ResolutionFractionSynched(const string& var){
+      void ResolutionFraction(const string& var){
 	Define(string("res_")+var,[](const ROOT::RVecF &rec,const ROOT::RVecF &tru){
 	  return (rec - tru)/tru;
 	},{string("rec_")+var,string("tru_")+var});
