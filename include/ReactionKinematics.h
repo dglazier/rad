@@ -119,23 +119,21 @@ namespace rad{
     ///\brief return 4 momentum transfer squared of "in particles" - "out particles" on bottom vertex
     template<typename Tp, typename Tm>
     Tp TBot(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
-      //std::cout<<" TBot "<<react[names::InitialBotIdx()][0]<<" "<<react[names::BaryonsIdx()]<<" "<<pz<<m<<std::endl;
       auto psum = beams::InitialFourVector(react[names::InitialBotIdx()][0],px,py,pz,m);
-      //std::cout<<psum<<std::endl;
       SubtractFourVector(psum,react[names::BaryonsIdx()],px,py,pz,m);
-      //std::cout<<psum<<" "<<- (psum.M2())<<std::endl;
       return - (psum.M2());
     }
     ///\brief return 4 momentum transfer squared of "in particles" - "out particles" on top vertex
     template<typename Tp, typename Tm>
     Tp TTop(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
-    
-      //std::cout<<" TTop "<<react[names::InitialTopIdx()][0]<<" "<<react[names::MesonsIdx()]<<" "<<pz<<m<<std::endl;
-      auto psum = PhotoFourVector(react,px,py,pz,m);//beams::InitialFourVector(react[names::InitialTopIdx()][0],px,py,pz,m);
-      //std::cout<<psum<<" "<< FourVector(react[names::MesonsIdx()],px,py,pz,m)<<std::endl;
-      
-      SubtractFourVector(psum,react[names::MesonsIdx()],px,py,pz,m);
-      //      std::cout<<psum<<" "<<- (psum.M2())<<std::endl;
+
+      //For some reason this calculation only works when boosted into
+      //proton beam rest frame......
+      auto pbeam = beams::InitialFourVector(react[names::InitialBotIdx()][0],px,py,pz,m);
+      auto boov=pbeam.BoostToCM();
+      auto phot=boost(PhotoFourVector(react,px,py,pz,m),boov);
+      auto meso=boost(FourVector(react[names::MesonsIdx()],px,py,pz,m),boov);
+      auto psum = phot-meso;
       return - (psum.M2());
     }
 
