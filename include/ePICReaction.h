@@ -8,7 +8,7 @@
   This derived class is configured for ePIC files with fixed particle order
 */
 #include "ElectroIonReaction.h"
-#include "ElectroIonReaction.h"
+#include "ePICUtilities.h"
 
 namespace rad{
   namespace config{
@@ -38,7 +38,23 @@ namespace rad{
 	setBranchAlias("ReconstructedParticles.mass","rec_m");
 	setBranchAlias("ReconstructedParticles.PDG","rec_pid");
 	
-	 if(IsEnd) AddAdditionalComponents();
+	if(IsEnd){
+	  rad::epic::UndoAfterBurn undoAB{-0.025};
+	  auto undoAB_rec=[undoAB](ROOT::RVecF &px,ROOT::RVecF &py,ROOT::RVecF&pz, const ROOT::RVecF &m){
+	    undoAB(px,py,pz,m);
+	    return px;
+	  };
+	  
+	  
+	  //Undo the afterburner procedure
+	  //here we just account for crossing angle
+	  //just need to redefine 1 component. Other 2 have been updated
+	  //need to redefine at least one to make sure this is called before
+	  //any of the components
+	  RedefineViaAlias("rec_px", undoAB_rec, {"rec_px","rec_py","rec_pz","rec_m"});
+	  
+	  AddAdditionalComponents();
+	}
        }
       
       /**
@@ -47,37 +63,62 @@ namespace rad{
      void AliasColumnsAndMC(Bool_t IsEnd=kTRUE){
 	AliasColumns(kFALSE);
 	AliasColumnsMC(kFALSE);
+	//Matching reconstructed to truth :
+	// 1) Find final state truth tru_genStat == 1 =>rec_match_id 0,,N
+	// 2) Map from old to new : final_match_id
+	//    final_match_id = sizeof(MCParticles)
+	//             value = order in new arrays or -1 if not included
+	// 3) Create new simID : final_match_id[simID[]]
+	//    converts to position in new truth array
+	// 4) Create new arrays : sizeof(tru_final_state)
+	//    tru_ entries = all filled as truth
+	//    rec_ entries = filled if that particle was reconstructed
 	
 	//remove all but true generated beam+final state particles
 	//rec_match_id : 0,1,2,...N=number beam+final particles 
 	Define("rec_match_id",[](const ROOT::RVecI& stat){
 
-	  auto filtstat = stat[stat==1||stat==4];
+	  auto filtstat = stat[stat==1];
 	  auto id = helpers::Enumerate<uint>(filtstat.size());
 	  return id;//[filtstat==1];
 	},{"tru_genStat"}); //just need tru gen status to get N
 	
 	//make an mc_match branch cut on actual generated particles (no secondaries)
 	//Points rec array to tru array. rec_array has no beam particles, so can ignore
-	Define("tru_match_id",[](const ROOT::RVecI& stat,const ROOT::RVecU& simID){
-	  
-	  ROOT::RVecU match_id;
-	  const auto n = simID.size();
+	Define("tru_match_id",[](const ROOT::RVecI& stat,const ROOT::RVecU& simID,const ROOT::RVecU& finalID){
+	  // 2) Map from old to new : final_match_id
+	  //    final_match_id = sizeof(MCParticles)
+	  //             value = order in new arrays or -1 if not included
+	  // 3) Create new simID : final_match_id[simID[]]
+	  const auto n = finalID.size(); //mcparticles stat==1
+	  ROOT::RVecI final_match_id(n,-1);
 	  for(uint i=0;i<n;++i){
-	    if( (stat[simID[i]] == 1)  ){
-	      match_id.push_back(simID[i]);
+	    if(i>=simID.size())break;
+	    //if this truth particle was reconstructed add its new id
+	    // if(rad::helpers::Contains(simID,finalID[i]))
+	    //final_match_id[finalID[i]]=i;
+
+	    if(rad::helpers::Contains(finalID,simID[i])){
+	      //final_match_id[finalID[i]]=simID[i]-2;
+	      final_match_id[i]=rad::helpers::findIndex(finalID,simID[i]);
 	    }
 	  }
-	  return match_id;
-	},{"tru_genStat","ReconstructedParticleAssociations.simID"});//simID points from rec to tru
+	  ROOT::RVecU tru_match_id =final_match_id[final_match_id!=-1]; //Filter valid ids
+	  return tru_match_id;
+	  
+	},{"tru_genStat","ReconstructedParticleAssociations.simID","tru_final_id"});//simID points from rec to tru
 	
-	
+
 	//make an branch with size of number of generator particles (status 1 or 4)
 	//used to truncate tru arrays
-	Define("tru_n","rad::helpers::Count(tru_genStat,1)+rad::helpers::Count(tru_genStat,4)");
+	//Define("tru_n","rad::helpers::Count(tru_genStat,1)+rad::helpers::Count(tru_genStat,4)");
+	Define("tru_n","rad::helpers::Count(tru_genStat,1)");
 	
 	
-	if(IsEnd) AddAdditionalComponents();
+	if(IsEnd){
+	  RedefineFundamentalAliases();
+	  AddAdditionalComponents();
+	}
      }
       /**
        * Only alias MCParticle columns
@@ -91,8 +132,31 @@ namespace rad{
 	setBranchAlias("MCParticles.PDG","tru_pid");
 	setBranchAlias("MCParticles.generatorStatus","tru_genStat");
     
+	Define("tru_final_id",[](const ROOT::RVecI& stat){
+	  //map full array to final state only array  
+	  auto indices = helpers::Enumerate<uint>(stat.size());
+	  return indices[stat==1];
 
-	 if(IsEnd) AddAdditionalComponents();
+	},{"tru_genStat"});//simID points from rec to tru
+
+
+	
+	if(IsEnd){
+	  RedefineFundamentalAliases();
+	  AddAdditionalComponents();
+	  rad::epic::UndoAfterBurn undoAB{-0.025};
+	  auto undoAB_tru=[undoAB](ROOT::RVecF &px,ROOT::RVecF &py,ROOT::RVecF&pz, const ROOT::RVecD &m){
+	    undoAB(px,py,pz,m);
+	    return px;
+	  };
+	  //Undo the afterburner procedure
+	  //here we just account for crossing angle
+	  //just need to redefine 1 component. Other 2 have been updated
+	  //need to redefine at least one to make sure this is called before
+	  //any of the components
+	  RedefineViaAlias("tru_px", undoAB_tru, {"tru_px","tru_py","tru_pz","tru_m"});
+
+	}
       }
       /**
        * Alias the columns and rearrange entries 
@@ -115,6 +179,39 @@ namespace rad{
 	//for rec : RedefineViaAlias(alias,Form("helpers::Reorder(%s,rec_match_id,tru_match_id,tru_n)",alias.data());
 	
 	AliasColumnsAndMC(kFALSE);
+
+	RedefineFundamentalAliases();
+	  
+
+	//need to do it here or these calculations are done before synching
+	//which will not work as different number of elements
+	
+	if(IsEnd){
+	  rad::epic::UndoAfterBurn undoAB{-0.025};
+	  auto undoAB_tru=[undoAB](ROOT::RVecF &px,ROOT::RVecF &py,ROOT::RVecF&pz, const ROOT::RVecD &m){
+	    undoAB(px,py,pz,m);
+	    return px;
+	  };
+	  auto undoAB_rec=[undoAB](ROOT::RVecF &px,ROOT::RVecF &py,ROOT::RVecF&pz, const ROOT::RVecF &m){
+	    undoAB(px,py,pz,m);
+	    return px;
+	  };
+	  
+	  
+	  //Undo the afterburner procedure
+	  //here we just account for crossing angle
+	  //just need to redefine 1 component. Other 2 have been updated
+	  //need to redefine at least one to make sure this is called before
+	  //any of the components
+	  RedefineViaAlias("tru_px", undoAB_tru, {"tru_px","tru_py","tru_pz","tru_m"});
+	  RedefineViaAlias("rec_px", undoAB_rec, {"rec_px","rec_py","rec_pz","rec_m"});
+	  
+	  AddAdditionalComponents();
+	}
+      }//AliasColumnsAndMatchWithMC
+
+
+      void RedefineFundamentalAliases(){
 
 	for(const auto& col : AliasMap()){
 	  const auto& alias = col.first;
@@ -149,16 +246,10 @@ namespace rad{
 	    break;
 	  }
 	}
-	return;
 
-
-	//need to do it here or these calculations are done before synching
-	//which will not work as different number of elements
-	 if(IsEnd) AddAdditionalComponents();
-      }//AliasColumnsAndMatchWithMC
-
-
+    }
       void AddAdditionalComponents(){
+	
 	//and add some additional columns
 	DefineForAllTypes("phi", Form("rad::ThreeVectorPhi(components_p3)"));
 	DefineForAllTypes("theta", Form("rad::ThreeVectorTheta(components_p3)"));
@@ -174,10 +265,10 @@ namespace rad{
 	};
 	
 	if(contains(name,"rec") ){
-	    RedefineViaAlias(name,helpers::Reorder<T>,{name.data(),"rec_match_id","tru_match_id","tru_n"});
+	  RedefineViaAlias(name,helpers::Reorder<T>,{name.data(),"rec_match_id","tru_match_id","tru_n"});
 	  }
 	else if(contains(name,"tru") ){
-	  RedefineViaAlias(name,helpers::Truncate<T>,{name.data(),"tru_n"});
+	  RedefineViaAlias(name,helpers::Rearrange<T>,{name.data(),"tru_final_id"});
 	  
 	}
 	

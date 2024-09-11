@@ -37,7 +37,8 @@ namespace rad{
 	chain.SetBranchAddress( "events___idTable", &tab);
 	chain.GetEntry(0);
 
-	_idTable = std::move(*tab);
+	//dont't want to do this with bare pointer, but no copy constructor
+	_idTable =tab ;
 	
       }
     ePICDetectorReaction(const std::string_view treeName, const std::vector<std::string> &filenames, const ROOT::RDF::ColumnNames_t&  columns ={} ) : ePICReaction{treeName,filenames,columns} {
@@ -48,7 +49,8 @@ namespace rad{
 	podio_metadata->SetBranchAddress( "events___idTable", &tab);
 	podio_metadata->GetEntry(0);
 
-	_idTable = std::move(*tab);
+	//dont't want to do this with bare pointer, but no copy constructor
+	_idTable =tab ;
 
       }
 
@@ -74,8 +76,8 @@ namespace rad{
 	ROOT::RVecU collIndices; //create indices for the given collection types
       
 	for(const auto& assoc_name:types){ //loop over the specified detector associations
-	  cout<<assoc_name<<" "<<_idTable.collectionID(assoc_name).has_value()<<" "<<endl;
-	  if(_idTable.collectionID(assoc_name).has_value()==false){
+	  // cout<<assoc_name<<" "<<_idTable->collectionID(assoc_name).has_value()<<" "<<endl;
+	  if(_idTable->collectionID(assoc_name).has_value()==false){
 	    std::cerr<<"Warning : ePICDetectorReaction::AssociateObjects, no detector object "
 		     <<assoc_name<<" in podio_metadata. "<<std::endl;
 	    continue;
@@ -83,7 +85,7 @@ namespace rad{
 	  
 	  //save the collectionID value in indices
 	  //this allows us to define a local index for the collection
-	  collIndices.push_back(_idTable.collectionID(assoc_name).value());
+	  collIndices.push_back(_idTable->collectionID(assoc_name).value());
 	}
       
         //function to map hash collectionID vector to index in local defined vector.
@@ -139,10 +141,10 @@ namespace rad{
 	  TString assocName = object+member;
 	  assocName.ReplaceAll(".","_");
 	  Define(assocName,CreateAssocVector,{mapName.Data(), collIdxsName,"_ReconstructedParticles_"+object+".index"});
-	  //reorder to match rec
-	  //Redefine(assocName,helpers::Reorder<Float_t>,{assocName.Data(),"rec_match_id","tru_match_id","tru_pid"});
-	  //Note if I use the string version of Redefine it works out the template type, so do not need to hard code.
-	  //Redefine(assocName, std::string_view(Form("rad::helpers::Reorder(%s,%s,%s,%s)",assocName.Data(),"rec_match_id","tru_match_id","tru_pid")) );
+	  //reorder to match truth and rec if required
+	  if(rad::config::ColumnExists("tru_match_id",CurrFrame()) == true ){
+	    RedefineExpr(std::string(assocName), std::string(Form("rad::helpers::Reorder(%s,%s,%s,%s)",assocName.Data(),"rec_match_id","tru_match_id","tru_n")) );
+	  }
 	}
 	
       }
@@ -163,7 +165,9 @@ namespace rad{
   
     private:
       
-      podio::CollectionIDTable _idTable; //to be cloned from podio_metadata:events___idTable
+      //  podio::CollectionIDTable _idTable; //to be cloned from podio_metadata:events___idTable
+      podio::CollectionIDTable *_idTable=nullptr; //to be cloned from podio_metadata:events___idTable, it has a deleted constructor so cannot use copy contructor
+      //std::shared_ptr<podio::CollectionIDTable> _idTable; //to be cloned from podio_metadata:events___idTable
       /**
        * Local index for particle associated collection IDs
        * should be in range 0 - N declared trackers

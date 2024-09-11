@@ -64,7 +64,7 @@ void BasicKinematics(){}
       SumFourVector(psum,ipos,px,py,pz,m);
       SubtractFourVector(psum,ineg,px,py,pz,m);
       // std::cout<<"FourVectorMassCalc "<<ipos<<psum<<std::endl
-      //  	       <<std::endl<<pz<<m<<std::endl;
+      //       <<std::endl<<pz<<m<<std::endl;
       return psum.M();
     }
     ///\brief return magnitude of momentum
@@ -77,6 +77,12 @@ void BasicKinematics(){}
     RVec<T> ThreeVectorTheta(const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
       auto mag = ThreeVectorMag(x,y,z);
       auto costh = z/mag;
+      auto test = acos(costh);
+      // if(test.size()>4)
+      // 	if(test[4]<2.1){
+      // 	  cout<<"**********************ThreeVectorTheta"<<test<<x<<y<<z<<endl;
+      // 	  exit(0);
+      // 	}
       return acos(costh);
     }
     ///\brief return eta of momentum

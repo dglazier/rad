@@ -43,6 +43,8 @@ namespace rad{
      */
     template<typename T>
     ROOT::VecOps::RVec<T> Rearrange(const ROOT::VecOps::RVec<T>& vec,const ROOT::RVecU& imatch){
+      //auto test = ROOT::VecOps::Take(vec,imatch);
+      // std::cout<<"Rearrange "<<vec<<imatch<<test<<std::endl;
        return ROOT::VecOps::Take(vec,imatch);
     }
     /**
@@ -51,6 +53,7 @@ namespace rad{
      */
     template<typename T>
     ROOT::VecOps::RVec<T> Reorder(const ROOT::VecOps::RVec<T>& vec0,const ROOT::RVecU& iorder0,const ROOT::RVecU& iorder1,const size_t n){
+      // std::cout<<"reorder "<<vec0<<" "<<iorder0<<iorder0.size()<<iorder1<<iorder1.size()<<" "<<n<<std::endl;
       //create new vector size  n
       ROOT::VecOps::RVec<T> vec1(n); //create new vector size n=iorder1.size
       //need to loop over order0
@@ -59,6 +62,7 @@ namespace rad{
 	//add value of vec0 at iorder1
 	vec1[iorder1[i]]=vec0[iorder0[i]]; //give vec1[iorder1] value of vec0[iorder0]
       }
+      //std::cout<<"reorder done "<<vec1<<std::endl;
       return vec1;
     }
 
@@ -77,6 +81,7 @@ namespace rad{
      */
     template<typename T>
     ROOT::VecOps::RVec<T> Truncate(const ROOT::VecOps::RVec<T>& vec,const size_t size){
+      // std::cout<<"Truncate "<<vec<<size<<std::endl;
       ROOT::RVec<T> ret;
       ret.reserve(size);
       for (auto i = 0UL; i < size; ++i) {
@@ -84,7 +89,13 @@ namespace rad{
       }
       return ret;
     }
-
+    /**
+     * Check if vec contains element == val
+     */
+     template<typename T>
+     bool Contains(const ROOT::VecOps::RVec<T>& vec,const T& val){   
+       return std::find(vec.begin(), vec.end(), val) != vec.end() ? true :false;
+     }
     /**
      * count the instances of val in vec
      */
@@ -174,17 +185,16 @@ namespace rad{
    template <typename T>
    ROOT::RVec<T> Concatenate(const ROOT::RVec<T> &v0, const ROOT::RVec<T> &v1)
    {
-
+  
      ROOT::RVec<T> res;
      res.reserve(v0.size() + v1.size());
      std::copy(v0.begin(), v0.end(), std::back_inserter(res));
      std::copy(v1.begin(), v1.end(), std::back_inserter(res));
-      return res;
+     return res;
    }
    template <typename T>
    ROOT::RVec<T> Concatenate(const ROOT::RVec<T> &v0, const ROOT::RVec<T> &v1,const ROOT::RVec<T> &v2)
    {
-
      ROOT::RVec<T> res;
      res.reserve(v0.size() + v1.size() + v2.size() );
      std::copy(v0.begin(), v0.end(), std::back_inserter(res));

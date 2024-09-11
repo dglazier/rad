@@ -14,7 +14,15 @@ namespace rad{
     constexpr int InitTopFix(){return 10000;}
     constexpr int InitBotFix(){return 20000;}
     
-   
+    PxPyPzMVector InitialTopVector(){
+      return 	PxPyPzMVector(InitTopComponents()[0],InitTopComponents()[1],
+			      InitTopComponents()[2],InitTopComponents()[3]);
+    }
+    PxPyPzMVector InitialBotVector(){
+      return 	PxPyPzMVector(InitBotComponents()[0],InitBotComponents()[1],
+			      InitBotComponents()[2],InitBotComponents()[3]);
+    }
+    
     ///\brief return 4-vector of beam ion
     template<typename Tp, typename Tm>
     PxPyPzMVector InitialFourVector(const uint idx,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){

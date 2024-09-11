@@ -56,6 +56,10 @@ namespace rad{
       void setBeamGammaIndex(const int idx){
 	setParticleIndex(names::BeamGamma().data(),idx);
       }
+      template<typename Lambda>
+      void setBeamGammaIndex(Lambda&& func,const ROOT::RDF::ColumnNames_t & columns = {} ){
+	setCurrFrame(CurrFrame().Define(names::BeamGamma().data(),func,columns));
+      }
       void setTargetIonIndex(const int idx){
 	setParticleIndex(names::TargetIon().data(),idx);
       }
@@ -74,8 +78,10 @@ namespace rad{
       return beams::InitialFourVector(react[names::InitialTopIdx()][0],px,py,pz,m);
       
     }
+     const std::string_view  BeamIndices() {return Form("%s,%s",names::TargetIon().data(),names::BeamGamma().data())};
   }
 }
 
 //Declare we are using this PhotoFourVector in kinematics
 using rad::photoion::PhotoFourVector;
+using rad::photoion::BeamIndices;

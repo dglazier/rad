@@ -21,7 +21,7 @@ namespace rad{
        //////////////////////////////////////////////////////////////////
       void Miss(const string& name,const std::vector<std::string>& parts){
 	//THIS DOES NOT WORK YET!!!!!
-	DefineParticle(name,parts,Form("rad::reactkine::ParticleCreateByMiss(%s,",names::ReactionMap().data()));
+	DefineParticle(name,parts,Form("rad::reactkine::ParticleCreateByMiss(%s,",BeamIndices().data()));
       }
       //////////////////////////////////////////////////////////////////
       void DefineParticle(const string& name,const std::vector<std::string> parts,const string& funcExpr){
@@ -29,7 +29,7 @@ namespace rad{
 	//store all defined particle names
 	std::vector<std::string> names;
 
-	//loop over types and define this particle for each
+	//loop over ConfigReaction types and define this particle for each
 	auto types = _reaction->GetTypes();
 	for(auto &atype:types){
 	  //Make sure any created particle uses type_idx

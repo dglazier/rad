@@ -11,7 +11,7 @@ namespace rad{
     auto useNthOccurance(const int n_occurance,const int value) {
       return  [n_occurance,value]
 	(const ROOT::RVecI& values){
-	return helpers::findNthIndex(values,n_occurance,value);
+ 	return helpers::findNthIndex(values,n_occurance,value);
       };
      }
 

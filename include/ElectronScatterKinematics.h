@@ -15,7 +15,7 @@ namespace rad{
 
     template<typename Tp, typename Tm>
     Tp Q2(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
-      auto phot = PhotonVector(react,px,py,pz,m);
+      auto phot = PhotoFourVector(react,px,py,pz,m);
       return -phot.M2();
     
     }
@@ -39,7 +39,7 @@ namespace rad{
       auto cmBoost = cm.BoostToCM();
       auto beam = beams::InitialFourVector(react[names::ElectroEleIdx()][0],px,py,pz,m);
       auto mes = FourVector(react[names::MesonsIdx()],px,py,pz,m);
-      auto photon = PhotonVector(react,px,py,pz,m);
+      auto photon = PhotoFourVector(react,px,py,pz,m);
   
       PxPyPzMVector CMBeam=boost(beam,cmBoost);
       PxPyPzMVector CMMes=boost(mes,cmBoost);

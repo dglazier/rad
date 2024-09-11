@@ -39,6 +39,12 @@ namespace rad{
       cout<<"\n";
     }
 
+    bool ColumnExists(const string& col,RDFstep  df){
+      auto cols =  df.GetDefinedColumnNames();
+      if(std::find(cols.begin(),cols.end(),col)==cols.end()) return false;
+      return true;
+    }
+    
     std::string as_string(std::string_view v) { 
       return {v.data(), v.size()}; 
     }
@@ -51,9 +57,9 @@ namespace rad{
     public:
 
       //     ConfigReaction(const std::string& treeName, const std::string& fileNameGlob, const ROOT::RDF::ColumnNames_t&  columns ) : _orig_df{treeName,{fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data()},columns},_curr_df{_orig_df}{
-      ConfigReaction(const std::string_view treeName, const std::string_view fileNameGlob, const ROOT::RDF::ColumnNames_t&  columns ) : _orig_df{treeName,{fileNameGlob.data()},columns},_curr_df{_orig_df}{
+      ConfigReaction(const std::string_view treeName, const std::string_view fileNameGlob, const ROOT::RDF::ColumnNames_t&  columns ) : _orig_df{treeName,{fileNameGlob.data()},columns},_curr_df{_orig_df},_base_df{_orig_df}{
       }
-      ConfigReaction(const std::string_view treeName, const std::vector<std::string> &filenames, const ROOT::RDF::ColumnNames_t&  columns ) : _orig_df{treeName,filenames,columns},_curr_df{_orig_df}{
+      ConfigReaction(const std::string_view treeName, const std::vector<std::string> &filenames, const ROOT::RDF::ColumnNames_t&  columns ) : _orig_df{treeName,filenames,columns},_curr_df{_orig_df},_base_df{_orig_df}{
       }
       
 
@@ -69,11 +75,14 @@ namespace rad{
       /**
        * Interface to RDataFrame Define
        */
-      void Define(const string& name,const string& expression){
+      void Define(const string_view name,const string& expression){
 	setCurrFrame(CurrFrame().Define(name,expression));
       }
+      //  void Define(const TString& name,const string& expression){
+      // 	setCurrFrame(CurrFrame().Define(name,expression));
+      // }
       template<typename Lambda>
-      void Define(const string& name,Lambda&& func,const ROOT::RDF::ColumnNames_t&  columns ){
+      void Define(const string_view name,Lambda&& func,const ROOT::RDF::ColumnNames_t&  columns ){
 	setCurrFrame(CurrFrame().Define(name,func,columns));
       }
 
@@ -99,6 +108,9 @@ namespace rad{
       /**
        * Interface to RDataFrame Redefine
        */
+      void RedefineExpr(const string& name,const string& expression){
+	setCurrFrame(CurrFrame().Redefine(name,expression));
+      }
       void Redefine(const string& name,const string& expression){
 	setCurrFrame(CurrFrame().Redefine(name,expression));
       }
@@ -175,6 +187,14 @@ namespace rad{
        * This function must be implmented by a derived class
        */
       virtual void makeParticleMap() = 0;
+     // /**
+     //   * Make map that links beam names to indices in user functions
+     //   * in C++ functions you can use the RVecIndexMap object indexed by 
+     //   * name of the reaction component you need
+     //   *
+     //   * This function must be implmented by a derived class
+     //   */
+     //  virtual void makeBeamMap() = 0;
 
 
        /**
@@ -315,7 +335,22 @@ namespace rad{
       }
 
       std::map<string, std::map<string,string>> GetTypes() const {return _type_comps;}
-      
+
+      /**
+       * get or set the base df
+       * this should include the configuration of the input
+       * data to rad format (arrays of px,px,pz,m)
+       * sharing this allows parallisation between reactions
+       */
+      void setBaseFrame(RDFstep step){
+	_base_df = step;
+      }
+      void setMyBaseFrame(){
+	_base_df = CurrFrame();
+      }
+      RDFstep getBaseFrame() const{
+	return _base_df;
+      }
     protected:
 
       const std::map<string,string>& AliasMap() const {return _aliasMap;}
@@ -335,6 +370,13 @@ namespace rad{
        * Additional actions will be applied to this.
        */
       RDFstep _curr_df;
+      /** 
+       * _base_df 
+       * Handle for the basic dataframe state. 
+       * This will have columns organised for processing.
+       * Typically after a SetAlias call.
+       */
+      RDFstep _base_df;
 
       /**
        * Store name of any aliased branches

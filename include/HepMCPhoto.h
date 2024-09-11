@@ -33,6 +33,7 @@ namespace rad{
       setBranchAlias("particles.momentum.m_v2","mc_py");
       setBranchAlias("particles.momentum.m_v3","mc_pz");
       setBranchAlias("particles.mass","mc_m");
+      setBranchAlias("particles.pid","mc_pid");
 
       DefineForAllTypes("phi", Form("rad::ThreeVectorPhi(mc_px,mc_py,mc_pz)"));
       DefineForAllTypes("theta", Form("rad::ThreeVectorTheta(mc_px,mc_py,mc_pz)"));

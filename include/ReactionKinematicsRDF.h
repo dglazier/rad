@@ -17,6 +17,30 @@ namespace rad{
       cr.AliasToPrimaryType(name);
     }
     
+    void MissP(config::ConfigReaction& cr,const string& name, const string_view neg){
+      cr.DefineForAllTypes(name, Form("rad::reactkine::FourVectorMissPCalc(%s,%s,components_p4)",names::ReactionMap().data(),neg.data()));
+    }
+    
+    void MissPt(config::ConfigReaction& cr,const string& name, const string_view neg){
+      cr.DefineForAllTypes(name, Form("rad::reactkine::FourVectorMissPtCalc(%s,%s,components_p4)",names::ReactionMap().data(),neg.data()));
+    }
+    
+    void MissPz(config::ConfigReaction& cr,const string& name, const string_view neg){
+      cr.DefineForAllTypes(name, Form("rad::reactkine::FourVectorMissPzCalc(%s,%s,components_p4)",names::ReactionMap().data(),neg.data()));
+    }
+    
+    void MissTheta(config::ConfigReaction& cr,const string& name, const string_view neg){
+      cr.DefineForAllTypes(name, Form("rad::reactkine::FourVectorMissThetaCalc(%s,%s,components_p4)",names::ReactionMap().data(),neg.data()));
+    }
+    
+    void MissPhi(config::ConfigReaction& cr,const string& name, const string_view neg){
+      cr.DefineForAllTypes(name, Form("rad::reactkine::FourVectorMissPhiCalc(%s,%s,components_p4)",names::ReactionMap().data(),neg.data()));
+    }
+    
+    void MissE(config::ConfigReaction& cr,const string& name, const string_view neg){
+      cr.DefineForAllTypes(name, Form("rad::reactkine::FourVectorMissECalc(%s,%s,components_p4)",names::ReactionMap().data(),neg.data()));
+    }
+    
     void MissMass(config::ConfigReaction& cr,const string& name, const string_view neg){
       cr.DefineForAllTypes(name, Form("rad::reactkine::FourVectorMissMassCalc(%s,%s,components_p4)",names::ReactionMap().data(),neg.data()));
     }
