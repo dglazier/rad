@@ -1,4 +1,4 @@
-# Reaction Analysis with (R)DataFrames
+# Reaction Aware(R)DataFrames
 
 For processing specific electron scattering reactions with podio style data.
 
