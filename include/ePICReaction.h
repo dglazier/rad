@@ -39,7 +39,9 @@ namespace rad{
 	setBranchAlias("ReconstructedParticles.PDG","rec_pid");
 	
 	if(IsEnd){
-	  rad::epic::UndoAfterBurn undoAB{-0.025};
+	  /////RedefineFundamentalAliases();
+
+	  rad::epic::UndoAfterBurn undoAB{_p4ion_beam,_p4el_beam,-0.025};
 	  auto undoAB_rec=[undoAB](ROOT::RVecF &px,ROOT::RVecF &py,ROOT::RVecF&pz, const ROOT::RVecF &m){
 	    undoAB(px,py,pz,m);
 	    return px;
@@ -53,6 +55,20 @@ namespace rad{
 	  //any of the components
 	  RedefineViaAlias("rec_px", undoAB_rec, {"rec_px","rec_py","rec_pz","rec_m"});
 	  
+	  //undo afterburn on beam components
+	  auto beams_px = ROOT::RVecD{_p4el_beam.X(),_p4ion_beam.X()};
+	  auto beams_py = ROOT::RVecD{_p4el_beam.Y(),_p4ion_beam.Y()};
+	  auto beams_pz = ROOT::RVecD{_p4el_beam.Z(),_p4ion_beam.Z()};
+	  auto beams_m = ROOT::RVecD{_p4el_beam.M(),_p4ion_beam.M()};
+	  undoAB(beams_px,beams_py,beams_pz,beams_m);
+	  _p4el_beam.SetCoordinates(beams_px[0],beams_py[0],beams_pz[0],beams_m[0]);
+	  _p4ion_beam.SetCoordinates(beams_px[1],beams_py[1],beams_pz[1],beams_m[1]);
+
+	  cout<<"Undo afterburn head on beam 4-vectors : "<< _p4el_beam<<" "<<_p4ion_beam<<endl;
+	  
+	  DefineBeamElectron();
+	  DefineBeamIon();
+
 	  AddAdditionalComponents();
 	}
        }
@@ -86,10 +102,6 @@ namespace rad{
 	//make an mc_match branch cut on actual generated particles (no secondaries)
 	//Points rec array to tru array. rec_array has no beam particles, so can ignore
 	Define("tru_match_id",[](const ROOT::RVecI& stat,const ROOT::RVecU& simID,const ROOT::RVecU& finalID){
-	  // 2) Map from old to new : final_match_id
-	  //    final_match_id = sizeof(MCParticles)
-	  //             value = order in new arrays or -1 if not included
-	  // 3) Create new simID : final_match_id[simID[]]
 	  const auto n = finalID.size(); //mcparticles stat==1
 	  ROOT::RVecI final_match_id(n,-1);
 	  for(uint i=0;i<n;++i){
@@ -104,6 +116,7 @@ namespace rad{
 	    }
 	  }
 	  ROOT::RVecU tru_match_id =final_match_id[final_match_id!=-1]; //Filter valid ids
+	  //std::cout<<"tru_match_id "<<simID<<" "<<simID.size()<<" "<<finalID<<" "<<finalID.size()<<" "<<tru_match_id<<" "<<tru_match_id.size()<<std::endl;
 	  return tru_match_id;
 	  
 	},{"tru_genStat","ReconstructedParticleAssociations.simID","tru_final_id"});//simID points from rec to tru
@@ -117,7 +130,38 @@ namespace rad{
 	
 	if(IsEnd){
 	  RedefineFundamentalAliases();
+
+	  rad::epic::UndoAfterBurn undoAB{ _p4ion_beam,_p4el_beam,-0.025};
+	  auto undoAB_tru=[undoAB](ROOT::RVecF &px,ROOT::RVecF &py,ROOT::RVecF&pz, const ROOT::RVecD &m){
+	    undoAB(px,py,pz,m);
+	    return px;
+	  };
+	  //Undo the afterburner procedure
+	  //here we just account for crossing angle
+	  //just need to redefine 1 component. Other 2 have been updated
+	  //need to redefine at least one to make sure this is called before
+	  //any of the components
+	  RedefineViaAlias("tru_px", undoAB_tru, {"tru_px","tru_py","tru_pz","tru_m"});
+
+	  	  //undo afterburn on beam components
+	  auto beams_px = ROOT::RVecD{_p4el_beam.X(),_p4ion_beam.X()};
+	  auto beams_py = ROOT::RVecD{_p4el_beam.Y(),_p4ion_beam.Y()};
+	  auto beams_pz = ROOT::RVecD{_p4el_beam.Z(),_p4ion_beam.Z()};
+	  auto beams_m = ROOT::RVecD{_p4el_beam.M(),_p4ion_beam.M()};
+	  undoAB(beams_px,beams_py,beams_pz,beams_m);
+	  _p4el_beam.SetCoordinates(beams_px[0],beams_py[0],beams_pz[0],beams_m[0]);
+	  _p4ion_beam.SetCoordinates(beams_px[1],beams_py[1],beams_pz[1],beams_m[1]);
+
+	  cout<<"Undo afterburn head on beam 4-vectors : "<< _p4el_beam<<" "<<_p4ion_beam<<endl;
+	  
+	  DefineBeamElectron();
+	  DefineBeamIon();
+
+	  //after undo afterburn
 	  AddAdditionalComponents();
+	  //needed to make sure tru and rec are defined at the same time
+	  //and therefore contain same elements.
+	  Filter([](const ROOT::RVecF& th,const ROOT::RVecF& pmag,const ROOT::RVecF& ph,const ROOT::RVecF& eta,const ROOT::RVecF& rth,const ROOT::RVecF& rpmag,const ROOT::RVecF& rph,const ROOT::RVecF& reta){return true;},{"tru_pmag","tru_theta","tru_phi","tru_eta","rec_pmag","rec_theta","rec_phi","rec_eta"});
 	}
      }
       /**
@@ -143,8 +187,8 @@ namespace rad{
 	
 	if(IsEnd){
 	  RedefineFundamentalAliases();
-	  AddAdditionalComponents();
-	  rad::epic::UndoAfterBurn undoAB{-0.025};
+
+	  rad::epic::UndoAfterBurn undoAB{ _p4ion_beam,_p4el_beam,-0.025};
 	  auto undoAB_tru=[undoAB](ROOT::RVecF &px,ROOT::RVecF &py,ROOT::RVecF&pz, const ROOT::RVecD &m){
 	    undoAB(px,py,pz,m);
 	    return px;
@@ -155,7 +199,23 @@ namespace rad{
 	  //need to redefine at least one to make sure this is called before
 	  //any of the components
 	  RedefineViaAlias("tru_px", undoAB_tru, {"tru_px","tru_py","tru_pz","tru_m"});
+	  //undo afterburn on beam components
+	  auto beams_px = ROOT::RVecD{_p4el_beam.X(),_p4ion_beam.X()};
+	  auto beams_py = ROOT::RVecD{_p4el_beam.Y(),_p4ion_beam.Y()};
+	  auto beams_pz = ROOT::RVecD{_p4el_beam.Z(),_p4ion_beam.Z()};
+	  auto beams_m = ROOT::RVecD{_p4el_beam.M(),_p4ion_beam.M()};
+	  undoAB(beams_px,beams_py,beams_pz,beams_m);
+	  _p4el_beam.SetCoordinates(beams_px[0],beams_py[0],beams_pz[0],beams_m[0]);
+	  _p4ion_beam.SetCoordinates(beams_px[1],beams_py[1],beams_pz[1],beams_m[1]);
 
+	  cout<<"Undo afterburn head on beam 4-vectors : "<< _p4el_beam<<" "<<_p4ion_beam<<endl;
+	  
+	  DefineBeamElectron();
+	  DefineBeamIon();
+
+	  //after undo afterburn
+	  AddAdditionalComponents();
+ 
 	}
       }
       /**
@@ -180,20 +240,27 @@ namespace rad{
 	
 	AliasColumnsAndMC(kFALSE);
 
-	RedefineFundamentalAliases();
-	  
 
 	//need to do it here or these calculations are done before synching
 	//which will not work as different number of elements
 	
 	if(IsEnd){
-	  rad::epic::UndoAfterBurn undoAB{-0.025};
+	  
+	  RedefineFundamentalAliases();
+	  //use true masses for each rec track
+	  //i.e. ignore PID
+	  //Must truncate to make sure return array is same size as in array
+	  //RDF may add beams to tru_m before calling this giving a size mismatch
+	  RedefineViaAlias("rec_m",[](const ROOT::RVecF& recm,const ROOT::RVecD& trum){return helpers::Truncate(ROOT::RVecF(trum),recm.size());},{"rec_m","tru_m"});
+	  
+	  rad::epic::UndoAfterBurn undoAB{_p4ion_beam,_p4el_beam,-0.025};
 	  auto undoAB_tru=[undoAB](ROOT::RVecF &px,ROOT::RVecF &py,ROOT::RVecF&pz, const ROOT::RVecD &m){
 	    undoAB(px,py,pz,m);
 	    return px;
 	  };
 	  auto undoAB_rec=[undoAB](ROOT::RVecF &px,ROOT::RVecF &py,ROOT::RVecF&pz, const ROOT::RVecF &m){
 	    undoAB(px,py,pz,m);
+
 	    return px;
 	  };
 	  
@@ -206,7 +273,26 @@ namespace rad{
 	  RedefineViaAlias("tru_px", undoAB_tru, {"tru_px","tru_py","tru_pz","tru_m"});
 	  RedefineViaAlias("rec_px", undoAB_rec, {"rec_px","rec_py","rec_pz","rec_m"});
 	  
+	  //undo afterburn on beam components
+	  auto beams_px = ROOT::RVecD{_p4el_beam.X(),_p4ion_beam.X()};
+	  auto beams_py = ROOT::RVecD{_p4el_beam.Y(),_p4ion_beam.Y()};
+	  auto beams_pz = ROOT::RVecD{_p4el_beam.Z(),_p4ion_beam.Z()};
+	  auto beams_m = ROOT::RVecD{_p4el_beam.M(),_p4ion_beam.M()};
+	  undoAB(beams_px,beams_py,beams_pz,beams_m);
+	  _p4el_beam.SetCoordinates(beams_px[0],beams_py[0],beams_pz[0],beams_m[0]);
+	  _p4ion_beam.SetCoordinates(beams_px[1],beams_py[1],beams_pz[1],beams_m[1]);
+
+	  cout<<"Undo afterburn head on beam 4-vectors : "<< _p4el_beam<<" "<<_p4ion_beam<<endl;
+	  
+	  DefineBeamElectron();
+	  DefineBeamIon();
+	
 	  AddAdditionalComponents();
+
+	  //needed to make sure tru and rec are defined at the same time
+	  //and therefore contain same elements.
+	  Filter([](const ROOT::RVecF& th,const ROOT::RVecF& pmag,const ROOT::RVecF& ph,const ROOT::RVecF& eta,const ROOT::RVecF& rth,const ROOT::RVecF& rpmag,const ROOT::RVecF& rph,const ROOT::RVecF& reta){return true;},{"tru_pmag","tru_theta","tru_phi","tru_eta","rec_pmag","rec_theta","rec_phi","rec_eta"});
+ 
 	}
       }//AliasColumnsAndMatchWithMC
 
@@ -249,13 +335,19 @@ namespace rad{
 
     }
       void AddAdditionalComponents(){
-	
 	//and add some additional columns
 	DefineForAllTypes("phi", Form("rad::ThreeVectorPhi(components_p3)"));
 	DefineForAllTypes("theta", Form("rad::ThreeVectorTheta(components_p3)"));
 	DefineForAllTypes("eta", Form("rad::ThreeVectorEta(components_p3)"));
 	DefineForAllTypes("pmag", Form("rad::ThreeVectorMag(components_p3)"));
-      }
+
+	//add resolution functions
+	ResolutionFraction<float>("pmag");
+	Resolution("theta");
+ 	Resolution("phi");
+ 	Resolution("eta");
+	
+     }
       
       template<typename T> 
 	void RedefineFundamental( const string& name ){
@@ -278,18 +370,19 @@ namespace rad{
       
       /**
        * calculate the difference in reconsutructed and truth variables
-       */
-      /**
        * Case Reconstructed and truth synched via AliasColumnsAndMatchWithMC()
        */
+      //template<typename T>
       void Resolution(const string& var){
-	Define(string("res_")+var,[](const ROOT::RVecF &rec,const ROOT::RVecF &tru){
-	  return (rec - tru);
-	},{string("rec_")+var,string("tru_")+var});
+	// Define(string("res_")+var,[](const ROOT::RVec<T> &rec,const ROOT::RVec<T> &tru){
+	//   return (rec - tru);
+	// },{string("rec_")+var,string("tru_")+var});
+	Define(string("res_")+var,Form("%s-%s",(string("tru_")+var).data(),(string("rec_")+var).data() ));
       }
+      template<typename T>
       void ResolutionFraction(const string& var){
-	Define(string("res_")+var,[](const ROOT::RVecF &rec,const ROOT::RVecF &tru){
-	  return (rec - tru)/tru;
+	Define(string("res_")+var,[](const ROOT::RVec<T> &rec,const ROOT::RVec<T> &tru){
+	   return (rec - tru)/tru;
 	},{string("rec_")+var,string("tru_")+var});
       }
       
@@ -315,6 +408,26 @@ namespace rad{
 	
 	match("rec");
 	match("tru");
+      }
+
+      void SetBeamsFromMC(Long64_t nrows=100){
+	auto nthreads  = ROOT::GetThreadPoolSize();
+	//Range only works in single thread mode
+	if(nthreads) ROOT::DisableImplicitMT();
+
+	auto tempframe = GetFileNames().size()==0 ?
+	  ROOT::RDataFrame{GetTreeName(),GetFileName()} :
+	  ROOT::RDataFrame{GetTreeName(),GetFileNames()};
+	
+	auto beamdf = tempframe.Range(nrows).Define("emean","MCParticles.momentum.z[MCBeamElectrons_objIdx.index[0]]").Define("pzmean","MCParticles.momentum.z[MCBeamProtons_objIdx.index[0]]").Define("pxmean","MCParticles.momentum.x[MCBeamProtons_objIdx.index[0]]");
+	auto pze  = beamdf.Mean("emean");
+	auto pzp  = beamdf.Mean("pzmean");
+	auto pxp  = beamdf.Mean("pxmean");
+
+	setBeamElectron(0,0,*pze);//afterburned number
+	setBeamIon(*pxp,0,*pzp);//afterburned number
+
+	if(nthreads) ROOT::EnableImplicitMT(nthreads);
       }
       
     private:

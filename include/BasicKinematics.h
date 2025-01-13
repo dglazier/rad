@@ -11,7 +11,7 @@ void BasicKinematics(){}
 
 //namespace rad{
 //RDF interpreter can only take 1 level of namespace...
-  namespace rad{
+namespace rad{
     ///\brief Helper functions and functors for RDF processing
     ///       combining momentum components into 4-vectors
     using ROOT::Math::PxPyPzMVector ;
@@ -21,7 +21,24 @@ void BasicKinematics(){}
     using ROOT::RVec;
     using ROOT::Math::VectorUtil::boost;
 
-    ///\brief return 4-vector of particle idx
+  ///\brief functor returning 4-vector of fixed components
+  // class FixedP4 {
+    
+  // public:
+  //   // FixedP4()=default;
+  //   FixedP4(double x, double y, double z, double m):
+  //     _p4{x,y,z,m}{};
+    
+  //   const PxPyPzMVector& operator()() const{
+  //     return _p4;
+  //   }
+    
+  // private:
+  //   const PxPyPzMVector _p4;
+    
+  // };
+  
+  ///\brief return 4-vector of particle idx
     template<typename Tp, typename Tm>
     PxPyPzMVector FourVector(const uint idx,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
       return PxPyPzMVector(px[idx], py[idx], pz[idx], m[idx]);
@@ -77,18 +94,19 @@ void BasicKinematics(){}
     RVec<T> ThreeVectorTheta(const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
       auto mag = ThreeVectorMag(x,y,z);
       auto costh = z/mag;
-      auto test = acos(costh);
-      // if(test.size()>4)
+         // if(test.size()>4)
       // 	if(test[4]<2.1){
       // 	  cout<<"**********************ThreeVectorTheta"<<test<<x<<y<<z<<endl;
       // 	  exit(0);
       // 	}
+      //  std::cout<<" ThreeVectorTheta "<<x.size()<<std::endl;
       return acos(costh);
     }
     ///\brief return eta of momentum
     template<typename T>
     RVec<T> ThreeVectorPhi(const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
-      return atan2(y,x); //will use vectorised version
+      //std::cout<<" ThreeVectorPhi "<<x.size()<<std::endl;
+       return atan2(y,x); //will use vectorised version
     }
    ///\brief return eta of momentum
     template<typename T>

@@ -20,7 +20,7 @@ void ProcessHepMCZ(){
   //create reaction dataframe
   rad::config::HepMCElectro hepmc{"hepmc3_tree", "/home/dglazier/Dropbox/EIC/EventGenerators/elSpectro/examples/out/jpac_z3900_10x100.hepmc.root"};
   hepmc.AliasMomentumComponents();
-   
+    
   //Assign particles names and indices
   //indicing comes from ordering in hepmc file
   hepmc.setBeamIonIndex(1);
@@ -36,14 +36,13 @@ void ProcessHepMCZ(){
 
   //Group particles into top and bottom vertices
   //aka Meson and Baryon components
-  //this is required for calcualting reaction kinematics
+  //this is required for calculating reaction kinematics
   //e.g. t distributions
   hepmc.setBaryonParticles({"idxN"});
-  
+
   rad::config::ParticleCreator particles{hepmc};
   particles.Sum("idxJ",{"idxEl","idxPo"});
   particles.Sum("idxZ",{"idxPi","idxJ"});
-
   hepmc.setMesonParticles({"idxJ","idxPi"});
 
   //must call this after all particles are configured
@@ -82,6 +81,7 @@ void ProcessHepMCZ(){
   auto htpn = df0.Histo1D({"tpn","t(p,n) [GeV^{2}]",100,0,5},"mc_tb_pn");
   auto htgZ = df0.Histo1D({"tgZ","t(g,Z) [GeV^{2}]",100,0,5},"mc_tt_gZ");
   auto htprimepn = df0.Histo1D({"tprimepn","t'(p,n) [GeV^{2}]",100,0,5},"mc_tbp_pn");
+  auto htprimegZ = df0.Histo1D({"tprimegZ","t'(p,n) [GeV^{2}]",100,0,5},"mc_ttp_gZ");
   auto hthCM=df0.Histo1D({"cthCM","cos(#theta_{CM})",100,-1,1},"mc_CM_CosTheta");
   auto hphCM=df0.Histo1D({"phCM","#phi_{CM})",100,-TMath::Pi(),TMath::Pi()},"mc_CM_Phi");
  
@@ -97,7 +97,8 @@ void ProcessHepMCZ(){
   new TCanvas();
   htpn->DrawCopy();
   htgZ->DrawCopy("same");
-  //  htprimepn->DrawCopy("same");
+  htprimepn->DrawCopy("same");
+  htprimegZ->DrawCopy("same");
   auto canCM = new TCanvas();
   canCM->Divide(2,1);
   canCM->cd(1);
@@ -111,6 +112,6 @@ void ProcessHepMCZ(){
   gBenchmark->Stop("df");
   gBenchmark->Print("df");
   
-  hepmc.Snapshot("HepMCZ.root");
+  // hepmc.Snapshot("HepMCZ.root");
 
 }

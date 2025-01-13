@@ -1,6 +1,12 @@
 #pragma once
-
 #include "Beams.h"
+#include <Math/VectorUtil.h>
+#include <Math/RotationX.h>
+#include <Math/RotationY.h>
+
+//inline  std::array<double,4>  rad::beams::InitBotComponents() {return {0,0,99.9339,0.938272};}
+//inline  std::array<double,4>  rad::beams::InitTopComponents() {return {0,0,-10.007,0.000510999};}
+
 
 namespace rad{
   namespace epic{
@@ -12,16 +18,15 @@ namespace rad{
     using ROOT::RVecD;
     using ROOT::RVecF;
     
-
+ 
+    
     //UndoAfterBurn undo{xangle};
-    //df.Foreach(undo, {"rdfentry_","px","py","pz","m"});
-
     class UndoAfterBurn 
     {
     public:
-      UndoAfterBurn(Float_t angle=-0.025):_crossAngle{angle}{
+      UndoAfterBurn(PxPyPzMVector p_beam,PxPyPzMVector e_beam,Float_t angle=-0.025):_crossAngle{angle}{
 	//calculate and store current boosts and rotations
-	RotsAndBoosts();
+	RotsAndBoosts(p_beam,e_beam);
       };
 
       //can't template as foreach requires compiletime knowledge
@@ -31,7 +36,7 @@ namespace rad{
 	
 	//apply to all particles
 	auto n_parts = m.size();
-	for(auto i=0;i<n_parts;++i){
+	for(uint i=0;i<n_parts;++i){
 	  undoAfterburn(i,px,py,pz,m);
 	}
 	//return px;
@@ -49,7 +54,7 @@ namespace rad{
       // }
 
     private:
-      void RotsAndBoosts();
+      void RotsAndBoosts(PxPyPzMVector p_beam,PxPyPzMVector e_beam);
 
       template<typename Tp, typename Tm>
       void undoAfterburn(uint idx,RVec<Tp> &px,RVec<Tp> &py,RVec<Tp> &pz, const RVec<Tm> &m) const;
@@ -73,20 +78,20 @@ namespace rad{
     
     // Undo AB and calculate boost vectors - DO THIS FIRST FOR EACH EVENT
     // USE BEAM VECTORS
-    void UndoAfterBurn::RotsAndBoosts(){
-      //We need MCParticle beams ?
+    void UndoAfterBurn::RotsAndBoosts(PxPyPzMVector p_beam,PxPyPzMVector e_beam){
+       //We need MCParticle beams ?
       //   auto p_beam = beams::InitialFourVector(react[names::InitialBotIdx()][0],px,py,pz,m);
       //auto e_beam = beams::InitialFourVector(react[names::InitialTopIdx()][0],px,py,pz,m);
     
-      auto p_beam = rad::beams::InitialBotVector();
-      auto e_beam = rad::beams::InitialTopVector();
+      // auto p_beam = rad::beams::InitialBotVector();
+      //auto e_beam = rad::beams::InitialTopVector();
       
       // Holding vectors for beam - undoing crossing angle ONLY
       //PxPyPzMVector p_beam(_crossAngle*p.E(), 0., p.E(), p.M());
       //PxPyPzMVector e_beam(0., 0., -k.E(), k.M());
       p_beam.SetCoordinates(_crossAngle*p_beam.E(), 0., p_beam.E(), p_beam.M());
       e_beam.SetCoordinates(0., 0., -e_beam.E(), e_beam.M());
-      
+     
       // Define boost vector to CoM frame
       auto CoM_boost = p_beam+e_beam;
       //vBoostToCoM.SetXYZ(-CoM_boost.X()/CoM_boost.E(), -CoM_boost.Y()/CoM_boost.E(), -CoM_boost.Z()/CoM_boost.E());
@@ -119,7 +124,7 @@ namespace rad{
       // Apply boost back to head on frame to beam vectors
       p_beam = boost(p_beam, _vBoostToHoF);
       e_beam = boost(e_beam, _vBoostToHoF);
-      std::cout<<"UndoAfterBurn::RotsAndBoosts() "<<p_beam<<" "<<e_beam<<std::endl;
+      //      std::cout<<"UndoAfterBurn::RotsAndBoosts() "<<p_beam<<" "<<e_beam<<std::endl;
       // Make changes to input vectors
       //p.SetPxPyPzE(p_beam.X(), p_beam.Y(), p_beam.Z(), p_beam.E());
       // k.SetPxPyPzE(e_beam.X(), e_beam.Y(), e_beam.Z(), e_beam.E());
@@ -130,7 +135,7 @@ namespace rad{
     //void UndoAfterBurn::undoAfterburn(uint idx,RVecF &px,RVecF &py,RVecF&pz, const RVecD &m) const{
     template<typename Tp, typename Tm>
     void UndoAfterBurn::undoAfterburn(uint idx,RVec<Tp> &px,RVec<Tp> &py,RVec<Tp> &pz, const RVec<Tm> &m) const{
-      // std::cout<<"undoAfterburn in "<<px<<m<<std::endl;
+      //std::cout<<"undoAfterburn in "<<px<<m<<std::endl;
       auto a = FourVector(idx,px,py,pz,m);
       //std::cout<<"undoAfterburn in "<<a<<_rotAboutY<<_rotAboutX<<" "<<_vBoostToCoM<<_vBoostToHoF<<std::endl;
       // Undo AB procedure for single vector, a^{mu}

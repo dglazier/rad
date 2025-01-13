@@ -1,5 +1,9 @@
 #pragma once
+
+#include "BasicKinematics.h"
+
 #include <ROOT/RVec.hxx>
+
 #include <array>
 
 namespace rad{
@@ -14,14 +18,16 @@ namespace rad{
     constexpr int InitTopFix(){return 10000;}
     constexpr int InitBotFix(){return 20000;}
     
-    PxPyPzMVector InitialTopVector(){
-      return 	PxPyPzMVector(InitTopComponents()[0],InitTopComponents()[1],
-			      InitTopComponents()[2],InitTopComponents()[3]);
-    }
-    PxPyPzMVector InitialBotVector(){
-      return 	PxPyPzMVector(InitBotComponents()[0],InitBotComponents()[1],
-			      InitBotComponents()[2],InitBotComponents()[3]);
-    }
+    // PxPyPzMVector InitialTopVector(){
+    //   return 	PxPyPzMVector(InitTopComponents()[0],InitTopComponents()[1],
+    // 			      InitTopComponents()[2],InitTopComponents()[3]);
+    // }
+    // PxPyPzMVector InitialBotVector(){
+    //   return 	PxPyPzMVector(InitBotComponents()[0],InitBotComponents()[1],
+    // 			      InitBotComponents()[2],InitBotComponents()[3]);
+    // }
+    // const FixedP4 InitialBotVector;
+    //const FixedP4 InitialTopVector;
     
     ///\brief return 4-vector of beam ion
     template<typename Tp, typename Tm>
@@ -41,6 +47,26 @@ namespace rad{
       }
       
     }
+    
+    ///\brief Add a beam particle to the particle 4-vector lists
+    /// p4 is the beam particle vector
+    /// idummy is to keepp the prototype of other particle adding
+    /// functions which depend on other particles
+    template<typename Tp, typename Tm>
+    int ParticleFixedBeam(const PxPyPzMVector& p4, RVec<Tp> &px, RVec<Tp> &py, RVec<Tp> &pz, RVec<Tm> &m,const RVecI& iafter){
+
+      //std::cout<<"ParticleFixedBeam "<< px.size()<<m<<m.size()<<std::endl;
+      auto idx = px.size();
+      //add new components
+      px.push_back(p4.X());
+      py.push_back(p4.Y());
+      pz.push_back(p4.Z());
+      m.push_back(p4.M());
+
+      return idx;
+    }
+
+    
     /*
     ///\brief return 4-vector of beam ion
     template<typename Tp, typename Tm>

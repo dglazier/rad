@@ -26,7 +26,7 @@ namespace rad{
   namespace config{
 
     //need to add functions for other reaction types here if needed
-    void DoElectroReaction(rad::config::ConfigReaction* reaction,std::string pid);
+    void DoElectroReaction(rad::config::ElectroIonReaction* reaction,std::string pid);
 
     //need to add functions for other data formats here if needed
     void UsePythiaOccurances(std::map<int,int>& occur );
@@ -38,9 +38,10 @@ namespace rad{
     public:
 
       template<typename Lambda>
-	ReactionChannel(rad::config::ConfigReaction &rea,std::vector<int> mes,std::vector<int> bar,std::string pid,Lambda&& func):_reaction{&rea},_mesons{mes},_baryons{bar},_pid{pid}{
+	ReactionChannel(rad::config::ElectroIonReaction &rea,std::vector<int> mes,std::vector<int> bar,std::string pid,Lambda&& func):_reaction{&rea},_mesons{mes},_baryons{bar},_pid{pid}{
 
-	UseEpicOccurances(_occurances);
+	//UseEpicOccurances(_occurances);
+	//UsePythiaOccurances(_occurances);
 	func(_reaction,_pid);
 	ConfigureParticles();
       }
@@ -66,7 +67,9 @@ namespace rad{
 	//e.g. t distributions
     
 	//create intermediate meson and baryon particles
-	rad::config::ParticleCreator particles{*_reaction};
+	//	rad::config::ParticleCreator particles{*_reaction};
+	auto& particles = _reaction->Particles();
+	
 	if(_mesons.empty()){
 	  //create missing particle from beams and baryon
 	  particles.Miss("idxMeson",InsertScatteredElectron(_name_baryons));
@@ -87,14 +90,15 @@ namespace rad{
 	_cutString.pop_back();
     
 	_reaction->setBaryonParticles({"idxBaryon"});
-	_reaction->setMesonParticles({"idxMeson"});
-    
+        _reaction->setMesonParticles({"idxMeson"});
+ 	// _reaction->setBaryonParticles({"Baryon0"});
+        // _reaction->setMesonParticles({"Meson0","Meson1"});
+   
 	//must call this after all particles are configured
 	_reaction->makeParticleMap();
 
 	//apply a filter on the requested particles
 	auto df0 = _reaction->CurrFrame();
-	cout<<"ReactionChannel "<<_cutString<<endl;
 	df0=df0.Define("reaction_topo",_cutString).Filter("reaction_topo==1");
 	_reaction->setCurrFrame(df0);
       }
@@ -110,19 +114,30 @@ namespace rad{
 	}
 
       };
-
+      string CutParticleCondition(const string& var="rec_pmag",const string& condition =">0."){
+	string cut;
+	for(auto& name:_name_mesons){
+	  cut+=Form("%s[%s]%s&&",var.data(),name.data(),condition.data());
+	}
+	for(auto& name:_name_baryons){
+	  cut+=Form("%s[%s]%s&&",var.data(),name.data(),condition.data());
+	}
+	cut.pop_back();cut.pop_back();//remove last &&
+	return cut;
+      }
       std::vector<string> SetIndexByOccurance(const std::vector<int>& parts,const string& type){
 	
 	std::vector<std::string> names;
 	for(uint im=0;im<parts.size();im++){
 	  if(_occurances.find(parts[im]) == _occurances.end()){
+	    //start at 1, as 0th occurance does not exist!
 	    _occurances[parts[im]]=1;
 	  }
 	  auto n = _occurances[parts[im]];
 	  auto name = Form("%s%d",type.data(),im);
+	  std::cout<<" SetIndexByOccurance( "<<name<<" "<<_pid<<std::endl;
 	  names.push_back(name);
 	  _reaction->setParticleIndex(name,rad::indice::useNthOccurance(n,parts[im]),{_pid},parts[im]);
-	  
 	  _occurances[parts[im]]++;
 	}
 	return names;
@@ -131,7 +146,8 @@ namespace rad{
   
     private:
 
-      rad::config::ConfigReaction* _reaction={nullptr};
+      // rad::config::ConfigReaction* _reaction={nullptr};
+      rad::config::ElectroIonReaction* _reaction={nullptr};
       const std::vector<int> _mesons;
       const std::vector<int> _baryons;
       std::string _cutString;
@@ -142,7 +158,7 @@ namespace rad{
     };
 
     //specific Configuration for electro reactions
-    void DoElectroReaction(rad::config::ConfigReaction* reaction,std::string pid){
+    void DoElectroReaction(rad::config::ElectroIonReaction* reaction,std::string pid){
       
       auto el = dynamic_cast<rad::config::ElectroIonReaction*>(reaction);
       if(el==nullptr){
@@ -151,9 +167,10 @@ namespace rad{
       }
       //Assign particles names and indices
       //indicing comes from ordering in hepmc file
-      el->setBeamIonIndex(rad::beams::InitBotFix());
-      el->setBeamElectronIndex(rad::beams::InitTopFix());
-      // el->setScatElectronIndex(rad::indice::useNthOccurance(0,11),{"mc_pid"});
+      //el->setBeamIonIndex(rad::beams::InitBotFix());
+      // el->setBeamElectronIndex(rad::beams::InitTopFix());
+      //el->setBeamElectron(rad::indice::useNthOccurance(0,11),{"tru_pid"});
+      //el->setBeamIon(rad::indice::useNthOccurance(0,2212),{"tru_pid"});
       el->setScatElectronIndex(rad::indice::useNthOccurance(1,11),{pid});
 
 

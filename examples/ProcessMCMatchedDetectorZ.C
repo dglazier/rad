@@ -11,38 +11,36 @@
 #include <TBenchmark.h>
 #include <TCanvas.h>
 
-inline constexpr std::array<double,4>  rad::beams::InitBotComponents() {return {0.,0.,100.,0.93827210};}
-inline constexpr std::array<double,4>  rad::beams::InitTopComponents() {return {0.,0.,-10.,0.00051099900};}
+//inline constexpr std::array<double,4>  rad::beams::InitBotComponents() {return {0.,0.,100.,0.93827210};}
+//inline constexpr std::array<double,4>  rad::beams::InitTopComponents() {return {0.,0.,-10.,0.00051099900};}
+
+//with afterburner need slightly altered energies
+inline constexpr std::array<double,4>  rad::beams::InitBotComponents() {return {0,0,99.9339,0.938272};}
+inline constexpr std::array<double,4>  rad::beams::InitTopComponents() {return {0,0,-10.007,0.000510999};}
 
 void ProcessMCMatchedDetectorZ(){
   auto verbosity = ROOT::Experimental::RLogScopedVerbosity(ROOT::Detail::RDF::RDFLogChannel(), ROOT::Experimental::ELogLevel::kInfo);
-  ROOT::EnableImplicitMT(4);
+  // ROOT::EnableImplicitMT(4);
   gBenchmark->Start("df");
   
   rad::config::ePICDetectorReaction epic{"events", "/home/dglazier/EIC/data/sim/jpac_z3900_10x100/AB_jpac_z3900_10x100_*_.recon.root"};
   // rad::config::ePICDetectorReaction epic{"events", "/home/dglazier/EIC/data/sim/jpac_z3900_10x100/AB_jpac_z3900_10x100_0_.recon.root"};
-  // epic.AliasColumnsAndMatchWithMC(true);
-  epic.AliasColumnsAndMatchWithMC(false);
-  //epic.AliasColumnsAndMC();
+  epic.AliasColumnsAndMatchWithMC();
+  //epic.AliasColumns();
    
   //Assign particles names and indices
   //indicing comes from ordering in hepmc file
-  //epic.setBeamIonIndex(rad::beams::InitBotFix());
-  //epic.setBeamElectronIndex(rad::beams::InitTopFix());
-  //epic.setScatElectronIndex(6);
+  epic.setBeamIonIndex(rad::beams::InitBotFix());
+  epic.setBeamElectronIndex(rad::beams::InitTopFix());
+  epic.setScatElectronIndex(4);
 
-  //Assign particles names and indices
-  //indicing comes from ordering in hepmc file
-  epic.setBeamIonIndex(1);
-  epic.setBeamElectronIndex(0);
-  epic.setScatElectronIndex(6);
-
+ 
   //if we give a PDG code it will generate el_OK branches etc
   //el_OK = 1 if electron reconstructed with right PDG
-  epic.setParticleIndex("el",2,11);
-  epic.setParticleIndex("po",3,-11);
-  epic.setParticleIndex("pi",4,211);
-  epic.setParticleIndex("n",5,2112);
+  epic.setParticleIndex("el",0,11);
+  epic.setParticleIndex("po",1,-11);
+  epic.setParticleIndex("pi",2,211);
+  epic.setParticleIndex("n",3,2112);
 
   //Group particles into top and bottom vertices
   //aka Meson and Baryon components
@@ -94,33 +92,33 @@ void ProcessMCMatchedDetectorZ(){
   ///////////////////////////////////////////////////////////
   auto df0 = epic.CurrFrame();
 
-  // auto hW = df0.Histo1D({"W","W",100,0,20.},"rec_W");
-  // auto hWhad = df0.Histo1D({"Whad","Whad",100,0,20.},"rec_Whad");
-  // auto hMesonMass = df0.Histo1D({"MesonMass","M(e-,e+, #pi) [GeV]",100,.3,5.},"rec_ZMass");
-  // auto hJMass = df0.Histo1D({"JMass","M(e-,e+) [GeV]",100,.3,5.},"rec_JMass");
-  // auto htpn = df0.Histo1D({"tpn","t(p,n) [GeV^{2}]",100,0,5},"rec_t_pn");
-  // auto htprimepn = df0.Histo1D({"tprimepn","t'(p,n) [GeV^{2}]",100,0,1},"rec_tp_pn");
-  // auto hthCM=df0.Histo1D({"cthCM","cos(#theta_{CM})",100,-1,1},"rec_CM_CosTheta");
-  // auto hphCM=df0.Histo1D({"phCM","#phi_{CM})",100,-TMath::Pi(),TMath::Pi()},"rec_CM_Phi");
+  auto hW = df0.Histo1D({"W","W",100,0,20.},"rec_W");
+  auto hWhad = df0.Histo1D({"Whad","Whad",100,0,20.},"rec_Whad");
+  auto hMesonMass = df0.Histo1D({"MesonMass","M(e-,e+, #pi) [GeV]",100,.3,5.},"rec_ZMass");
+  auto hJMass = df0.Histo1D({"JMass","M(e-,e+) [GeV]",100,.3,5.},"rec_JMass");
+  auto htpn = df0.Histo1D({"tpn","t(p,n) [GeV^{2}]",100,0,5},"rec_tt_pn");
+  auto htprimepn = df0.Histo1D({"tprimepn","t'(p,n) [GeV^{2}]",100,0,1},"rec_ttp_pn");
+  auto hthCM=df0.Histo1D({"cthCM","cos(#theta_{CM})",100,-1,1},"rec_CM_CosTheta");
+  auto hphCM=df0.Histo1D({"phCM","#phi_{CM})",100,-TMath::Pi(),TMath::Pi()},"rec_CM_Phi");
  
   gBenchmark->Start("processing");
   ///////////////////////////////////////////////////////////
   //Draw histograms
   ///////////////////////////////////////////////////////////
-  // hWhad->DrawCopy();
-  // new TCanvas();
-  // hMesonMass->DrawCopy();
-  // new TCanvas();
-  // hJMass->DrawCopy();
-  // new TCanvas();
-  // htpn->DrawCopy();
-  // htprimepn->DrawCopy("same");
-  // auto canCM = new TCanvas();
-  // canCM->Divide(2,1);
-  // canCM->cd(1);
-  // hthCM->DrawCopy();
-  // canCM->cd(2);
-  // hphCM->DrawCopy();
+  hWhad->DrawCopy();
+  new TCanvas();
+  hMesonMass->DrawCopy();
+  new TCanvas();
+  hJMass->DrawCopy();
+  new TCanvas();
+  htpn->DrawCopy();
+  htprimepn->DrawCopy("same");
+  auto canCM = new TCanvas();
+  canCM->Divide(2,1);
+  canCM->cd(1);
+  hthCM->DrawCopy();
+  canCM->cd(2);
+  hphCM->DrawCopy();
 
    
   gBenchmark->Stop("processing");

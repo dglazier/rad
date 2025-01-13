@@ -44,7 +44,7 @@ namespace rad{
     template<typename T>
     ROOT::VecOps::RVec<T> Rearrange(const ROOT::VecOps::RVec<T>& vec,const ROOT::RVecU& imatch){
       //auto test = ROOT::VecOps::Take(vec,imatch);
-      // std::cout<<"Rearrange "<<vec<<imatch<<test<<std::endl;
+      // std::cout<<"Rearrange "<<vec<<imatch<<vec.size()<<" "<<imatch.size()<<std::endl;
        return ROOT::VecOps::Take(vec,imatch);
     }
     /**
@@ -54,6 +54,7 @@ namespace rad{
     template<typename T>
     ROOT::VecOps::RVec<T> Reorder(const ROOT::VecOps::RVec<T>& vec0,const ROOT::RVecU& iorder0,const ROOT::RVecU& iorder1,const size_t n){
       // std::cout<<"reorder "<<vec0<<" "<<iorder0<<iorder0.size()<<iorder1<<iorder1.size()<<" "<<n<<std::endl;
+      // std::cout<<"reorder "<<iorder0.size()<<" "<<iorder1.size()<<" "<<n<<std::endl;
       //create new vector size  n
       ROOT::VecOps::RVec<T> vec1(n); //create new vector size n=iorder1.size
       //need to loop over order0

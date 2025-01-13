@@ -14,17 +14,33 @@ namespace rad{
       
       
       //////////////////////////////////////////////////////////////////
-      void Sum(const string& name,const std::vector<std::string>& parts){
-	//adding ( at end of string allows extra arguments to be added, like for Miss
-	DefineParticle(name,parts,"rad::reactkine::ParticleCreateBySum(");
-      }
-       //////////////////////////////////////////////////////////////////
-      void Miss(const string& name,const std::vector<std::string>& parts){
-	//THIS DOES NOT WORK YET!!!!!
-	DefineParticle(name,parts,Form("rad::reactkine::ParticleCreateByMiss(%s,",BeamIndices().data()));
+      void Beam(const string& name,const string& p4name) const{
+	//empty parts string as not dependent on others
+	DefineParticle(name,std::vector<std::string>(),Form("rad::beams::ParticleFixedBeam(%s",p4name.data() ));
       }
       //////////////////////////////////////////////////////////////////
-      void DefineParticle(const string& name,const std::vector<std::string> parts,const string& funcExpr){
+      // void Beam(const string& name,const string& p4name,const std::vector<std::string>& parts){
+      // 	//empty parts string as not dependent on others
+      // 	DefineParticle(name,parts,Form("rad::beam::ParticleEventBeam("));
+      // }
+      //////////////////////////////////////////////////////////////////
+      void Sum(const string& name,const std::vector<std::string>& parts) const{
+	//adding ( at end of string allows extra arguments to be added, like for Miss
+	DefineParticle(name,parts,Form("rad::reactkine::ParticleCreateBySum(%s",VectorToString(parts).data()) );
+      }
+     //////////////////////////////////////////////////////////////////
+      void Diff(const string& name,const std::vector<std::string>& pos,const std::vector<std::string>& neg) const{
+	//adding ( at end of string allows extra arguments to be added, like for Miss
+	auto parts = pos;
+	parts.insert(parts.end(), neg.begin(), neg.end());
+	DefineParticle(name,parts,Form("rad::config::ParticleCreateByDiff(%s,%s",VectorToString(pos).data(),VectorToString(neg).data()) );
+      }
+      //////////////////////////////////////////////////////////////////
+      void Miss(const string& name,const std::vector<std::string>& parts) const{
+	DefineParticle(name,parts,Form("rad::reactkine::ParticleCreateByMiss(%s,%s",BeamIndices().data(),VectorToString(parts).data()));
+      }
+      //////////////////////////////////////////////////////////////////
+      void DefineParticle(const string& name,const std::vector<std::string> parts,const string& funcExpr) const{
 	
 	//store all defined particle names
 	std::vector<std::string> names;
@@ -42,7 +58,7 @@ namespace rad{
 	    }
 	    sum=(sum+p+",");
 	  }
-	  sum.pop_back(); //remove last ,
+	  if(parts.empty()==false) sum.pop_back(); //remove last ,
 	  sum+='}';
 
 	  //Note we give all created particles as argument to ensure creation order
@@ -50,9 +66,9 @@ namespace rad{
 	  for(auto& col: type_created) col=atype.first+col;
 	  auto after_cols  = VectorToString(type_created);
 	  
-	  //format args "func(idxs,name,components,after_idxs")
- 	  TString type_expr = Form("%s%s,%s,%s)",funcExpr.data(),sum.data(),atype.second["components_p4"].data(),after_cols.data());
-	  std::cout<<"DefineParticle "<<type_expr<<std::endl;
+	  //format args "func(idxs,components,after_idxs")
+	  //  TString type_expr = Form("%s%s,%s,%s)",funcExpr.data(),sum.data(),atype.second["components_p4"].data(),after_cols.data());
+ 	  TString type_expr = Form("%s,%s,%s)",funcExpr.data(),atype.second["components_p4"].data(),after_cols.data());
 	  names.push_back(atype.first + name.data());
 	  _reaction->Define(atype.first + name.data(),type_expr.Data());
 	}
@@ -61,12 +77,14 @@ namespace rad{
 	auto snames = VectorToString(names);
 	//define name as the first type entry in names
 	//this function ensures all type create particles are called at same time
+	//Also we can use just name rather than type_name which should ahve same value
+	//for all types
 	// std::cout<<"Sum names "<<snames<<" "<<Form("ROOT::RVecU%s[0]",snames.data())<<std::endl;
 	_reaction->Define(name.data(),Form("ROOT::RVecI%s[0]",snames.data()));
       }
     
       //////////////////////////////////////////////////////////////////
-      std::string VectorToString(const std::vector<std::string>& parts){
+      std::string VectorToString(const std::vector<std::string>& parts) const{
 	if(parts.empty()==true) return "{}";
       
 	string toString ="{";
@@ -77,13 +95,36 @@ namespace rad{
 	toString+='}';
 	return toString;
       }
-     
+
+      void SetReaction(ConfigReaction* reaction){_reaction=reaction;}
     private:
       
       ConfigReaction* _reaction=nullptr;
-      std::vector<string> _created;
+      mutable std::vector<string> _created;
       
     };
-    
+
+    ///\brief create a new particle and add it to the momentum vectors
+    ///return the index to be used to access the components
+    ///this also allows it to be used with Define which requires a return
+
+    ///Create a particle as the diffence between ipos particles and ineg
+    template<typename Tp, typename Tm>
+    int  ParticleCreateByDiff(const RVecI &ipos, const RVecI &ineg, RVec<Tp> &px, RVec<Tp> &py, RVec<Tp> &pz, RVec<Tm> &m,const RVecI& iafter){
+      //sum the 4-vectors
+      auto p4 = FourVector(ipos,px,py,pz,m);
+      SubtractFourVector(p4,ineg,px,py,pz,m);
+
+      //make particle id = last entry
+      auto idx = px.size();
+
+      //add new components
+      px.push_back(p4.X());
+      py.push_back(p4.Y());
+      pz.push_back(p4.Z());
+      m.push_back(p4.M());
+      return idx;
+    }
+ 
   }
 }

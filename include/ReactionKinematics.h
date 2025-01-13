@@ -14,7 +14,7 @@ namespace rad{
     template<typename Tp, typename Tm>
     int ParticleCreateBySum(const RVecI& isum, RVec<Tp> &px, RVec<Tp> &py, RVec<Tp> &pz, RVec<Tm> &m,const RVecI& iafter){
       //sum the 4-vectors
-      // std::cout<<"ParticleCreateBySum "<<isum<<m<<" "<<m.size()<<std::endl;
+      //std::cout<<"ParticleCreateBySum "<<isum<<m<<pz<<" "<<m.size()<<std::endl;
       PxPyPzMVector p4;
       SumFourVector(p4,isum,px,py,pz,m);
       //make particle id = last entry
@@ -164,10 +164,12 @@ namespace rad{
 
    
     template<typename Tp, typename Tm>
-    Tp T0(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
+    Tp T0(const config::RVecIndexMap& react,
+	  const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
 
       auto tar = beams::InitialFourVector(react[names::InitialBotIdx()][0],px,py,pz,m);
       auto bar = FourVector(react[names::BaryonsIdx()],px,py,pz,m);
+
       //generate CM from sum of final state meson and baryon particles
       auto cm = CMVector(react,px,py,pz,m);
       auto cmBoost = cm.BoostToCM();
@@ -176,7 +178,6 @@ namespace rad{
     
       //return  M1*M1 + M3*M3  - 2 * ( E1*E3 -p1*p3*costh );
       Double_t t0 = CMBar.M2() + CMTar.M2() - 2*(CMBar.E()*CMTar.E() - CMBar.P()*CMTar.P() ) ;
-      //std::cout<<" T0 "<<CMBar<<" "<<CMTar<<" "<<cm<<" t0 = "<<t0<<std::endl;
       return t0;
     }
   
@@ -190,20 +191,24 @@ namespace rad{
     }
     ///\brief return 4 momentum transfer squared of "in particles" - "out particles" on top vertex
     template<typename Tp, typename Tm>
-    Tp TTop(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
+    Tp TTop(const config::RVecIndexMap& react,
+	    const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
+      //Get photon 4-vector
+      auto phot=PhotoFourVector(react,px,py,pz,m);
+      //Get meson (Top) 4-vector
+      auto meso=FourVector(react[names::MesonsIdx()],px,py,pz,m);
+      //subtract 
+      auto psum = phot-meso;
+      //return t
+      return - (psum.M2());
+    }
 
       //For some reason this calculation only works when boosted into
       //proton beam rest frame......
-      auto pbeam = beams::InitialFourVector(react[names::InitialBotIdx()][0],px,py,pz,m);
-      auto boov=pbeam.BoostToCM();
+      //auto pbeam = beams::InitialFourVector(react[names::InitialBotIdx()][0],px,py,pz,m);
+      //auto boov=pbeam.BoostToCM();
       // auto phot=boost(PhotoFourVector(react,px,py,pz,m),boov);
       //auto meso=boost(FourVector(react[names::MesonsIdx()],px,py,pz,m),boov);
-      auto phot=PhotoFourVector(react,px,py,pz,m);
-      auto meso=FourVector(react[names::MesonsIdx()],px,py,pz,m);
-      auto psum = phot-meso;
-      // std::cout<<"TTop "<<phot<<" "<<meso<<" "<<psum<<std::endl;
-      return - (psum.M2());
-    }
 
   
     ///\brief return 4 momentum transfer squared, t, minus t0 (or tmin) of "in particles" - "out particles"

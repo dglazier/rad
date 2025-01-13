@@ -12,18 +12,22 @@ namespace rad{
   constexpr const std::string_view  ReactionMap()  {return "reaction_map"; }
   constexpr const std::string_view  Mesons()  {return "meson"; }
   constexpr const std::string_view  Baryons() {return "baryon";}
-  constexpr const std::string_view  ScatEle() {return "scat_ele";}
-  constexpr const std::string_view  BeamEle() {return "beam_ele";}
-  constexpr const std::string_view  BeamIon() {return "beam_ion";}
+    const std::string  ScatEle() {return "scat_ele";}
+    const std::string  BeamEle() {return "beam_ele";}
+    const std::string  BeamIon() {return "beam_ion";}
   constexpr const std::string_view  TargetIon() {return "tar_ion";}
   constexpr const std::string_view  BeamGamma() {return "beam_gamma";}
+    const std::string  P4BeamEle() {return "p4beam_ele";}
+    const std::string  P4BeamIon() {return "p4beam_ion";}
+    const std::string  P4TargetIon() {return "p4tar_ion";}
+    const std::string  P4BeamGamma() {return "p4beam_gamma";}
     //constexpr const std::string_view  Beams() {return "{beam_ele,beam_ion}";}
 
   /**
    * Links to reaction component links for users c++ functions
    */
     enum class InitGroup{Bot,Top}; //ordering below must match this
-    enum class ElectroGroup{ BeamIon,BeamEle,ScatEle=4}; //ordering below must match this
+    enum class ElectroGroup{ BeamIon,BeamEle,ScatEle=4,VirtGam}; //4=>order in particleMap (after baryons and mesons)
     enum class PhotoGroup{ TarIon,BeamGam}; //ordering below must match this
     enum class FinalGroup{ Baryons=2,Mesons}; //ordering below must match this
 
@@ -35,6 +39,7 @@ namespace rad{
     constexpr uint  ElectroEleIdx() {return InitialTopIdx();}
     
     constexpr uint  ScatEleIdx() {return static_cast<uint>(ElectroGroup::ScatEle);}
+    constexpr uint  VirtGammaIdx() {return static_cast<uint>(ElectroGroup::VirtGam);}
     
     constexpr uint  BaryonsIdx() {return static_cast<uint>(FinalGroup::Baryons);}
     constexpr uint  MesonsIdx() {return static_cast<uint>(FinalGroup::Mesons);}

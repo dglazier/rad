@@ -15,6 +15,8 @@
 namespace rad{
   namespace config{
 
+    // class ParticleCreator;
+    
     //! Code simplifications
   
     using ROOT::RVecI;
@@ -57,9 +59,9 @@ namespace rad{
     public:
 
       //     ConfigReaction(const std::string& treeName, const std::string& fileNameGlob, const ROOT::RDF::ColumnNames_t&  columns ) : _orig_df{treeName,{fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data()},columns},_curr_df{_orig_df}{
-      ConfigReaction(const std::string_view treeName, const std::string_view fileNameGlob, const ROOT::RDF::ColumnNames_t&  columns ) : _orig_df{treeName,{fileNameGlob.data()},columns},_curr_df{_orig_df},_base_df{_orig_df}{
+      ConfigReaction(const std::string_view treeName, const std::string_view fileNameGlob, const ROOT::RDF::ColumnNames_t&  columns ) : _orig_df{treeName,{fileNameGlob.data()},columns},_curr_df{_orig_df},_base_df{_orig_df},_treeName{treeName},_fileName{fileNameGlob}{
       }
-      ConfigReaction(const std::string_view treeName, const std::vector<std::string> &filenames, const ROOT::RDF::ColumnNames_t&  columns ) : _orig_df{treeName,filenames,columns},_curr_df{_orig_df},_base_df{_orig_df}{
+      ConfigReaction(const std::string_view treeName, const std::vector<std::string> &filenames, const ROOT::RDF::ColumnNames_t&  columns ) : _orig_df{treeName,filenames,columns},_curr_df{_orig_df},_base_df{_orig_df},_treeName{treeName},_fileNames{filenames}{
       }
       
 
@@ -142,7 +144,7 @@ namespace rad{
       void Filter(Lambda&& func, const ROOT::RDF::ColumnNames_t& columns = {},std::string name = "" ){
 	setCurrFrame(CurrFrame().Filter(func,columns,name));
       }
-      void Filter(std::string& expression,std::string 	name = "" ){
+      void Filter(const std::string& expression,const std::string& 	name ){
 	setCurrFrame(CurrFrame().Filter(expression,name));
       }
      
@@ -163,8 +165,13 @@ namespace rad{
        * and update the current frame to the aliased one
        */
       void setParticleIndex(const string& particle, const int idx, int pdg=0 ){
-	setCurrFrame(CurrFrame().Define(particle,[idx](){return idx;}));
-	if(pdg!=0) Define(particle+"_OK",Form("rec_pid[%s]==%d",particle.data(),pdg));
+	Define(particle,[idx](){return idx;},{});
+
+	if(pdg!=0){
+	  if(ColumnExists("rec_pid",CurrFrame())){
+	    Define(particle+"_OK",Form("rec_pid[%s]==%d",particle.data(),pdg));
+	  }
+	}
       }
       
       /** 
@@ -175,8 +182,13 @@ namespace rad{
        */
       template<typename Lambda>
       void setParticleIndex(const string& particle, Lambda&& func,const ROOT::RDF::ColumnNames_t & columns = {}, int pdg=0 ){
-	setCurrFrame(CurrFrame().Define(particle,func,columns));
-	if(pdg!=0) Define(string(particle)+"_OK",Form("rec_pid[%s]==%d",particle.data(),pdg));
+	Define(particle,func,columns);
+
+	if(pdg!=0){
+	  if(ColumnExists("rec_pid",CurrFrame())){
+	    Define(string(particle)+"_OK",Form("rec_pid[%s]==%d",particle.data(),pdg));
+	  }
+	}
       }
 
       /**
@@ -211,9 +223,19 @@ namespace rad{
        * Collect variable indices for final state mesons and baryons
        */
       void setMesonParticles(const  ROOT::RDF::ColumnNames_t& particles){
+	if(particles.empty()==true){
+	  std::cout<<"setBaryonParticles "<<as_string(names::Mesons())<<std::endl;
+	  Define(as_string(names::Mesons()),[](){return RVecI{-1};},{});
+	  return;
+	}
 	setGroupParticles(as_string(names::Mesons()),particles);
       }
       void setBaryonParticles(const  ROOT::RDF::ColumnNames_t& particles){
+	if(particles.empty()==true){
+	  std::cout<<"setBaryonParticles "<<as_string(names::Baryons())<<std::endl;
+	  Define(as_string(names::Baryons()),[](){return RVecI{-1};},{});
+	  return;
+	}
 	setGroupParticles(as_string(names::Baryons()),particles);
       }
      
@@ -351,7 +373,23 @@ namespace rad{
       RDFstep getBaseFrame() const{
 	return _base_df;
       }
-    protected:
+      RDFstep getOrigFrame() const{
+	return _orig_df;
+      }
+
+
+      std::string GetTreeName() const {
+	return _treeName;
+      }
+      std::string GetFileName() const {
+	return _fileName;
+      }
+      std::vector<std::string> GetFileNames() const {
+	return _fileNames;
+      }
+      
+      
+     protected:
 
       const std::map<string,string>& AliasMap() const {return _aliasMap;}
       
@@ -360,7 +398,6 @@ namespace rad{
       /**
        * _bare_df
        * Base dataframe constructed prior to adding actions
-       * It should not be necessary to use this object for anything
        */
       ROOT::RDataFrame _orig_df;
       /** 
@@ -390,6 +427,11 @@ namespace rad{
        * First/Primary type name
        */
       std::string _primary_type;
+
+      //keep dataset info 
+      std::vector<std::string> _fileNames;//if given list of files
+      std::string _fileName;//if single file (or wildcards)
+      std::string _treeName;
       
     };//ConfigReaction
 

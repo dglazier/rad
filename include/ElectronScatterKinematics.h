@@ -6,12 +6,12 @@ namespace rad{
   namespace electro{
   
 
-    template<typename Tp, typename Tm>
-    PxPyPzMVector PhotonVector(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
-      auto phot =  beams::InitialFourVector(react[names::ElectroEleIdx()][0],px,py,pz,m);
-      SubtractFourVector(phot,react[names::ScatEleIdx()],px,py,pz,m);
-      return phot;
-    }
+    // template<typename Tp, typename Tm>
+    // PxPyPzMVector PhotonVector(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
+    //   auto phot =  beams::InitialFourVector(react[names::ElectroEleIdx()][0],px,py,pz,m);
+    //   SubtractFourVector(phot,react[names::ScatEleIdx()],px,py,pz,m);
+    //   return phot;
+    //  }
 
     template<typename Tp, typename Tm>
     Tp Q2(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){

@@ -86,6 +86,7 @@ namespace rad{
 	  //save the collectionID value in indices
 	  //this allows us to define a local index for the collection
 	  collIndices.push_back(_idTable->collectionID(assoc_name).value());
+	  std::cout<<"AssociateObjects "<<object<<" "<<assoc_name<<" "<<collIndices.back()<<std::endl;
 	}
       
         //function to map hash collectionID vector to index in local defined vector.
@@ -97,7 +98,8 @@ namespace rad{
 	    auto dist =rad::helpers::findIndex(collIndices,id);
 	    if(dist==collIndices.size()) localID[i]=-1;
 	    else localID[i]=dist;
-	    
+	    if(localID[i]>-1)cout<<"LocalCollIdx"<<i<<" "<<id<<" "<<localID[i]<<std::endl;
+  
 	    ++i;
 	  }
 	  return localID;
@@ -122,8 +124,8 @@ namespace rad{
 	};
 	
 	//loop over given data members and create list for each association 
-	std::string strNames;
 	for(const auto& member:members){//loop over the data member we are interested in
+	  std::string strNames;
 	  for(const auto& assoc_name:types){ //loop over the specified detector associations
 	    
 	    strNames+=assoc_name; //association name  e.g. CentralCKFTracks
