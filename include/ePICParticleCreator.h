@@ -5,7 +5,9 @@
 
 namespace rad{
   namespace epic{
-    
+    using rad::names::data_type::Rec;
+    using rad::names::data_type::Truth;
+
     ///\brief Add scattered e- from tagger
     ///to the particle 4-vector lists
     /// p4 is the beam particle vector
@@ -67,7 +69,7 @@ namespace rad{
 	Reaction()->setBranchAlias("TaggerTrackerTracks.momentum.z","tagger_pz");
 	//empty parts string as not dependent on others
 
-	Reaction()->Define("rec_tagger",Form("rad::epic::ParticleLowQ2Electron(tagger_px,tagger_py,tagger_pz,rec_px,rec_py,rec_pz,rec_m{0})"));
+	Reaction()->Define(Rec+"tagger",Form("rad::epic::ParticleLowQ2Electron(tagger_px,tagger_py,tagger_pz,%spx,%spy,%spz,%sm{0})",Rec().data(),Rec().data(),Rec().data(),Rec().data()));
 
       }
  
@@ -76,7 +78,7 @@ namespace rad{
 	Reaction()->setBranchAlias("TaggerTrackerTracks.momentum.y","tagger_py");
 	Reaction()->setBranchAlias("TaggerTrackerTracks.momentum.z","tagger_pz");
 
-	Reaction()->Define(std::string("rec_")+rad::names::ScatEle(),Form("rad::epic::ParticleMCMatchedLowQ2Electron(%s,tagger_px,tagger_py,tagger_pz,rec_px,rec_py,rec_pz,tru_pz,rec_m,{0})",rad::names::ScatEle().data()));
+	Reaction()->Define(Rec()+rad::names::ScatEle(),Form("rad::epic::ParticleMCMatchedLowQ2Electron(%s,tagger_px,tagger_py,tagger_pz,%spx,%spy,%spz,%sm,{0})",rad::names::ScatEle().data(),Rec().data(),Rec().data(),Rec().data(),Rec().data()));
 
       }
        

@@ -12,10 +12,13 @@
 
 namespace rad{
   namespace config{
+    using rad::names::data_type::Rec;
+    using rad::names::data_type::Truth;
 
     //! Class definition
 
     class ePICReaction : public ElectroIonReaction {
+      
 
 
     public:
@@ -31,12 +34,12 @@ namespace rad{
        * Only alias ReconstructedParticles columns
        */ 
        void AliasColumns(Bool_t IsEnd=kTRUE){
-	AddType("rec_");
-	setBranchAlias("ReconstructedParticles.momentum.x","rec_px");
-	setBranchAlias("ReconstructedParticles.momentum.y","rec_py");
-	setBranchAlias("ReconstructedParticles.momentum.z","rec_pz");
-	setBranchAlias("ReconstructedParticles.mass","rec_m");
-	setBranchAlias("ReconstructedParticles.PDG","rec_pid");
+	AddType(Rec());
+	setBranchAlias("ReconstructedParticles.momentum.x",Rec()+"px");
+	setBranchAlias("ReconstructedParticles.momentum.y",Rec()+"py");
+	setBranchAlias("ReconstructedParticles.momentum.z",Rec()+"pz");
+	setBranchAlias("ReconstructedParticles.mass",Rec()+"m");
+	setBranchAlias("ReconstructedParticles.PDG",Rec()+"pid");
 	
 	if(IsEnd){
 	  /////RedefineFundamentalAliases();
@@ -53,7 +56,7 @@ namespace rad{
 	  //just need to redefine 1 component. Other 2 have been updated
 	  //need to redefine at least one to make sure this is called before
 	  //any of the components
-	  RedefineViaAlias("rec_px", undoAB_rec, {"rec_px","rec_py","rec_pz","rec_m"});
+	  RedefineViaAlias(Rec()+"px", undoAB_rec, {Rec()+"px",Rec()+"rec",Rec()+"rec",Rec()+"rec"});
 	  
 	  //undo afterburn on beam components
 	  auto beams_px = ROOT::RVecD{_p4el_beam.X(),_p4ion_beam.X()};
@@ -92,16 +95,16 @@ namespace rad{
 	
 	//remove all but true generated beam+final state particles
 	//rec_match_id : 0,1,2,...N=number beam+final particles 
-	Define("rec_match_id",[](const ROOT::RVecI& stat){
+	Define(Rec()+"match_id",[](const ROOT::RVecI& stat){
 
 	  auto filtstat = stat[stat==1];
 	  auto id = helpers::Enumerate<uint>(filtstat.size());
 	  return id;//[filtstat==1];
-	},{"tru_genStat"}); //just need tru gen status to get N
+	},{Truth()+"genStat"}); //just need tru gen status to get N
 	
 	//make an mc_match branch cut on actual generated particles (no secondaries)
 	//Points rec array to tru array. rec_array has no beam particles, so can ignore
-	Define("tru_match_id",[](const ROOT::RVecI& stat,const ROOT::RVecU& simID,const ROOT::RVecU& finalID){
+	Define(Truth()+"match_id",[](const ROOT::RVecI& stat,const ROOT::RVecU& simID,const ROOT::RVecU& finalID){
 	  const auto n = finalID.size(); //mcparticles stat==1
 	  ROOT::RVecI final_match_id(n,-1);
 	  for(uint i=0;i<n;++i){
@@ -119,13 +122,13 @@ namespace rad{
 	  //std::cout<<"tru_match_id "<<simID<<" "<<simID.size()<<" "<<finalID<<" "<<finalID.size()<<" "<<tru_match_id<<" "<<tru_match_id.size()<<std::endl;
 	  return tru_match_id;
 	  
-	},{"tru_genStat","ReconstructedParticleAssociations.simID","tru_final_id"});//simID points from rec to tru
+	},{Truth()+"genStat","ReconstructedParticleAssociations.simID",Truth()+"final_id"});//simID points from rec to tru
 	
 
 	//make an branch with size of number of generator particles (status 1 or 4)
 	//used to truncate tru arrays
 	//Define("tru_n","rad::helpers::Count(tru_genStat,1)+rad::helpers::Count(tru_genStat,4)");
-	Define("tru_n","rad::helpers::Count(tru_genStat,1)");
+	Define(Truth()+"n",Form("rad::helpers::Count(%sgenStat,1)",Truth().data()) );
 	
 	
 	if(IsEnd){
@@ -141,7 +144,7 @@ namespace rad{
 	  //just need to redefine 1 component. Other 2 have been updated
 	  //need to redefine at least one to make sure this is called before
 	  //any of the components
-	  RedefineViaAlias("tru_px", undoAB_tru, {"tru_px","tru_py","tru_pz","tru_m"});
+	  RedefineViaAlias(Truth()+"px", undoAB_tru, {Truth()+"px",Truth()+"py",Truth()+"pz",Truth()+"m"});
 
 	  	  //undo afterburn on beam components
 	  auto beams_px = ROOT::RVecD{_p4el_beam.X(),_p4ion_beam.X()};
@@ -161,27 +164,27 @@ namespace rad{
 	  AddAdditionalComponents();
 	  //needed to make sure tru and rec are defined at the same time
 	  //and therefore contain same elements.
-	  Filter([](const ROOT::RVecF& th,const ROOT::RVecF& pmag,const ROOT::RVecF& ph,const ROOT::RVecF& eta,const ROOT::RVecF& rth,const ROOT::RVecF& rpmag,const ROOT::RVecF& rph,const ROOT::RVecF& reta){return true;},{"tru_pmag","tru_theta","tru_phi","tru_eta","rec_pmag","rec_theta","rec_phi","rec_eta"});
+	  Filter([](const ROOT::RVecF& th,const ROOT::RVecF& pmag,const ROOT::RVecF& ph,const ROOT::RVecF& eta,const ROOT::RVecF& rth,const ROOT::RVecF& rpmag,const ROOT::RVecF& rph,const ROOT::RVecF& reta){return true;},{Truth()+"pmag",Truth()+"theta",Truth()+"phi",Truth()+"eta",Rec()+"pmag",Rec()+"theta",Rec()+"phi",Rec()+"eta"});
 	}
      }
       /**
        * Only alias MCParticle columns
        */ 
       void AliasColumnsMC(Bool_t IsEnd=kTRUE){
-	AddType("tru_");
-	setBranchAlias("MCParticles.momentum.x","tru_px");
-	setBranchAlias("MCParticles.momentum.y","tru_py");
-	setBranchAlias("MCParticles.momentum.z","tru_pz");
-	setBranchAlias("MCParticles.mass","tru_m");
-	setBranchAlias("MCParticles.PDG","tru_pid");
-	setBranchAlias("MCParticles.generatorStatus","tru_genStat");
+	AddType(Truth());
+	setBranchAlias("MCParticles.momentum.x",Truth()+"px");
+	setBranchAlias("MCParticles.momentum.y",Truth()+"py");
+	setBranchAlias("MCParticles.momentum.z",Truth()+"pz");
+	setBranchAlias("MCParticles.mass",Truth()+"m");
+	setBranchAlias("MCParticles.PDG",Truth()+"pid");
+	setBranchAlias("MCParticles.generatorStatus",Truth()+"genStat");
     
-	Define("tru_final_id",[](const ROOT::RVecI& stat){
+	Define(Truth()+"final_id",[](const ROOT::RVecI& stat){
 	  //map full array to final state only array  
 	  auto indices = helpers::Enumerate<uint>(stat.size());
 	  return indices[stat==1];
 
-	},{"tru_genStat"});//simID points from rec to tru
+	},{Truth()+"genStat"});//simID points from rec to tru
 
 
 	
@@ -198,7 +201,7 @@ namespace rad{
 	  //just need to redefine 1 component. Other 2 have been updated
 	  //need to redefine at least one to make sure this is called before
 	  //any of the components
-	  RedefineViaAlias("tru_px", undoAB_tru, {"tru_px","tru_py","tru_pz","tru_m"});
+	  RedefineViaAlias(Truth()+"px", undoAB_tru, {Truth()+"px",Truth()+"py",Truth()+"pz",Truth()+"m"});
 	  //undo afterburn on beam components
 	  auto beams_px = ROOT::RVecD{_p4el_beam.X(),_p4ion_beam.X()};
 	  auto beams_py = ROOT::RVecD{_p4el_beam.Y(),_p4ion_beam.Y()};
@@ -251,7 +254,7 @@ namespace rad{
 	  //i.e. ignore PID
 	  //Must truncate to make sure return array is same size as in array
 	  //RDF may add beams to tru_m before calling this giving a size mismatch
-	  RedefineViaAlias("rec_m",[](const ROOT::RVecF& recm,const ROOT::RVecD& trum){return helpers::Truncate(ROOT::RVecF(trum),recm.size());},{"rec_m","tru_m"});
+	  RedefineViaAlias(Rec()+"m",[](const ROOT::RVecF& recm,const ROOT::RVecD& trum){return helpers::Truncate(ROOT::RVecF(trum),recm.size());},{Rec()+"m",Truth()+"m"});
 	  
 	  rad::epic::UndoAfterBurn undoAB{_p4ion_beam,_p4el_beam,-0.025};
 	  auto undoAB_tru=[undoAB](ROOT::RVecF &px,ROOT::RVecF &py,ROOT::RVecF&pz, const ROOT::RVecD &m){
@@ -270,8 +273,8 @@ namespace rad{
 	  //just need to redefine 1 component. Other 2 have been updated
 	  //need to redefine at least one to make sure this is called before
 	  //any of the components
-	  RedefineViaAlias("tru_px", undoAB_tru, {"tru_px","tru_py","tru_pz","tru_m"});
-	  RedefineViaAlias("rec_px", undoAB_rec, {"rec_px","rec_py","rec_pz","rec_m"});
+	  RedefineViaAlias(Truth()+"px", undoAB_tru, {Truth()+"px",Truth()+"py",Truth()+"pz",Truth()+"m"});
+	  RedefineViaAlias(Rec()+"px", undoAB_rec, {Rec()+"px",Rec()+"py",Rec()+"pz",Rec()+"m"});
 	  
 	  //undo afterburn on beam components
 	  auto beams_px = ROOT::RVecD{_p4el_beam.X(),_p4ion_beam.X()};
@@ -296,7 +299,7 @@ namespace rad{
 
 	  //needed to make sure tru and rec are defined at the same time
 	  //and therefore contain same elements.
-	  Filter([](const ROOT::RVecF& th,const ROOT::RVecF& pmag,const ROOT::RVecF& ph,const ROOT::RVecF& eta,const ROOT::RVecF& rth,const ROOT::RVecF& rpmag,const ROOT::RVecF& rph,const ROOT::RVecF& reta){return true;},{"tru_pmag","tru_theta","tru_phi","tru_eta","rec_pmag","rec_theta","rec_phi","rec_eta"});
+	  Filter([](const ROOT::RVecF& th,const ROOT::RVecF& pmag,const ROOT::RVecF& ph,const ROOT::RVecF& eta,const ROOT::RVecF& rth,const ROOT::RVecF& rpmag,const ROOT::RVecF& rph,const ROOT::RVecF& reta){return true;},{Truth()+"pmag",Truth()+"theta",Truth()+"phi",Truth()+"eta",Rec()+"pmag",Rec()+"theta",Rec()+"phi",Rec()+"eta"});
  
 	}
       }//AliasColumnsAndMatchWithMC
@@ -357,10 +360,10 @@ namespace rad{
 	};
 	
 	if(contains(name,"rec") ){
-	  RedefineViaAlias(name,helpers::Reorder<T>,{name.data(),"rec_match_id","tru_match_id","tru_n"});
+	  RedefineViaAlias(name,helpers::Reorder<T>,{name.data(),Rec()+"match_id",Truth()+"match_id",Truth()+"n"});
 	  }
 	else if(contains(name,"tru") ){
-	  RedefineViaAlias(name,helpers::Rearrange<T>,{name.data(),"tru_final_id"});
+	  RedefineViaAlias(name,helpers::Rearrange<T>,{name.data(),Truth()+"final_id"});
 	  
 	}
 	
@@ -376,14 +379,14 @@ namespace rad{
       void Resolution(const string& var){
 	// Define(string("res_")+var,[](const ROOT::RVec<T> &rec,const ROOT::RVec<T> &tru){
 	//   return (rec - tru);
-	// },{string("rec_")+var,string("tru_")+var});
-	Define(string("res_")+var,Form("%s-%s",(string("tru_")+var).data(),(string("rec_")+var).data() ));
+	// },{string(Rec())+var,string(Truth())+var});
+	Define(string("res_")+var,Form("%s-%s",(Truth()+var).data(),(Rec()+var).data() ));
       }
       template<typename T>
       void ResolutionFraction(const string& var){
 	Define(string("res_")+var,[](const ROOT::RVec<T> &rec,const ROOT::RVec<T> &tru){
 	   return (rec - tru)/tru;
-	},{string("rec_")+var,string("tru_")+var});
+	},{Rec()+var,Truth()+var});
       }
       
       /**
@@ -406,8 +409,8 @@ namespace rad{
 		       },{type+"_match_id",type+"_pid"} );
 	};//end of match lambda
 	
-	match("rec");
-	match("tru");
+	match(Rec());
+	match(Truth());
       }
 
       void SetBeamsFromMC(Long64_t nrows=100){

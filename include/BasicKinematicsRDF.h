@@ -15,10 +15,10 @@ namespace rad{
       cr.DefineForAllTypes(name, (Form("rad::FourVectorMassCalc(%s,%s,components_p4)",pos.data(),neg.data() )) );
     }
 
-  void PrintParticles(config::ConfigReaction& cr,const string& name="PrintParticles"){
+  void PrintParticles(config::ConfigReaction& cr,const string& type="tru"){
       //cr.DefineForAllTypes(name, (Form("rad::PrintParticles(rdfentry_,components_p4)")) );
       auto cf = cr.CurrFrame();
-      std::vector<std::string> cols ={"rdfentry_","tru_pid","tru_px","tru_py","tru_pz","tru_m"};
+      std::vector<std::string> cols ={"rdfentry_",type+"pid",type+"px",type+"py",type+"pz",type+"m"};
       cf.Foreach([](ULong64_t entry,const ROOT::RVecI &pid,const ROOT::RVecF &px, const ROOT::RVecF &py, const ROOT::RVecF &pz, const ROOT::RVecD &m){
 	rad::PrintParticles(entry,pid,px,py,pz,m);},
 	cols);

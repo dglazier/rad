@@ -24,7 +24,8 @@ class ElectroIonReaction;
 
 namespace rad{
   namespace config{
-
+    using rad::names::data_type::Rec;
+ 
     //need to add functions for other reaction types here if needed
     void DoElectroReaction(rad::config::ElectroIonReaction* reaction,std::string pid);
 
@@ -114,7 +115,7 @@ namespace rad{
 	}
 
       };
-      string CutParticleCondition(const string& var="rec_pmag",const string& condition =">0."){
+      string CutParticleCondition(const string& var=Rec()+"pmag",const string& condition =">0."){
 	string cut;
 	for(auto& name:_name_mesons){
 	  cut+=Form("%s[%s]%s&&",var.data(),name.data(),condition.data());

@@ -86,7 +86,7 @@ namespace rad{
     }
     ///\brief return mass of combined 4-vectors, adding particles with indices ipos and subtracting ineg
     template<typename Tp, typename Tm>
-    Tp FourVectorMassCalc(const RVecI &ipos, const RVecI &ineg,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m)
+    double FourVectorMassCalc(const RVecI &ipos, const RVecI &ineg,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m)
     {
       PxPyPzMVector psum(0,0,0,0);
       SumFourVector(psum,ipos,px,py,pz,m);

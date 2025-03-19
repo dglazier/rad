@@ -14,7 +14,7 @@ namespace rad{
     //  }
 
     template<typename Tp, typename Tm>
-    Tp Q2(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
+    double Q2(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
       auto phot = PhotoFourVector(react,px,py,pz,m);
       return -phot.M2();
     
@@ -59,13 +59,13 @@ namespace rad{
     }
   
     template<typename Tp, typename Tm>
-    Tp CosThetaCM(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
+    double CosThetaCM(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
       auto angles = ElectroCMDecay(react,px,py,pz,m);
       return TMath::Cos(angles.Theta());
     }
   
     template<typename Tp, typename Tm>
-    Tp PhiCM(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
+    double PhiCM(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
       auto angles = ElectroCMDecay(react,px,py,pz,m);
       return angles.Phi();
     }
@@ -98,13 +98,13 @@ namespace rad{
     }
 
     template<typename Tp, typename Tm>
-    Tp CosThetaProtonRest(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
+    double CosThetaProtonRest(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
       auto angles = ElectroProtonRestDecay(react,px,py,pz,m);
       return TMath::Cos(angles.Theta());
     }
     
     template<typename Tp, typename Tm>
-    Tp PhiProtonRest(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
+    double PhiProtonRest(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
       auto angles = ElectroProtonRestDecay(react,px,py,pz,m);
       return angles.Phi();
     }

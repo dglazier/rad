@@ -16,7 +16,9 @@
 
 namespace rad{
   namespace config{
-    
+    using rad::names::data_type::Rec;
+    using rad::names::data_type::Truth;
+
  
     //! Class definition
 
@@ -144,8 +146,8 @@ namespace rad{
 	  assocName.ReplaceAll(".","_");
 	  Define(assocName,CreateAssocVector,{mapName.Data(), collIdxsName,"_ReconstructedParticles_"+object+".index"});
 	  //reorder to match truth and rec if required
-	  if(rad::config::ColumnExists("tru_match_id",CurrFrame()) == true ){
-	    RedefineExpr(std::string(assocName), std::string(Form("rad::helpers::Reorder(%s,%s,%s,%s)",assocName.Data(),"rec_match_id","tru_match_id","tru_n")) );
+	  if(rad::config::ColumnExists(Truth()+"match_id",CurrFrame()) == true ){
+	    RedefineExpr(std::string(assocName), std::string(Form("rad::helpers::Reorder(%s,%s,%s,%s)",assocName.Data(),Rec()+"match_id",Truth()+"match_id",Truth()+"n")) );
 	  }
 	}
 	

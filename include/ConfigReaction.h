@@ -14,7 +14,8 @@
 
 namespace rad{
   namespace config{
-
+    using rad::names::data_type::Rec;
+ 
     // class ParticleCreator;
     
     //! Code simplifications
@@ -168,8 +169,8 @@ namespace rad{
 	Define(particle,[idx](){return idx;},{});
 
 	if(pdg!=0){
-	  if(ColumnExists("rec_pid",CurrFrame())){
-	    Define(particle+"_OK",Form("rec_pid[%s]==%d",particle.data(),pdg));
+	  if(ColumnExists(Rec()+"pid",CurrFrame())){
+	    Define(particle+"_OK",Form("%spid[%s]==%d",Rec().data(),particle.data(),pdg));
 	  }
 	}
       }
@@ -185,8 +186,8 @@ namespace rad{
 	Define(particle,func,columns);
 
 	if(pdg!=0){
-	  if(ColumnExists("rec_pid",CurrFrame())){
-	    Define(string(particle)+"_OK",Form("rec_pid[%s]==%d",particle.data(),pdg));
+	  if(ColumnExists(Rec()+"pid",CurrFrame())){
+	    Define(string(particle)+"_OK",Form("%spid[%s]==%d",Rec().data(),particle.data(),pdg));
 	  }
 	}
       }

@@ -52,7 +52,7 @@ namespace rad{
    ///\brief missing mass fo reaction = top+bot -  neg[i]
     //const config::RVecIndexMap react must be copied for thread safety.
     template<typename Tp, typename Tm>
-    Tp FourVectorMissMassCalc(const config::RVecIndexMap react,const RVecI ineg,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m)
+    double FourVectorMissMassCalc(const config::RVecIndexMap react,const RVecI ineg,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m)
     {
       auto psum = beams::InitialFourVector(react[names::InitialTopIdx()][0],px,py,pz,m);
       psum+=beams::InitialFourVector(react[names::InitialBotIdx()][0],px,py,pz,m);
@@ -63,7 +63,7 @@ namespace rad{
    ///\brief missing mass sqaured of reaction = top+bot -  neg[i]
     //const config::RVecIndexMap react must be copied for thread safety.
     template<typename Tp, typename Tm>
-    Tp FourVectorMissMass2Calc(const config::RVecIndexMap react,const RVecI ineg,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m)
+    double FourVectorMissMass2Calc(const config::RVecIndexMap react,const RVecI ineg,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m)
     {
       auto psum = beams::InitialFourVector(react[names::InitialTopIdx()][0],px,py,pz,m);
       psum+=beams::InitialFourVector(react[names::InitialBotIdx()][0],px,py,pz,m);
@@ -74,7 +74,7 @@ namespace rad{
     ///\brief missing transverse momentum of reaction = top+bot -  neg[i]
     //const config::RVecIndexMap react must be copied for thread safety.
    template<typename Tp, typename Tm>
-    Tp FourVectorMissPtCalc(const config::RVecIndexMap react,const RVecI ineg,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m)
+    double FourVectorMissPtCalc(const config::RVecIndexMap react,const RVecI ineg,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m)
     {
       auto psum = beams::InitialFourVector(react[names::InitialTopIdx()][0],px,py,pz,m);
       psum+=beams::InitialFourVector(react[names::InitialBotIdx()][0],px,py,pz,m);
@@ -85,7 +85,7 @@ namespace rad{
    ///\brief missing transverse momentum of reaction = top+bot -  neg[i]
     //const config::RVecIndexMap react must be copied for thread safety.
    template<typename Tp, typename Tm>
-    Tp FourVectorMissPzCalc(const config::RVecIndexMap react,const RVecI ineg,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m)
+    double FourVectorMissPzCalc(const config::RVecIndexMap react,const RVecI ineg,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m)
     {
       auto psum = beams::InitialFourVector(react[names::InitialTopIdx()][0],px,py,pz,m);
       psum+=beams::InitialFourVector(react[names::InitialBotIdx()][0],px,py,pz,m);
@@ -96,7 +96,7 @@ namespace rad{
   ///\brief missing transverse momentum of reaction = top+bot -  neg[i]
     //const config::RVecIndexMap react must be copied for thread safety.
     template<typename Tp, typename Tm>
-    Tp FourVectorMissThetaCalc(const config::RVecIndexMap react,const RVecI ineg,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m)
+    double FourVectorMissThetaCalc(const config::RVecIndexMap react,const RVecI ineg,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m)
     {
       auto psum = beams::InitialFourVector(react[names::InitialTopIdx()][0],px,py,pz,m);
       psum+=beams::InitialFourVector(react[names::InitialBotIdx()][0],px,py,pz,m);
@@ -107,7 +107,7 @@ namespace rad{
     ///\brief missing transverse momentum of reaction = top+bot -  neg[i]
     //const config::RVecIndexMap react must be copied for thread safety.
    template<typename Tp, typename Tm>
-    Tp FourVectorMissPhiCalc(const config::RVecIndexMap react,const RVecI ineg,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m)
+    double FourVectorMissPhiCalc(const config::RVecIndexMap react,const RVecI ineg,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m)
     {
       auto psum = beams::InitialFourVector(react[names::InitialTopIdx()][0],px,py,pz,m);
       psum+=beams::InitialFourVector(react[names::InitialBotIdx()][0],px,py,pz,m);
@@ -119,7 +119,7 @@ namespace rad{
     ///\brief missing transverse momentum of reaction = top+bot -  neg[i]
     //const config::RVecIndexMap react must be copied for thread safety.
    template<typename Tp, typename Tm>
-    Tp FourVectorMissPCalc(const config::RVecIndexMap react,const RVecI ineg,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m)
+    double FourVectorMissPCalc(const config::RVecIndexMap react,const RVecI ineg,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m)
     {
       auto psum = beams::InitialFourVector(react[names::InitialTopIdx()][0],px,py,pz,m);
       psum+=beams::InitialFourVector(react[names::InitialBotIdx()][0],px,py,pz,m);
@@ -130,7 +130,7 @@ namespace rad{
     ///\brief missing transverse momentum of reaction = top+bot -  neg[i]
     //const config::RVecIndexMap react must be copied for thread safety.
    template<typename Tp, typename Tm>
-    Tp FourVectorMissECalc(const config::RVecIndexMap react,const RVecI ineg,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m)
+    double FourVectorMissECalc(const config::RVecIndexMap react,const RVecI ineg,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m)
     {
       auto psum = beams::InitialFourVector(react[names::InitialTopIdx()][0],px,py,pz,m);
       psum+=beams::InitialFourVector(react[names::InitialBotIdx()][0],px,py,pz,m);
@@ -164,7 +164,7 @@ namespace rad{
 
    
     template<typename Tp, typename Tm>
-    Tp T0(const config::RVecIndexMap& react,
+    double T0(const config::RVecIndexMap& react,
 	  const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
 
       auto tar = beams::InitialFourVector(react[names::InitialBotIdx()][0],px,py,pz,m);
@@ -183,14 +183,14 @@ namespace rad{
    
     ///\brief return 4 momentum transfer squared of "in particles" - "out particles" on bottom vertex
     template<typename Tp, typename Tm>
-    Tp TBot(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
+    double TBot(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
       auto psum = beams::InitialFourVector(react[names::InitialBotIdx()][0],px,py,pz,m);
       SubtractFourVector(psum,react[names::BaryonsIdx()],px,py,pz,m);
       return - (psum.M2());
     }
     ///\brief return 4 momentum transfer squared of "in particles" - "out particles" on top vertex
     template<typename Tp, typename Tm>
-    Tp TTop(const config::RVecIndexMap& react,
+    double TTop(const config::RVecIndexMap& react,
 	    const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
       //Get photon 4-vector
       auto phot=PhotoFourVector(react,px,py,pz,m);
@@ -212,13 +212,13 @@ namespace rad{
   
     ///\brief return 4 momentum transfer squared, t, minus t0 (or tmin) of "in particles" - "out particles"
     template<typename Tp, typename Tm>
-    Tp TPrimeBot(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
+    double TPrimeBot(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
   
       return TBot(react,px,py,pz,m) + T0(react,px,py,pz,m);
     }
     ///\brief return 4 momentum transfer squared, t, minus t0 (or tmin) of "in particles" - "out particles"
     template<typename Tp, typename Tm>
-    Tp TPrimeTop(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
+    double TPrimeTop(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
   
       return TTop(react,px,py,pz,m) + T0(react,px,py,pz,m);
     }
