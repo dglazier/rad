@@ -288,6 +288,11 @@ namespace rad{
 	  DefineBeamIon();
 	
 	  AddAdditionalComponents();
+	  //add resolution functions
+	  ResolutionFraction<float>("pmag");
+	  Resolution("theta");
+	  Resolution("phi");
+	  Resolution("eta");
 
 	  //needed to make sure tru and rec are defined at the same time
 	  //and therefore contain same elements.
@@ -341,11 +346,6 @@ namespace rad{
 	DefineForAllTypes("eta", Form("rad::ThreeVectorEta(components_p3)"));
 	DefineForAllTypes("pmag", Form("rad::ThreeVectorMag(components_p3)"));
 
-	//add resolution functions
-	ResolutionFraction<float>("pmag");
-	Resolution("theta");
- 	Resolution("phi");
- 	Resolution("eta");
 	
      }
       
