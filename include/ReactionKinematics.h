@@ -14,7 +14,7 @@ namespace rad{
     template<typename Tp, typename Tm>
     int ParticleCreateBySum(const RVecI& isum, RVec<Tp> &px, RVec<Tp> &py, RVec<Tp> &pz, RVec<Tm> &m,const RVecI& iafter){
       //sum the 4-vectors
-      //std::cout<<"ParticleCreateBySum "<<isum<<m<<pz<<" "<<m.size()<<std::endl;
+      // std::cout<<"ParticleCreateBySum "<<isum<<m<<pz<<" "<<m.size()<<std::endl;
       PxPyPzMVector p4;
       SumFourVector(p4,isum,px,py,pz,m);
       //make particle id = last entry
@@ -34,9 +34,9 @@ namespace rad{
       //sum the 4-vectors
       auto p4 = beams::InitialFourVector(itop,px,py,pz,m);
       p4+=beams::InitialFourVector(ibot,px,py,pz,m);
-        
+       
       SubtractFourVector(p4,ineg,px,py,pz,m);
-
+ 
       //make particle id = last entry
       auto idx = px.size();
 
@@ -169,7 +169,6 @@ namespace rad{
 
       auto tar = beams::InitialFourVector(react[names::InitialBotIdx()][0],px,py,pz,m);
       auto bar = FourVector(react[names::BaryonsIdx()],px,py,pz,m);
-
       //generate CM from sum of final state meson and baryon particles
       auto cm = CMVector(react,px,py,pz,m);
       auto cmBoost = cm.BoostToCM();
