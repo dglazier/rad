@@ -198,7 +198,7 @@ namespace rad{
        *
        * This function must be implmented by a derived class
        */
-      virtual void makeParticleMap() = 0;
+      virtual void makeParticleMap() {}//= 0; do not make abstract class so can copy derived types to this
      // /**
      //   * Make map that links beam names to indices in user functions
      //   * in C++ functions you can use the RVecIndexMap object indexed by 
