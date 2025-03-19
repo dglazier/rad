@@ -135,7 +135,7 @@ namespace rad{
     //void UndoAfterBurn::undoAfterburn(uint idx,RVecF &px,RVecF &py,RVecF&pz, const RVecD &m) const{
     template<typename Tp, typename Tm>
     void UndoAfterBurn::undoAfterburn(uint idx,RVec<Tp> &px,RVec<Tp> &py,RVec<Tp> &pz, const RVec<Tm> &m) const{
-      //std::cout<<"undoAfterburn in "<<px<<m<<std::endl;
+      //   std::cout<<"undoAfterburn in "<<idx<<" px "<<px[idx]<<" m "<<m[idx]<<std::endl;
       auto a = FourVector(idx,px,py,pz,m);
       //std::cout<<"undoAfterburn in "<<a<<_rotAboutY<<_rotAboutX<<" "<<_vBoostToCoM<<_vBoostToHoF<<std::endl;
       // Undo AB procedure for single vector, a^{mu}

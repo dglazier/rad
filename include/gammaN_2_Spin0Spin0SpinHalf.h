@@ -75,7 +75,17 @@ namespace rad{
       result.Phi=angles.Phi();
       return result;
     }
-    /**
+    template<typename Tp, typename Tm>
+    Tp CosThetaHel(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
+      auto angles = PhotoHelicityDecay(react,px,py,pz,m);
+      return angles.CosTheta;
+    }
+     template<typename Tp, typename Tm>
+    Tp PhiHel(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
+      auto angles = PhotoHelicityDecay(react,px,py,pz,m);
+      return angles.Phi;
+    }
+     /**
     * calculate GJ decay angles
     * z-axis along gamma direction in meson rest frame
     */
