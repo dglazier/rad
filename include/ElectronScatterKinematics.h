@@ -40,7 +40,8 @@ namespace rad{
       auto beam = beams::InitialFourVector(react[names::ElectroEleIdx()][0],px,py,pz,m);
       auto mes = FourVector(react[names::MesonsIdx()],px,py,pz,m);
       auto photon = PhotoFourVector(react,px,py,pz,m);
-  
+      
+ 
       PxPyPzMVector CMBeam=boost(beam,cmBoost);
       PxPyPzMVector CMMes=boost(mes,cmBoost);
       PxPyPzMVector CMGamma=boost(photon,cmBoost);
@@ -69,8 +70,46 @@ namespace rad{
       return angles.Phi();
     }
 
-
+    template<typename Tp, typename Tm>
+    XYZVector ElectroProtonRestDecay(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
+      //  ElCMDecay_t ElectroCMDecay(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
+      //CM frame defined by e-scattering
+      auto  pr = beams::InitialFourVector(react[names::ElectroIonIdx()][0],px,py,pz,m);
+      auto prBoost = pr.BoostToCM();
+      auto beam = beams::InitialFourVector(react[names::ElectroEleIdx()][0],px,py,pz,m);
+      auto mes = FourVector(react[names::MesonsIdx()],px,py,pz,m);
+      auto photon = PhotoFourVector(react,px,py,pz,m);
+      
+ 
+      PxPyPzMVector prBeam=boost(beam,prBoost);
+      PxPyPzMVector prMes=boost(mes,prBoost);
+      PxPyPzMVector prGamma=boost(photon,prBoost);
   
+      XYZVector zV=-prGamma.Vect().Unit();
+      XYZVector yV=prGamma.Vect().Cross(prBeam.Vect()).Unit();
+      XYZVector xV=yV.Cross(zV).Unit();
+  
+      XYZVector angles(prMes.Vect().Dot(xV),prMes.Vect().Dot(yV),prMes.Vect().Dot(zV));
+      // ElCMDecay_t result;
+      // result.CosTheta=(TMath::Cos(angles.Theta()));
+      // result.Phi=angles.Phi();
+      // return result;
+      return angles;
+    }
+
+    template<typename Tp, typename Tm>
+    Tp CosThetaProtonRest(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
+      auto angles = ElectroProtonRestDecay(react,px,py,pz,m);
+      return TMath::Cos(angles.Theta());
+    }
+    
+    template<typename Tp, typename Tm>
+    Tp PhiProtonRest(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
+      auto angles = ElectroProtonRestDecay(react,px,py,pz,m);
+      return angles.Phi();
+    }
+
+
 
   }
 }
