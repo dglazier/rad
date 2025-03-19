@@ -63,7 +63,9 @@ namespace rad{
 
 	  //Note we give all created particles as argument to ensure creation order
 	  auto type_created=_created;
-	  for(auto& col: type_created) col=atype.first+col;
+	  for(auto& col: type_created){
+	    col=atype.first+col;
+	  }
 	  auto after_cols  = VectorToString(type_created);
 	  
 	  //format args "func(idxs,components,after_idxs")
@@ -97,6 +99,8 @@ namespace rad{
       }
 
       void SetReaction(ConfigReaction* reaction){_reaction=reaction;}
+      ConfigReaction* Reaction() { return _reaction;}
+      
     private:
       
       ConfigReaction* _reaction=nullptr;
