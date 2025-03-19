@@ -28,19 +28,28 @@ namespace rad{
 
     public:
 
-    Histogrammer(const config::ConfigReaction* rad):_rad{*rad}{
+      Histogrammer(const config::ConfigReaction* rad):_rad{*rad}{
 
       }
       
-    Histogrammer(const std::string& name,const config::ConfigReaction* rad) :_name{name},_rad{*rad}{
+      Histogrammer(const std::string& name,const config::ConfigReaction* rad) :_name{name},_rad{*rad}{
       }
 
       /** 
        * Initialise the splitting scheme
+       * requires type of variables to be histogrammed
+       * e.g. rec_ tru_ mc_
        */
-      void Init(){
-
-	_splits.Init(); //configure the bins
+      void Init(const std::vector<string>& types){
+	//variable types
+	_types = types;
+	//create results vector for each type
+	for(const auto& type:_types){
+	  _typeResults[type]=hists_results();
+	}
+	
+	//configure the bins
+	_splits.Init(); 
 	auto nbins = Splitter().NTotal();
 	if(nbins==1){ //no splits, fix bin to 0
 	  _rad.Define(_name, "static_cast<short>(0)" );
@@ -82,41 +91,51 @@ namespace rad{
       template <typename HISTOGRAM,typename... ColumnTypes>
       void Create(const HISTOGRAM& thHist, const ROOT::RDF::ColumnNames_t&  columns){
 
-       auto nbins = Splitter().NTotal();
-       auto bin_names = Splitter().GetBinNames();
-       //get hist name
-       std::string hname = thHist.GetName();
-       //create one for each split
-       std::vector<HISTOGRAM> hists(nbins,thHist);
+	auto nbins = Splitter().NTotal();
+	auto bin_names = Splitter().GetBinNames();
+	//get hist name
+	std::string hname = thHist.GetName();
+	//create one for each split
+	std::vector<HISTOGRAM> hists(nbins,thHist);
        
-       uint ibin=0;
-       for(auto& h:hists){
-	 //give each hist name of bin/split
-	 std::string name = hname +"_"+bin_names[ibin];
-	 std::string title = std::string(h.GetTitle())+" "+bin_names[ibin];
-	 h.SetNameTitle(name.data(),title.data());
-	 ibin++;
-       }
+	uint ibin=0;
+	for(auto& h:hists){
+	  //give each hist name of bin/split
+	  std::string name = hname +"_"+bin_names[ibin];
+	  std::string title = std::string(h.GetTitle())+" "+bin_names[ibin];
+	  h.SetNameTitle(name.data(),title.data());
+	  ibin++;
+	}
        
-       //connect name to index in results vector
-       _getIndexFromName[hname]=_results.size();
+	//connect name to index in results vector
+	_getIndexFromName[hname]=_nResults++;
 
-       //use Helper Action class
-       //https://root.cern/doc/master/classROOT_1_1RDF_1_1RInterface.html#a77b83f7955ca336487ce102e7d31e7d8
-       //template types double and TH1D, the double and D should match. i.e. float, TH1F
-       using Helper_t = SplitHistoHelper<double>;
-       auto process  = Helper_t{hists};
+	//use Helper Action class
+	//https://root.cern/doc/master/classROOT_1_1RDF_1_1RInterface.html#a77b83f7955ca336487ce102e7d31e7d8
+	//template types double and TH1D, the double and D should match. i.e. float, TH1F
+	using Helper_t = SplitHistoHelper<double>;
 
-       auto df = _rad.CurrFrame();
-       // book my action. template types : short from splits.GetBin() aka _name, one double from 1D
-       // store ResultsPtr in vector datamember
-       ROOT::RDF::ColumnNames_t cols = {_name};
-       cols.insert(cols.end(), columns.begin(), columns.end());
-       auto result = df.Book<short, ColumnTypes...>(std::move(process), cols );
-       _results.push_back( result );
-       _rad.setCurrFrame(df);
+	auto df = _rad.CurrFrame();
+
+	// loop over types of variables
+	for(const auto& type:_types){
+	  auto process  = Helper_t{hists};
+
+	  // book my action. template types : short from splits.GetBin() aka _name, one double from 1D
+	  // store ResultsPtr in vector datamember
+	  ROOT::RDF::ColumnNames_t cols = {_name};
+	  cols.insert(cols.end(), columns.begin(), columns.end());
+	  for(auto& col:cols){//prepend type
+	    if(col==_name) continue;//dont prepend name
+	    col = type+col;
+	  }
+	  auto result = df.Book<short, ColumnTypes...>(std::move(process), cols );
+	  _typeResults[type].push_back( result );
+	}
+	
+	_rad.setCurrFrame(df);
        
-     }
+      }
 
       /** 
        * Get DataSplitter to define splits etc
@@ -126,73 +145,88 @@ namespace rad{
       /** 
        * Get histogram with name at split/bin index
        */
-      hist_ptr GetResult(const std::string& name, ushort index){
+      hist_ptr GetResult(const std::string& type,const std::string& name, ushort index){
 	if( index >= Splitter().NTotal() ){
 	  std::cerr<< "Histogrammer::GetResult index out of range " <<index <<" >= "<<Splitter().N()<<std::endl;
 	  return nullptr;
 	}
-	return _results.at(_getIndexFromName[name])->at(index);
+	return TypeResult(type).at(_getIndexFromName[name])->at(index);
       }
 
       /** 
        * Draw all histograms of type name  on a single canvas
        */
-       void DrawAll(const std::string& name){
-	new TCanvas();
-	auto hmax =0.;
-	for(size_t i = 0; i < Splitter().NTotal(); ++i){
-	  auto mymax  = GetResult(name,i)->GetMaximum();
-	  if(mymax>hmax) hmax = mymax;
-	}
-	GetResult(name,0)->SetMaximum(hmax);
-	GetResult(name,0)->SetMinimum(0);
+      void DrawAll(const std::string& name){
+	//Loop over types
+	for(const auto& type:_types){
+	  new TCanvas();
+	  auto hmax =0.;
+	  for(size_t i = 0; i < Splitter().NTotal(); ++i){
+	    auto mymax  = GetResult(type,name,i)->GetMaximum();
+	    if(mymax>hmax) hmax = mymax;
+	  }
+	  GetResult(type,name,0)->SetMaximum(hmax);
+	  GetResult(type,name,0)->SetMinimum(0);
 	
-	for(size_t i = 0; i < Splitter().NTotal(); ++i){
-	  TString opt="";
-	  if(i>0) opt = "same";
-	  auto his = GetResult(name,i)->DrawCopy(opt);
-	  his->SetLineColor(i+1);
-	}
+	  for(size_t i = 0; i < Splitter().NTotal(); ++i){
+	    TString opt="";
+	    if(i>0) opt = "same";
+	    auto his = GetResult(type,name,i)->DrawCopy(opt);
+	    his->SetLineColor(i+1);
+	  }
+	}//type loop
       }
-
+      /** 
+       * Get histograms for a type
+       */
+      hists_results& TypeResult(const std::string& type){
+	return _typeResults[type];
+      }
       /** 
        * Write all historgams to file
        */
-       void File(const string& filename){
+      void File(const string& filename){
 
 	auto file = std::unique_ptr<TFile>{TFile::Open(filename.data(),"recreate")};
 
 	for(auto result: _getIndexFromName){
-	  //make directory with given hist name
-	  file->cd();
-	  auto dir = file->mkdir(result.first.data());
-	  file->cd(result.first.data());
-	  //create a summed histogram too
-	  std::unique_ptr<TH1> htotal;
-	  //loop over all splits and write histograms
-	  for(size_t i=0;i<Splitter().NTotal(); ++i){
-	    auto h = GetResult(result.first,i);
-	    if(i==0) htotal.reset(static_cast<TH1*>(h->Clone(result.first.data())));
-	    else htotal->Add(h.get());
-	    h->SetDirectory(dir);
-	    h->Write();
-	  }
-	  //write summed histogram
-	  htotal->Write();
-	}
+	  //Loop over types
+	  for(const auto& type:_types){
+	    
+	    //make directory with given hist name and type
+	    file->cd();
+	    
+	    auto dir = file->mkdir((type+result.first).data());
+	    file->cd((type+result.first).data());
+	    //create a summed histogram too
+	    std::unique_ptr<TH1> htotal;
+	    //loop over all splits and write histograms
+	    for(size_t i=0;i<Splitter().NTotal(); ++i){
+	      auto h = GetResult(type,result.first,i);
+	      if(i==0) htotal.reset(static_cast<TH1*>(h->Clone((type+result.first).data())));
+	      else htotal->Add(h.get());
+	      h->SetDirectory(dir);
+	      h->Write();
+	    }//bins
+	    //write summed histogram
+	    htotal->Write();
+	  }//type
+	}//hist
       }
       
     private:
      
       config::ConfigReaction _rad;// = nullptr;
-     DataSplitter _splits;
-     hists_results _results;
-
+      DataSplitter _splits;
+      //      hists_results _results;
+      std::map<std::string, hists_results > _typeResults;
+      
       std::map<std::string, ushort> _getIndexFromName;
       
-     std::vector<std::string> _histNames;
-     std::string _name;
-     ushort _verbose=1;
+      std::vector<string> _types;
+      std::string _name;
+      ushort _verbose=1;
+      ushort _nResults=0;
     };
 
   }

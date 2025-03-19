@@ -47,5 +47,14 @@ namespace rad{
     constexpr uint  PhotoGammaIdx() {return InitialTopIdx();}
     constexpr uint  PhotoIonIdx() {return InitialBotIdx();}
 
+    /**
+     * Types of data
+     */
+    namespace data_type{
+      const std::string  Rec() {return "rec_";}
+      const std::string  Truth() {return "tru_";}
+      const std::string  MC() {return "mc_";}
+    }
+    
   }//names
 }//rad
