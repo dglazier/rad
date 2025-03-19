@@ -38,7 +38,18 @@ namespace rad{
     
   // };
   
-  ///\brief return 4-vector of particle idx
+  ///\brief print all particles for event
+    template<typename Tpid, typename Tp, typename Tm>
+    bool PrintParticles(ULong64_t entry,const RVec<Tpid> &pid,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
+      
+      std::cout<< "PrintParticles Event = "<< entry <<std::endl;
+      for(size_t  idx=0; idx<px.size();++idx){
+	std::cout<< " "<<pid[idx]<<"\t"<<PxPyPzMVector(px[idx], py[idx], pz[idx], m[idx])<<" "<<m[idx]<<std::endl;
+      }
+      return true;
+    }
+  
+   ///\brief return 4-vector of particle idx
     template<typename Tp, typename Tm>
     PxPyPzMVector FourVector(const uint idx,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
       return PxPyPzMVector(px[idx], py[idx], pz[idx], m[idx]);
@@ -80,8 +91,6 @@ namespace rad{
       PxPyPzMVector psum(0,0,0,0);
       SumFourVector(psum,ipos,px,py,pz,m);
       SubtractFourVector(psum,ineg,px,py,pz,m);
-      // std::cout<<"FourVectorMassCalc "<<ipos<<psum<<std::endl
-      //       <<std::endl<<pz<<m<<std::endl;
       return psum.M();
     }
     ///\brief return magnitude of momentum
