@@ -1,0 +1,199 @@
+#pragma once
+
+
+/*!
+ *  Class to configure histograms with data splits etc
+ */
+
+#include "ConfigReaction.h"
+#include "DataSplitter.h"
+#include "SplitHistoHelper.h"
+#include <TCanvas.h>
+#include <TFile.h>
+
+namespace rad{
+  
+  namespace histo{
+
+
+ 
+    using hist_ptr = std::shared_ptr<TH1>;
+    using hists_splits_ptr =  ROOT::RDF::RResultPtr< std::vector< hist_ptr > >;
+    using hists_results =  std::vector<hists_splits_ptr>;
+      
+       
+    //! Class definition
+
+    class Histogrammer {
+
+    public:
+
+    Histogrammer(const config::ConfigReaction* rad):_rad{*rad}{
+
+      }
+      
+    Histogrammer(const std::string& name,const config::ConfigReaction* rad) :_name{name},_rad{*rad}{
+      }
+
+      /** 
+       * Initialise the splitting scheme
+       */
+      void Init(){
+
+	_splits.Init(); //configure the bins
+	auto nbins = Splitter().NTotal();
+	if(nbins==1){ //no splits, fix bin to 0
+	  _rad.Define(_name, "static_cast<short>(0)" );
+	  return;
+	}//don't need to do more
+	
+	std::string cast_to_deque_double="std::deque<double>{";
+
+	//dimension names must correspond to columns in the RDF
+	auto dim_names = _splits.GetDimensionNames();
+	for(const auto& dname:dim_names){
+	  if(_verbose)std::cout<<"Histogrammer::Init() split variable  name  :"<<dname<<std::endl;
+	  cast_to_deque_double+=Form("static_cast<double>(%s),",dname.data());
+	}
+	cast_to_deque_double+="}";
+	if(_verbose)std::cout<<"Histogrammer::Init() variables cast"<<cast_to_deque_double<<std::endl;
+	//define column of variables which required to split data
+	_rad.Define(_name+"_vars", cast_to_deque_double.data());
+	
+	//define a column with index of bin for this event
+	//copy splits for thread safety
+	auto split = [splits=_splits](std::deque<double> vars){
+	  auto res = splits.GetBin(vars);
+	  return res;};
+	
+	if(_verbose)std::cout<<"Histogrammer::Init() Define splitter column : "<<_name<<std::endl;
+	//Define a new column which will be
+	//the split bin index for the current event
+	_rad.Define(_name, split ,{_name+"_vars"});
+      }
+      
+      /** 
+       * Create a series of histograms split as defined in Splitter
+       * Must define template histogram type, HISTOGRAM (TH1F, TH2D,...)
+       *             and column types which will fill the histrogram, ColumTypes (double, float, int...)
+       * Must give a histogram template of type HISTOGRAM
+       *           a vector of column names to fill with, must work with ColumnTypes
+       */
+      template <typename HISTOGRAM,typename... ColumnTypes>
+      void Create(const HISTOGRAM& thHist, const ROOT::RDF::ColumnNames_t&  columns){
+
+       auto nbins = Splitter().NTotal();
+       auto bin_names = Splitter().GetBinNames();
+       //get hist name
+       std::string hname = thHist.GetName();
+       //create one for each split
+       std::vector<HISTOGRAM> hists(nbins,thHist);
+       
+       uint ibin=0;
+       for(auto& h:hists){
+	 //give each hist name of bin/split
+	 std::string name = hname +"_"+bin_names[ibin];
+	 std::string title = std::string(h.GetTitle())+" "+bin_names[ibin];
+	 h.SetNameTitle(name.data(),title.data());
+	 ibin++;
+       }
+       
+       //connect name to index in results vector
+       _getIndexFromName[hname]=_results.size();
+
+       //use Helper Action class
+       //https://root.cern/doc/master/classROOT_1_1RDF_1_1RInterface.html#a77b83f7955ca336487ce102e7d31e7d8
+       //template types double and TH1D, the double and D should match. i.e. float, TH1F
+       using Helper_t = SplitHistoHelper<double>;
+       auto process  = Helper_t{hists};
+
+       auto df = _rad.CurrFrame();
+       // book my action. template types : short from splits.GetBin() aka _name, one double from 1D
+       // store ResultsPtr in vector datamember
+       ROOT::RDF::ColumnNames_t cols = {_name};
+       cols.insert(cols.end(), columns.begin(), columns.end());
+       auto result = df.Book<short, ColumnTypes...>(std::move(process), cols );
+       _results.push_back( result );
+       _rad.setCurrFrame(df);
+       
+     }
+
+      /** 
+       * Get DataSplitter to define splits etc
+       */
+      DataSplitter& Splitter(){return _splits;} //to configure splits
+
+      /** 
+       * Get histogram with name at split/bin index
+       */
+      hist_ptr GetResult(const std::string& name, ushort index){
+	if( index >= Splitter().NTotal() ){
+	  std::cerr<< "Histogrammer::GetResult index out of range " <<index <<" >= "<<Splitter().N()<<std::endl;
+	  return nullptr;
+	}
+	return _results.at(_getIndexFromName[name])->at(index);
+      }
+
+      /** 
+       * Draw all histograms of type name  on a single canvas
+       */
+       void DrawAll(const std::string& name){
+	new TCanvas();
+	auto hmax =0.;
+	for(size_t i = 0; i < Splitter().NTotal(); ++i){
+	  auto mymax  = GetResult(name,i)->GetMaximum();
+	  if(mymax>hmax) hmax = mymax;
+	}
+	GetResult(name,0)->SetMaximum(hmax);
+	GetResult(name,0)->SetMinimum(0);
+	
+	for(size_t i = 0; i < Splitter().NTotal(); ++i){
+	  TString opt="";
+	  if(i>0) opt = "same";
+	  auto his = GetResult(name,i)->DrawCopy(opt);
+	  his->SetLineColor(i+1);
+	}
+      }
+
+      /** 
+       * Write all historgams to file
+       */
+       void File(const string& filename){
+
+	auto file = std::unique_ptr<TFile>{TFile::Open(filename.data(),"recreate")};
+
+	for(auto result: _getIndexFromName){
+	  //make directory with given hist name
+	  file->cd();
+	  auto dir = file->mkdir(result.first.data());
+	  file->cd(result.first.data());
+	  //create a summed histogram too
+	  std::unique_ptr<TH1> htotal;
+	  //loop over all splits and write histograms
+	  for(size_t i=0;i<Splitter().NTotal(); ++i){
+	    auto h = GetResult(result.first,i);
+	    if(i==0) htotal.reset(static_cast<TH1*>(h->Clone(result.first.data())));
+	    else htotal->Add(h.get());
+	    h->SetDirectory(dir);
+	    h->Write();
+	  }
+	  //write summed histogram
+	  htotal->Write();
+	}
+      }
+      
+    private:
+     
+      config::ConfigReaction _rad;// = nullptr;
+     DataSplitter _splits;
+     hists_results _results;
+
+      std::map<std::string, ushort> _getIndexFromName;
+      
+     std::vector<std::string> _histNames;
+     std::string _name;
+     ushort _verbose=1;
+    };
+
+  }
+}
