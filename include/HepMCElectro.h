@@ -12,6 +12,7 @@
 
 namespace rad{
   namespace config{
+   using rad::names::data_type::MC;
 
     //! Class definition
 

@@ -12,6 +12,7 @@
 
 namespace rad{
   namespace config{
+    using rad::names::data_type::MC;
 
     //! Class definition
 
@@ -29,16 +30,16 @@ namespace rad{
 
      void AliasMomentumComponents(){
       AddType("mc");
-      setBranchAlias("particles.momentum.m_v1","mc_px");
-      setBranchAlias("particles.momentum.m_v2","mc_py");
-      setBranchAlias("particles.momentum.m_v3","mc_pz");
-      setBranchAlias("particles.mass","mc_m");
-      setBranchAlias("particles.pid","mc_pid");
+      setBranchAlias("particles.momentum.m_v1",MC()+"px");
+      setBranchAlias("particles.momentum.m_v2",MC()+"py");
+      setBranchAlias("particles.momentum.m_v3",MC()+"pz");
+      setBranchAlias("particles.mass",MC()+"m");
+      setBranchAlias("particles.pid",MC()+"pid");
 
-      DefineForAllTypes("phi", Form("rad::ThreeVectorPhi(mc_px,mc_py,mc_pz)"));
-      DefineForAllTypes("theta", Form("rad::ThreeVectorTheta(mc_px,mc_py,mc_pz)"));
-      DefineForAllTypes("eta", Form("rad::ThreeVectorEta(mc_px,mc_py,mc_pz)"));
-      DefineForAllTypes("pmag", Form("rad::ThreeVectorMag(mc_px,mc_py,mc_pz)"));
+      DefineForAllTypes("phi", Form("rad::ThreeVectorPhi(components_p3)"));
+      DefineForAllTypes("theta", Form("rad::ThreeVectorTheta(components_p3)"));
+      DefineForAllTypes("eta", Form("rad::ThreeVectorEta(components_p3)"));
+      DefineForAllTypes("pmag", Form("rad::ThreeVectorMag(components_p3)"));
     }
 
     };
