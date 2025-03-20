@@ -125,6 +125,7 @@ namespace rad{
 	_p4ion_beam = PxPyPzMVector{x,y,z,m};
      }
       void DefineBeamElectron(){
+	if( !_useBeamsFromMC ) return;
 	//add to particles lists, i.e. components of _p4el_beam to rec_px etc
 	//note copying p4 so return will never change
 	auto p4=_p4el_beam;
@@ -132,6 +133,7 @@ namespace rad{
 	Particles().Beam(rad::names::BeamEle().data(),rad::names::P4BeamEle());
       }
       void DefineBeamIon(){
+	if( !_useBeamsFromMC ) return;
 	//add to particles lists, i.e. components of _p4ion_beam to rec_px etc
 	auto p4=_p4ion_beam;
 	//note copying p4 so return will never change
@@ -158,7 +160,6 @@ namespace rad{
     protected:
       PxPyPzMVector _p4el_beam;
       PxPyPzMVector _p4ion_beam;
- 
     private:
       /**
        *
