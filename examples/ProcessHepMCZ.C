@@ -4,6 +4,7 @@
 #include "HepMCElectro.h"
 #include "ParticleCreator.h"
 #include "Indicing.h"
+#include "Histogrammer.h"
 #include "BasicKinematicsRDF.h"
 #include "ReactionKinematicsRDF.h"
 #include "ElectronScatterKinematicsRDF.h"
@@ -15,7 +16,8 @@ inline constexpr std::array<double,4>  rad::beams::InitBotComponents() {return {
 inline constexpr std::array<double,4>  rad::beams::InitTopComponents() {return {0.,0.,0.,0};}
 
 void ProcessHepMCZ(){
-  gBenchmark->Start("df");
+  using namespace rad::names::data_type; //for MC()
+   gBenchmark->Start("df");
 
   //create reaction dataframe
   rad::config::HepMCElectro hepmc{"hepmc3_tree", "/home/dglazier/Dropbox/EIC/EventGenerators/elSpectro/examples/out/jpac_z3900_10x100.hepmc.root"};
@@ -29,89 +31,102 @@ void ProcessHepMCZ(){
   //give final state hadrons names,
   //if we give a PDG code it will generate el_OK branches etc
   //el_OK = 1 if electron reconstructed with right PDG
-  hepmc.setParticleIndex("idxEl",2);
-  hepmc.setParticleIndex("idxPo",3);
-  hepmc.setParticleIndex("idxPi",4);
-  hepmc.setParticleIndex("idxN",5);
+  hepmc.setParticleIndex("ele",2);
+  hepmc.setParticleIndex("pos",3);
+  hepmc.setParticleIndex("pip",4);
+  hepmc.setParticleIndex("n",5);
 
   //Group particles into top and bottom vertices
   //aka Meson and Baryon components
   //this is required for calculating reaction kinematics
   //e.g. t distributions
-  hepmc.setBaryonParticles({"idxN"});
+  hepmc.setBaryonParticles({"n"});
 
   rad::config::ParticleCreator particles{hepmc};
-  particles.Sum("idxJ",{"idxEl","idxPo"});
-  particles.Sum("idxZ",{"idxPi","idxJ"});
-  hepmc.setMesonParticles({"idxJ","idxPi"});
+  particles.Sum("Jpsi",{"ele","pos"});
+  particles.Sum("Zc",{"pip","Jpsi"});
+  hepmc.setMesonParticles({"Jpsi","pip"});
 
   //must call this after all particles are configured
   hepmc.makeParticleMap();
   
-  //can also add missing particles
-  //but must be done after ParticleMap
-  //so currently cannot use as baryon...
-  particles.Miss("idxCalcN",{"scat_ele","idxZ"});
+
+  //////////////////////////////////////////////////////////
+  // Now define calculated variables
+  // Note reconstructed variables will have rec_ prepended
+  // truth variables will have tru_ prepended
+  //////////////////////////////////////////////////////////
 
   //masses column name, {+ve particles}, {-ve particles}
   rad::rdf::MissMass(hepmc,"W","{scat_ele}");
-  rad::rdf::Mass(hepmc,"Whad","{idxEl,idxPo,idxPi,idxN}");
-  rad::rdf::Mass(hepmc,"JMass","{idxEl,idxPo}");
-  rad::rdf::Mass(hepmc,"ZMass","{idxEl,idxPo,idxPi}");
-  rad::rdf::Mass(hepmc,"MissMassZ","{idxCalcN}");
+  rad::rdf::Mass(hepmc,"Whad","{Zc,n}");
+  rad::rdf::Mass(hepmc,"JMass","{Jpsi}");
+  rad::rdf::Mass(hepmc,"ZMass","{Zc}");
+  rad::rdf::Q2(hepmc,"Q2");
 
   //t distribution, column name
-  rad::rdf::TBot(hepmc,"tb_pn");
-  rad::rdf::TPrimeBot(hepmc,"tbp_pn");
-  rad::rdf::TTop(hepmc,"tt_gZ");
-  rad::rdf::TPrimeTop(hepmc,"ttp_gZ");
+  rad::rdf::TTop(hepmc,"t_gZ");
+  rad::rdf::TBot(hepmc,"t_pn");
+  rad::rdf::TPrimeBot(hepmc,"tp_pn");
+  rad::rdf::TPrimeTop(hepmc,"tp_gZ");
 
   //CM production angles
   rad::rdf::CMAngles(hepmc,"CM");
 
+  //exlusivity
+  rad::rdf::MissMass(hepmc,"MissMass","{scat_ele,n,Zc}");
+  rad::rdf::MissP(hepmc,"MissP_Meson","{scat_ele,Zc}");
+  rad::rdf::MissPt(hepmc,"MissPt_Meson","{scat_ele,Zc}");
+  rad::rdf::MissPz(hepmc,"MissPz_Meson","{scat_ele,Zc}");
+  rad::rdf::MissTheta(hepmc,"MissTheta_Meson","{scat_ele,Zc}");
+
+
   ///////////////////////////////////////////////////////////
   //Define histograms
   ///////////////////////////////////////////////////////////
-  auto df0 = hepmc.CurrFrame();
+  rad::histo::Histogrammer histo{"set1",hepmc};
+  // we can create many histograms by splitting events into
+  // bins, where the same histogram is produced for the given bin
+  // e.g. create 10 bins in mc_W between 4 and 54 GeV 
+  //histo.Splitter().AddRegularDimension(MC()+"W", rad::histo::RegularSplits(10,4,54) );
+  //can add as many split dimensions as we like
+  //histo.Splitter().AddRegularDimension("xxx", rad::histo::RegularSplits(nbins,low,high) );
+  histo.Init({MC()});//will create histograms for mc
 
-  auto hW = df0.Histo1D({"W","W",100,0,20.},"mc_W");
-  auto hWhad = df0.Histo1D({"Whad","Whad",100,0,20.},"mc_Whad");
-  auto hMesonMass = df0.Histo1D({"MesonMass","M(e-,e+, #pi) [GeV]",100,.3,5.},"mc_ZMass");
-  auto hJMass = df0.Histo1D({"JMass","M(e-,e+) [GeV]",100,.3,5.},"mc_JMass");
-  auto htpn = df0.Histo1D({"tpn","t(p,n) [GeV^{2}]",100,0,5},"mc_tb_pn");
-  auto htgZ = df0.Histo1D({"tgZ","t(g,Z) [GeV^{2}]",100,0,5},"mc_tt_gZ");
-  auto htprimepn = df0.Histo1D({"tprimepn","t'(p,n) [GeV^{2}]",100,0,5},"mc_tbp_pn");
-  auto htprimegZ = df0.Histo1D({"tprimegZ","t'(p,n) [GeV^{2}]",100,0,5},"mc_ttp_gZ");
-  auto hthCM=df0.Histo1D({"cthCM","cos(#theta_{CM})",100,-1,1},"mc_CM_CosTheta");
-  auto hphCM=df0.Histo1D({"phCM","#phi_{CM})",100,-TMath::Pi(),TMath::Pi()},"mc_CM_Phi");
- 
+  histo.Create<TH1D,double>({"Q2","Q2",500,0,2.},{"Q2"});
+  histo.Create<TH1D,double>({"W","W",100,0,20.},{"W"});
+  histo.Create<TH1D,double>({"MesonMass","M(e-,e+, #pi) [GeV]",100,.3,5.},{"ZMass"});
+  histo.Create<TH1D,double>({"MissMass","Mmiss [GeV]",1000,-10,10},{"MissMass"});
+  histo.Create<TH1D,double>({"JMass","M(e-,e+) [GeV]",100,.3,5.},{"JMass"});
+  histo.Create<TH1D,double>({"tpn","t(p,n) [GeV^{2}]",100,-2,5},{"t_pn"});
+  histo.Create<TH1D,double>({"tgZ","t(g,Z) [GeV^{2}]",100,-2,5},{"t_gZ"});
+  histo.Create<TH1D,double>({"cthCM","cos(#theta_{CM})",100,-1,1},{"CM_CosTheta"});
+  histo.Create<TH1D,double>({"phCM","#phi_{CM})",100,-TMath::Pi(),TMath::Pi()},{"CM_Phi"});
+  histo.Create<TH1D,double>({"missP","p_{miss}(e',Z)",105,0,105},{"MissP_Meson"});
+  histo.Create<TH1D,double>({"missPt","p_{t,miss}(e',Z)",100,0,10},{"MissPt_Meson"});
+  histo.Create<TH1D,double>({"missPz","p_{z,miss}(e',Z)",105,0,105},{"MissPz_Meson"});
+  histo.Create<TH1D,double>({"missTheta","#theta_{miss}(e',Z)",100,0,1},{"MissTheta_Meson"});
+
   gBenchmark->Start("processing");
   ///////////////////////////////////////////////////////////
   //Draw histograms
   ///////////////////////////////////////////////////////////
-  hWhad->DrawCopy();
-  new TCanvas();
-  hMesonMass->DrawCopy();
-  new TCanvas();
-  hJMass->DrawCopy();
-  new TCanvas();
-  htpn->DrawCopy();
-  htgZ->DrawCopy("same");
-  htprimepn->DrawCopy("same");
-  htprimegZ->DrawCopy("same");
-  auto canCM = new TCanvas();
-  canCM->Divide(2,1);
-  canCM->cd(1);
-  hthCM->DrawCopy();
-  canCM->cd(2);
-  hphCM->DrawCopy();
-
+ 
+  //Draw all meson masss histograms on 1 canvas
+  histo.DrawAll("MesonMass");
    
   gBenchmark->Stop("processing");
   gBenchmark->Print("processing");
+
+  //save all histograms to file
+  histo.File("HepMCZ_hists.root");
+
   gBenchmark->Stop("df");
   gBenchmark->Print("df");
   
-  // hepmc.Snapshot("HepMCZ.root");
+  gBenchmark->Start("snapshot");
+  //  hepmc.Snapshot("HepMCZ.root");
+  gBenchmark->Stop("snapshot");
+  gBenchmark->Print("snapshot");
 
 }

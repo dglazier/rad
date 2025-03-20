@@ -4,74 +4,81 @@
 #include "ePICReaction.h"
 #include "ParticleCreator.h"
 #include "Indicing.h"
+#include "Histogrammer.h"
 #include "BasicKinematicsRDF.h"
 #include "ReactionKinematicsRDF.h"
 #include "ElectronScatterKinematicsRDF.h"
 #include <TBenchmark.h>
 #include <TCanvas.h>
 
-//inline constexpr std::array<double,4>  rad::beams::InitBotComponents() {return {0.,0.,100.,0.93827210};}
-//inline constexpr std::array<double,4>  rad::beams::InitTopComponents() {return {0.,0.,-10.,0.00051099900};}
-
-//with afterburner need slightly altered energies
 inline constexpr std::array<double,4>  rad::beams::InitBotComponents() {return {0,0,99.9339,0.938272};}
 inline constexpr std::array<double,4>  rad::beams::InitTopComponents() {return {0,0,-10.007,0.000510999};}
 
 void ProcessMCMatchedZ(){
+  using namespace rad::names::data_type; //for Rec(), Truth()
+  
   gBenchmark->Start("df");
 
   rad::config::ePICReaction epic{"events","/home/dglazier/EIC/data/sim/jpac_z3900_10x100.root"};
+  epic.SetBeamsFromMC();
+
   //epic.AliasColumnsAndMC();
   epic.AliasColumnsAndMatchWithMC();
 
   
   //Assign particles names and indices
+
+  //Alternative to SetBeamsFromMC() give fixed 4-vector
+  //via rad::beams::InitBotComponents() and rad::beams::InitTopComponents()
+  //epic.setBeamIonIndex(rad::beams::InitBotFix());
+  //epic.setBeamElectronIndex(rad::beams::InitTopFix());
+
   //indicing comes from ordering in hepmc file
-  epic.setBeamIonIndex(rad::beams::InitBotFix());
-  epic.setBeamElectronIndex(rad::beams::InitTopFix());
   epic.setScatElectronIndex(4);
   //give final state hadrons names,
   //if we give a PDG code it will generate el_OK branches etc
-  //el_OK = 1 if electron reconstructed with right PDG
-  epic.setParticleIndex("idxEl",0,11);
-  epic.setParticleIndex("idxPo",1,-11);
-  epic.setParticleIndex("idxPi",2,211);
-  epic.setParticleIndex("idxN",3,2112);
+  //ele_OK = 1 if electron reconstructed with right PDG
+  epic.setParticleIndex("ele",0,11);
+  epic.setParticleIndex("pos",1,-11);
+  epic.setParticleIndex("pip",2,211);
+  epic.setParticleIndex("n",3,2112);
 
   //Group particles into top and bottom vertices
   //aka Meson and Baryon components
   //this is required for calcualting reaction kinematics
   //e.g. t distributions
-  //but must be done after ParticleMap
-  //so currently cannot use as baryon...
-
-  rad::config::ParticleCreator particles{epic};
-  particles.Sum("idxJ",{"idxEl","idxPo"});
-  particles.Sum("idxZ",{"idxPi","idxJ"});
   
-  epic.setMesonParticles({"idxEl","idxPo","idxPi"});
+  epic.Particles().Sum("Jpsi",{"ele","pos"});
+  epic.Particles().Sum("Zc",{"pip","Jpsi"});
+  
+  epic.setMesonParticles({"Jpsi","pip"});
   
   //can also add missing particles
   //And use those in calculations
   //Miss(name,{other final state particles})
-  particles.Miss("idxCalcN",{rad::names::ScatEle().data(),"idxZ"});
-  epic.setBaryonParticles({"idxCalcN"});
+  epic.Particles().Miss("calc_n",{rad::names::ScatEle().data(),"Zc"});
+  epic.setBaryonParticles({"calc_n"});
 
   //must call this after all particles are configured
   epic.makeParticleMap();
   
  
   //option filtering of reconstructed tracks
-  //  epic.Filter("el_OK==1&&po_OK==1","partFilter");
-  
+  //epic.Filter("el_OK==1&&po_OK==1","partFilter");
+
+  //////////////////////////////////////////////////////////
+  // Now define calculated variables
+  // Note reconstructed variables will have rec_ prepended
+  // truth variables will have tru_ prepended
+  //////////////////////////////////////////////////////////
+
   //masses column name, {+ve particles}, {-ve particles}
   rad::rdf::MissMass(epic,"W","{scat_ele}");
-  rad::rdf::MissMass(epic,"MissMass","{scat_ele,idxN,idxZ}");
-  rad::rdf::Mass(epic,"Whad","{idxPi,idxEl,idxPo,idxN}");
-  //  rad::rdf::Mass(epic,"Whad","{idxZ,idxN}");
-  rad::rdf::Mass(epic,"JMass","{idxJ}");
-  rad::rdf::Mass(epic,"ZMass","{idxZ}");
-  rad::rdf::Mass(epic,"MissNMass","{idxCalcN}");
+  rad::rdf::Mass(epic,"Whad","{Zc,n}");
+  rad::rdf::Mass(epic,"JMass","{Jpsi}");
+  rad::rdf::Mass(epic,"ZMass","{Zc}");
+  rad::rdf::Mass(epic,"MissNMass","{calc_n}");
+  rad::rdf::Q2(epic,"Q2");
 
   //t distribution, column name
   rad::rdf::TTop(epic,"t_gZ");
@@ -81,59 +88,59 @@ void ProcessMCMatchedZ(){
 
   //CM production angles
   rad::rdf::CMAngles(epic,"CM");
-  
+
+  //exlusivity
+  rad::rdf::MissMass(epic,"MissMass","{scat_ele,n,Zc}");
+  rad::rdf::MissP(epic,"MissP_Meson","{scat_ele,Zc}");
+  rad::rdf::MissPt(epic,"MissPt_Meson","{scat_ele,Zc}");
+  rad::rdf::MissPz(epic,"MissPz_Meson","{scat_ele,Zc}");
+  rad::rdf::MissTheta(epic,"MissTheta_Meson","{scat_ele,Zc}");
+
   ///////////////////////////////////////////////////////////
   //Define histograms
   ///////////////////////////////////////////////////////////
-  auto df0 = epic.CurrFrame();
+  rad::histo::Histogrammer histo{"set1",epic};
+  // we can create many histograms by splitting events into
+  // bins, where the same histogram is produced for the given bin
+  // e.g. create 10 bins in tru_W between 4 and 54 GeV 
+  histo.Splitter().AddRegularDimension(Truth()+"W", rad::histo::RegularSplits(10,4,14) );
+  //can add as many split dimensions as we like
+  //histo.Splitter().AddRegularDimension("xxx", rad::histo::RegularSplits(nbins,low,high) );
+  histo.Init({Rec(),Truth()});//will create histograms for rec and truth
 
-  auto hW = df0.Histo1D({"W","W",100,0,20.},"tru_W");
-  auto hWhad = df0.Histo1D({"Whad","Whad",100,0,20.},"tru_Whad");
-  auto hMesonMass = df0.Histo1D({"MesonMass","M(e-,e+, #pi) [GeV]",100,.3,5.},"tru_ZMass");
-  auto hMissMass = df0.Histo1D({"MissMass","Mmiss [GeV]",1000,-10,10},"tru_MissMass");
-  auto hJMass = df0.Histo1D({"JMass","M(e-,e+) [GeV]",100,.3,5.},"tru_JMass");
-  auto htpn = df0.Histo1D({"tpn","t(p,n) [GeV^{2}]",100,-2,5},"tru_t_pn");
-  auto htgZ = df0.Histo1D({"tgZ","t(g,Z) [GeV^{2}]",100,-2,5},"tru_t_gZ");
-  auto htprimepn = df0.Histo1D({"tprimepn","t'(p,n) [GeV^{2}]",100,-2,5},"tru_tp_pn");
-  auto htprimegZ = df0.Histo1D({"tprimegZ","t'(p,n) [GeV^{2}]",100,-2,5},"tru_tp_gZ");
-  auto hthCM=df0.Histo1D({"cthCM","cos(#theta_{CM})",100,-1,1},"tru_CM_CosTheta");
-  auto hphCM=df0.Histo1D({"phCM","#phi_{CM})",100,-TMath::Pi(),TMath::Pi()},"tru_CM_Phi");
-  
+  histo.Create<TH1D,double>({"Q2","Q2",500,0,2.},{"Q2"});
+  histo.Create<TH1D,double>({"W","W",100,0,20.},{"W"});
+  histo.Create<TH1D,double>({"MesonMass","M(e-,e+, #pi) [GeV]",100,.3,5.},{"ZMass"});
+  histo.Create<TH1D,double>({"MissMass","Mmiss [GeV]",1000,-10,10},{"MissMass"});
+  histo.Create<TH1D,double>({"JMass","M(e-,e+) [GeV]",100,.3,5.},{"JMass"});
+  histo.Create<TH1D,double>({"tpn","t(p,n) [GeV^{2}]",100,-2,5},{"t_pn"});
+  histo.Create<TH1D,double>({"tgZ","t(g,Z) [GeV^{2}]",100,-2,5},{"t_gZ"});
+  histo.Create<TH1D,double>({"cthCM","cos(#theta_{CM})",100,-1,1},{"CM_CosTheta"});
+  histo.Create<TH1D,double>({"phCM","#phi_{CM}",100,-TMath::Pi(),TMath::Pi()},{"CM_Phi"});
+  histo.Create<TH1D,double>({"missP","p_{miss}(e',Z)",105,0,105},{"MissP_Meson"});
+  histo.Create<TH1D,double>({"missPt","p_{t,miss}(e',Z)",100,0,10},{"MissPt_Meson"});
+  histo.Create<TH1D,double>({"missPz","p_{z,miss}(e',Z)",105,0,105},{"MissPz_Meson"});
+  histo.Create<TH1D,double>({"missTheta","#theta_{miss}(e',Z)",100,0,1},{"MissTheta_Meson"});
+ 
   gBenchmark->Start("processing");
   ///////////////////////////////////////////////////////////
   //Draw histograms
   ///////////////////////////////////////////////////////////
-  //hp->DrawCopy();
-  new TCanvas();
-  hWhad->DrawCopy();
-  new TCanvas();
-  hMesonMass->DrawCopy();
-  new TCanvas();
-  hMissMass->DrawCopy();
-  new TCanvas();
-  hJMass->DrawCopy();
-  new TCanvas();
-  htpn->DrawCopy();
-  htgZ->DrawCopy("same");
-  htprimepn->DrawCopy("same");
-  htprimegZ->DrawCopy("same");
-  auto canCM = new TCanvas();
-  canCM->Divide(2,1);
-  canCM->cd(1);
-  hthCM->DrawCopy();
-  canCM->cd(2);
-  hphCM->DrawCopy();
-  
-  
+ 
+  //Draw all meson masss histograms on 1 canvas
+  histo.DrawAll("MesonMass");
+   
   gBenchmark->Stop("processing");
   gBenchmark->Print("processing");
 
-  
+  //save all histograms to file
+  histo.File("MCMatchedZ_hists.root");
+
   gBenchmark->Stop("df");
   gBenchmark->Print("df");
   
   gBenchmark->Start("snapshot");
-  // epic.Snapshot("MCMatchedZ.root");
+  //  epic.Snapshot("MCMatchedZ.root");
   gBenchmark->Stop("snapshot");
   gBenchmark->Print("snapshot");
 
