@@ -81,8 +81,10 @@ namespace rad{
 	//this function ensures all type create particles are called at same time
 	//Also we can use just name rather than type_name which should ahve same value
 	//for all types
-	// std::cout<<"Sum names "<<snames<<" "<<Form("ROOT::RVecU%s[0]",snames.data())<<std::endl;
+	//std::cout<<"Sum names "<<snames<<" "<<Form("ROOT::RVecU%s[0]",snames.data())<<std::endl;
 	_reaction->Define(name.data(),Form("ROOT::RVecI%s[0]",snames.data()));
+	Reaction()->AddParticleName(name);
+ 
       }
     
       //////////////////////////////////////////////////////////////////
@@ -99,11 +101,11 @@ namespace rad{
       }
 
       void SetReaction(ConfigReaction* reaction){_reaction=reaction;}
-      ConfigReaction* Reaction() { return _reaction;}
+      ConfigReaction* Reaction() const { return _reaction;}
       
     private:
       
-      ConfigReaction* _reaction=nullptr;
+      mutable ConfigReaction* _reaction=nullptr;
       mutable std::vector<string> _created;
       
     };
