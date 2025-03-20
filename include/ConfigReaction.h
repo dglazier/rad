@@ -173,7 +173,8 @@ namespace rad{
 	    Define(particle+"_OK",Form("%spid[%s]==%d",Rec().data(),particle.data(),pdg));
 	  }
 	}
-      }
+ 	AddParticleName(particle);
+     }
       
       /** 
        * Set function, func,  which defines variable index in collection for particle
@@ -190,6 +191,7 @@ namespace rad{
 	    Define(string(particle)+"_OK",Form("%spid[%s]==%d",Rec().data(),particle.data(),pdg));
 	  }
 	}
+	AddParticleName(particle);
       }
 
       /**
@@ -199,7 +201,24 @@ namespace rad{
        *
        * This function must be implmented by a derived class
        */
-      virtual void makeParticleMap() {}//= 0; do not make abstract class so can copy derived types to this
+      virtual void makeParticleMap() {
+	std::string particle_func("1E6+");
+	for(auto& part : _particleNames){
+	  particle_func+=part+"+";
+	}
+	particle_func.pop_back(); //remove last +
+
+	Filter(particle_func.data(),"particle_list");
+
+	PostParticles();
+      }//= 0; do not make abstract class so can copy derived types to this
+
+      /**
+       *Any additional stuff to be done after all particles have been indiced
+       */
+      virtual void PostParticles(){
+
+      }
      // /**
      //   * Make map that links beam names to indices in user functions
      //   * in C++ functions you can use the RVecIndexMap object indexed by 
@@ -389,6 +408,7 @@ namespace rad{
 	return _fileNames;
       }
       
+      void AddParticleName(const std::string& particle){_particleNames.push_back(particle);}
       
      protected:
 
@@ -434,7 +454,8 @@ namespace rad{
       std::vector<std::string> _fileNames;//if given list of files
       std::string _fileName;//if single file (or wildcards)
       std::string _treeName;
-      
+      ROOT::RDF::ColumnNames_t  _particleNames; //list of all particles, so index calculation can be enforced at start of operations
+
     };//ConfigReaction
 
   }//config

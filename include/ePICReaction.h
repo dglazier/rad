@@ -72,7 +72,7 @@ namespace rad{
 	  DefineBeamElectron();
 	  DefineBeamIon();
 
-	  AddAdditionalComponents();
+	  //AddAdditionalComponents();
 	}
        }
       
@@ -161,10 +161,10 @@ namespace rad{
 	  DefineBeamIon();
 
 	  //after undo afterburn
-	  AddAdditionalComponents();
+	  //AddAdditionalComponents();
 	  //needed to make sure tru and rec are defined at the same time
 	  //and therefore contain same elements.
-	  Filter([](const ROOT::RVecF& th,const ROOT::RVecF& pmag,const ROOT::RVecF& ph,const ROOT::RVecF& eta,const ROOT::RVecF& rth,const ROOT::RVecF& rpmag,const ROOT::RVecF& rph,const ROOT::RVecF& reta){return true;},{Truth()+"pmag",Truth()+"theta",Truth()+"phi",Truth()+"eta",Rec()+"pmag",Rec()+"theta",Rec()+"phi",Rec()+"eta"});
+	  //	  Filter([](const ROOT::RVecF& th,const ROOT::RVecF& pmag,const ROOT::RVecF& ph,const ROOT::RVecF& eta,const ROOT::RVecF& rth,const ROOT::RVecF& rpmag,const ROOT::RVecF& rph,const ROOT::RVecF& reta){return true;},{Truth()+"pmag",Truth()+"theta",Truth()+"phi",Truth()+"eta",Rec()+"pmag",Rec()+"theta",Rec()+"phi",Rec()+"eta"});
 	}
      }
       /**
@@ -217,7 +217,7 @@ namespace rad{
 	  DefineBeamIon();
 
 	  //after undo afterburn
-	  AddAdditionalComponents();
+	  // AddAdditionalComponents();
  
 	}
       }
@@ -290,16 +290,16 @@ namespace rad{
 	  DefineBeamElectron();
 	  DefineBeamIon();
 	
-	  AddAdditionalComponents();
+	  //AddAdditionalComponents();
 	  //add resolution functions
-	  ResolutionFraction<float>("pmag");
-	  Resolution("theta");
-	  Resolution("phi");
-	  Resolution("eta");
+	  //ResolutionFraction<float>("pmag");
+	  //Resolution("theta");
+	  //Resolution("phi");
+	  //Resolution("eta");
 
 	  //needed to make sure tru and rec are defined at the same time
 	  //and therefore contain same elements.
-	  Filter([](const ROOT::RVecF& th,const ROOT::RVecF& pmag,const ROOT::RVecF& ph,const ROOT::RVecF& eta,const ROOT::RVecF& rth,const ROOT::RVecF& rpmag,const ROOT::RVecF& rph,const ROOT::RVecF& reta){return true;},{Truth()+"pmag",Truth()+"theta",Truth()+"phi",Truth()+"eta",Rec()+"pmag",Rec()+"theta",Rec()+"phi",Rec()+"eta"});
+	  //	  Filter([](const ROOT::RVecF& th,const ROOT::RVecF& pmag,const ROOT::RVecF& ph,const ROOT::RVecF& eta,const ROOT::RVecF& rth,const ROOT::RVecF& rpmag,const ROOT::RVecF& rph,const ROOT::RVecF& reta){return true;},{Truth()+"pmag",Truth()+"theta",Truth()+"phi",Truth()+"eta",Rec()+"pmag",Rec()+"theta",Rec()+"phi",Rec()+"eta"});
  
 	}
       }//AliasColumnsAndMatchWithMC
@@ -341,7 +341,14 @@ namespace rad{
 	  }
 	}
 
-    }
+      }
+      
+      void PostParticles() override{
+	//once particle are added to vectors
+	//we can calculate additional components
+	AddAdditionalComponents();
+      }
+      
       void AddAdditionalComponents(){
 	//and add some additional columns
 	DefineForAllTypes("phi", Form("rad::ThreeVectorPhi(components_p3)"));
@@ -349,7 +356,8 @@ namespace rad{
 	DefineForAllTypes("eta", Form("rad::ThreeVectorEta(components_p3)"));
 	DefineForAllTypes("pmag", Form("rad::ThreeVectorMag(components_p3)"));
 
-	
+	Filter([](const ROOT::RVecF& th,const ROOT::RVecF& pmag,const ROOT::RVecF& ph,const ROOT::RVecF& eta,const ROOT::RVecF& rth,const ROOT::RVecF& rpmag,const ROOT::RVecF& rph,const ROOT::RVecF& reta){return true;},{Truth()+"pmag",Truth()+"theta",Truth()+"phi",Truth()+"eta",Rec()+"pmag",Rec()+"theta",Rec()+"phi",Rec()+"eta"});
+
      }
       
       template<typename T> 
@@ -414,6 +422,7 @@ namespace rad{
       }
 
       void SetBeamsFromMC(Long64_t nrows=100){
+	_useBeamsFromMC=true;
 	auto nthreads  = ROOT::GetThreadPoolSize();
 	//Range only works in single thread mode
 	if(nthreads) ROOT::DisableImplicitMT();

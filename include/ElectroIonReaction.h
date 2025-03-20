@@ -60,6 +60,8 @@ namespace rad{
 	       {names::BeamIon().data(),names::BeamEle().data(),
 		names::Baryons().data(),names::Mesons().data(),
 		names::ScatEle().data(),names::BeamGamma().data()});
+
+	ConfigReaction::makeParticleMap();
       }
       // /**
       //  * Make map that links particle names to indices in user functions
