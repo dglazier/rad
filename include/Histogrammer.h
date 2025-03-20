@@ -28,11 +28,11 @@ namespace rad{
 
     public:
 
-      Histogrammer(const config::ConfigReaction* rad):_rad{*rad}{
+      Histogrammer(config::ConfigReaction& rad):_rad{rad}{
 
       }
       
-      Histogrammer(const std::string& name,const config::ConfigReaction* rad) :_name{name},_rad{*rad}{
+      Histogrammer(const std::string& name,config::ConfigReaction& rad) :_name{name},_rad{rad}{
       }
 
       /** 
@@ -115,8 +115,6 @@ namespace rad{
 	//template types double and TH1D, the double and D should match. i.e. float, TH1F
 	using Helper_t = SplitHistoHelper<double>;
 
-	auto df = _rad.CurrFrame();
-
 	// loop over types of variables
 	for(const auto& type:_types){
 	  auto process  = Helper_t{hists};
@@ -125,18 +123,65 @@ namespace rad{
 	  // store ResultsPtr in vector datamember
 	  ROOT::RDF::ColumnNames_t cols = {_name};
 	  cols.insert(cols.end(), columns.begin(), columns.end());
+	  auto badCol=false;
 	  for(auto& col:cols){//prepend type
 	    if(col==_name) continue;//dont prepend name
 	    col = type+col;
+
+	    //sometimes not all variables are defined for all types 
+	    if( CheckColumn(col)==false){
+	      _typeResults[type].push_back(hists_splits_ptr()  );
+	      badCol=true;
+	    }
+	    
 	  }
+	  if(badCol==true) continue; //column does not exist, ignore it
+
+	  auto df = _rad.CurrFrame();
+
+	  //Book the histogram action and store it as a result
 	  auto result = df.Book<short, ColumnTypes...>(std::move(process), cols );
 	  _typeResults[type].push_back( result );
-	}
+
+	  _rad.setCurrFrame(df);
+ 	}
 	
-	_rad.setCurrFrame(df);
-       
+      
       }
 
+      /**
+       *  Check to see if column exists, or is part of an array
+       *  If it is an array element define it as a new column for histogramming
+       */
+      bool CheckColumn(std::string& col){
+
+	if(rad::config::ColumnExists(col,_rad.CurrFrame())==true) return true;
+	
+	// Check if we request an element of an array
+	// in which case we need to define as a column
+	if(col.find('[')!=string::npos){// [  indicates array element
+	  //now check if array exists, i.e. string up to [
+
+	  if(rad::config::ColumnExists(col.substr(0,col.find('[')),_rad.CurrFrame())==false)
+	    return false;
+
+	  //we have an array and an element so define it as a column
+	  auto new_col = col;
+	  new_col.replace(col.find('['), 1,1, '_');
+	  new_col.replace(col.find(']'), 1,1, '_');
+	  if(_verbose) std::cout<<"CheckColumn create new column from array element : "<<new_col<<endl;
+
+	  //Check if already defined new_col
+	  if(rad::config::ColumnExists(new_col,_rad.CurrFrame())==false){
+	    _rad.Define(new_col,col);
+	  }
+	  //change col, so we use the new one
+	  col = new_col;
+	  return true;
+	}
+	//column or array do not exist
+	return false;
+      }
       /** 
        * Get DataSplitter to define splits etc
        */
@@ -150,6 +195,8 @@ namespace rad{
 	  std::cerr<< "Histogrammer::GetResult index out of range " <<index <<" >= "<<Splitter().N()<<std::endl;
 	  return nullptr;
 	}
+	if(TypeResult(type).at(_getIndexFromName[name]).GetPtr()==nullptr) return hist_ptr();//nulltptr
+	if(TypeResult(type).at(_getIndexFromName[name])->size()==0) return hist_ptr();//nulltptr
 	return TypeResult(type).at(_getIndexFromName[name])->at(index);
       }
 
@@ -159,6 +206,10 @@ namespace rad{
       void DrawAll(const std::string& name){
 	//Loop over types
 	for(const auto& type:_types){
+	  //check if this histogram exists for this type
+	  if(GetResult(type,name,0).get()==nullptr){
+	    continue;
+	  }
 	  new TCanvas();
 	  auto hmax =0.;
 	  for(size_t i = 0; i < Splitter().NTotal(); ++i){
@@ -192,6 +243,10 @@ namespace rad{
 	for(auto result: _getIndexFromName){
 	  //Loop over types
 	  for(const auto& type:_types){
+	    //check if this histogram exists for this type
+	    if(GetResult(type,result.first,0).get()==nullptr){
+	      continue;
+	    }
 	    
 	    //make directory with given hist name and type
 	    file->cd();
@@ -216,7 +271,7 @@ namespace rad{
       
     private:
      
-      config::ConfigReaction _rad;// = nullptr;
+      config::ConfigReaction& _rad;// = nullptr;
       DataSplitter _splits;
       //      hists_results _results;
       std::map<std::string, hists_results > _typeResults;
