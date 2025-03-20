@@ -100,7 +100,8 @@ namespace rad{
 	    auto dist =rad::helpers::findIndex(collIndices,id);
 	    if(dist==collIndices.size()) localID[i]=-1;
 	    else localID[i]=dist;
-	    if(localID[i]>-1)cout<<"LocalCollIdx"<<i<<" "<<id<<" "<<localID[i]<<std::endl;
+
+	    //if(localID[i]>-1)cout<<"LocalCollIdx"<<i<<" "<<id<<" "<<localID[i]<<std::endl;
   
 	    ++i;
 	  }
@@ -142,12 +143,12 @@ namespace rad{
 	  mapName.ReplaceAll(".","_");
 	  Define(mapName,Form("ROOT::RVec<ROOT::RVecF>{%s}",strNames.data()));
 	  //unravel map into synchronised (with ReconstructedParticles ordering)
-	  TString assocName = object+member;
+	  TString assocName = Rec()+object+member;
 	  assocName.ReplaceAll(".","_");
 	  Define(assocName,CreateAssocVector,{mapName.Data(), collIdxsName,"_ReconstructedParticles_"+object+".index"});
 	  //reorder to match truth and rec if required
 	  if(rad::config::ColumnExists(Truth()+"match_id",CurrFrame()) == true ){
-	    RedefineExpr(std::string(assocName), std::string(Form("rad::helpers::Reorder(%s,%s,%s,%s)",assocName.Data(),Rec()+"match_id",Truth()+"match_id",Truth()+"n")) );
+	    RedefineExpr(std::string(assocName), std::string(Form("rad::helpers::Reorder(%s,%s,%s,%s)",assocName.Data(),(Rec()+"match_id").data(),(Truth()+"match_id").data(),(Truth()+"n").data())) );
 	  }
 	}
 	
