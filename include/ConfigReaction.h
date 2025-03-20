@@ -393,7 +393,8 @@ namespace rad{
      protected:
 
       const std::map<string,string>& AliasMap() const {return _aliasMap;}
-      
+      bool _useBeamsFromMC=false; 
+ 
     private :
     
       /**
