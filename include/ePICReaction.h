@@ -291,16 +291,12 @@ namespace rad{
 	  DefineBeamIon();
 	
 	  //AddAdditionalComponents();
-	  //add resolution functions
-	  //ResolutionFraction<float>("pmag");
-	  //Resolution("theta");
-	  //Resolution("phi");
-	  //Resolution("eta");
 
 	  //needed to make sure tru and rec are defined at the same time
 	  //and therefore contain same elements.
 	  //	  Filter([](const ROOT::RVecF& th,const ROOT::RVecF& pmag,const ROOT::RVecF& ph,const ROOT::RVecF& eta,const ROOT::RVecF& rth,const ROOT::RVecF& rpmag,const ROOT::RVecF& rph,const ROOT::RVecF& reta){return true;},{Truth()+"pmag",Truth()+"theta",Truth()+"phi",Truth()+"eta",Rec()+"pmag",Rec()+"theta",Rec()+"phi",Rec()+"eta"});
- 
+
+	  _truthMatched =true;
 	}
       }//AliasColumnsAndMatchWithMC
 
@@ -347,6 +343,15 @@ namespace rad{
 	//once particle are added to vectors
 	//we can calculate additional components
 	AddAdditionalComponents();
+
+	if(IsTruthMatched()){
+	  //add resolution functions
+	  ResolutionFraction<float>("pmag");
+	  Resolution("theta");
+	  Resolution("phi");
+	  Resolution("eta");
+
+	}
       }
       
       void AddAdditionalComponents(){
@@ -441,9 +446,13 @@ namespace rad{
 
 	if(nthreads) ROOT::EnableImplicitMT(nthreads);
       }
-      
+
+      bool IsTruthMatched()const {return _truthMatched;}
+
     private:
       
+      bool _truthMatched =false;
+
     };//ePICReaction
 
     
