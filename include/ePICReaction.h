@@ -40,6 +40,15 @@ namespace rad{
 	setBranchAlias("ReconstructedParticles.momentum.z",Rec()+"pz");
 	setBranchAlias("ReconstructedParticles.mass",Rec()+"m");
 	setBranchAlias("ReconstructedParticles.PDG",Rec()+"pid");
+
+	Define(Rec()+"Ngamma",Form("rad::helpers::Count(%spid,22)",Rec().data()) );
+	Define(Rec()+"Npip",Form("rad::helpers::Count(%spid,211)",Rec().data()) );
+	Define(Rec()+"Npim",Form("rad::helpers::Count(%spid,-211)",Rec().data()) );
+	Define(Rec()+"NKp",Form("rad::helpers::Count(%spid,321)",Rec().data()) );
+	Define(Rec()+"NKm",Form("rad::helpers::Count(%spid,-321)",Rec().data()) );
+	Define(Rec()+"Nele",Form("rad::helpers::Count(%spid,11)",Rec().data()) );
+	Define(Rec()+"Npos",Form("rad::helpers::Count(%spid,-11)",Rec().data()) );
+	Define(Rec()+"Npro",Form("rad::helpers::Count(%spid,2212)",Rec().data()) );
 	
 	if(IsEnd){
 	  /////RedefineFundamentalAliases();
@@ -187,7 +196,15 @@ namespace rad{
 	},{Truth()+"genStat"});//simID points from rec to tru
 
 
-	
+	Define(Truth()+"Ngamma",Form("rad::helpers::Count(%spid,22)",Truth().data()) );
+	Define(Truth()+"Npip",Form("rad::helpers::Count(%spid,211)",Truth().data()) );
+	Define(Truth()+"Npim",Form("rad::helpers::Count(%spid,-211)",Truth().data()) );
+	Define(Truth()+"NKp",Form("rad::helpers::Count(%spid,321)",Truth().data()) );
+	Define(Truth()+"NKm",Form("rad::helpers::Count(%spid,-321)",Truth().data()) );
+	Define(Truth()+"Nele",Form("rad::helpers::Count(%spid,11)",Truth().data()) );
+	Define(Truth()+"Npos",Form("rad::helpers::Count(%spid,-11)",Truth().data()) );
+	Define(Truth()+"Npro",Form("rad::helpers::Count(%spid,2212)",Truth().data()) );
+
 	if(IsEnd){
 	  RedefineFundamentalAliases();
 
