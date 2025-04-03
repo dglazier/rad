@@ -44,6 +44,22 @@ namespace rad{
       // setMyBaseFrame();
      }
 
-    };
+     void AliasStableMomentumComponents(){
+       AliasMomentumComponents();
+       setBranchAlias("particles.status",MC()+"genStat");
+
+       Define(MC()+"final_pid",[](const ROOT::RVecI& pid,const ROOT::RVecI& stat){
+	 auto n = pid.size();
+	 auto final_pid = pid;
+	 final_pid*=(stat==1);
+	 // for(size_t i=0;i<n;++i){
+	 //   final_id[i]=pid[i]*(stat[i]==1);
+	 // }
+	 return final_pid;
+
+       },{MC()+"pid",MC()+"genStat"});//simID points from rec to tru
+
+     }
+     };
   }
 }
