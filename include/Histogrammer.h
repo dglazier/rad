@@ -132,11 +132,13 @@ namespace rad{
 	    if( CheckColumn(col)==false){
 	      _typeResults[type].push_back(hists_splits_ptr()  );
 	      badCol=true;
+	      std::cout<<"Warning :: Histogrammer Column "<<col<<" "<<" does not exist"<<std::endl ;
 	    }
 	    
 	  }
-	  if(badCol==true) continue; //column does not exist, ignore it
-
+	  if(badCol==true){
+	    continue; //column does not exist, ignore it
+	  }
 	  auto df = _rad.CurrFrame();
 
 	  //Book the histogram action and store it as a result

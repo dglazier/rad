@@ -81,6 +81,12 @@ void ProcessHepMCZ(){
   rad::rdf::MissTheta(hepmc,"MissTheta_Meson","{scat_ele,Zc}");
 
 
+  ///////////////////////////////////////////////////////////////
+  //Define subsets of particles and corresponing variables to plot
+  ///////////////////////////////////////////////////////////////
+  hepmc.Define("electrons","rad::helpers::PositionsWhere(mc_pid==11)");
+  hepmc.Define(MC()+"elsP",Form("Take(%spmag,electrons)",MC().data()));
+
   ///////////////////////////////////////////////////////////
   //Define histograms
   ///////////////////////////////////////////////////////////
@@ -106,6 +112,8 @@ void ProcessHepMCZ(){
   histo.Create<TH1D,double>({"missPt","p_{t,miss}(e',Z)",100,0,10},{"MissPt_Meson"});
   histo.Create<TH1D,double>({"missPz","p_{z,miss}(e',Z)",105,0,105},{"MissPz_Meson"});
   histo.Create<TH1D,double>({"missTheta","#theta_{miss}(e',Z)",100,0,1},{"MissTheta_Meson"});
+  histo.Create<TH1D,ROOT::RVecD>({"allP","momentum of all particles",100,0,100},{"pmag"});
+  histo.Create<TH1D,ROOT::RVecD>({"eleP","momentum of electrons",100,0,100},{"elsP"});
 
   gBenchmark->Start("processing");
   ///////////////////////////////////////////////////////////

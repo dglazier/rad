@@ -13,12 +13,35 @@
 #include <memory>
 #include <stdexcept>
 #include <vector>
-   
+#include <type_traits>
+
 namespace rad{
   
   namespace histo{
 
-
+    template <typename T>
+    void process_single_argument(ROOT::RVec<T> arg,std::vector<double>& sc,std::vector<ROOT::RVecD>& vec,int& index,std::vector<int>& veci,bool& isvec) {
+      // std::cout<< arg <<std::endl;
+      isvec=true;
+      ROOT::RVec<T> rvec(arg.size());
+      int i=0;
+      for (const auto& val : arg) {
+	rvec[i]=val;
+	++i;
+     }
+      vec[index]=(rvec);
+      veci.push_back(index);
+      // std::cout<<index<<" "<<rvec<<" "<<veci.back()<<" "<<vec.size()<<std::endl;
+      ++index;
+    }
+    template <typename T>
+      void process_single_argument(T arg,std::vector<double>& sc,std::vector<ROOT::RVecD>& vec,int& index,std::vector<int>& veci,bool& isvec) {
+      // if constexpr (std::is_same_v<ROOT::RVec<typename T::value_type>, T>) {
+      sc[index]=(arg);
+      ++index;
+	// }
+    }
+    
     /*
      * Template on the data type for intermediate THnT<T>
      * this is only used for processing and final histograms
@@ -47,7 +70,7 @@ namespace rad{
       template <typename TH >
       SplitHistoHelper(const std::vector<TH>& hists )
       {
-	  // std::cout<< "SplitHistoHelper construct" <<std::endl;
+	std::cout<< "SplitHistoHelper construct" <<hists[0].GetName()<<std::endl;
 	  _Nhistos =hists.size();
 	  _resultHists=std::make_shared<Result_t>();
 	  
@@ -69,7 +92,14 @@ namespace rad{
 	    _histos[i]=(slotHists); //vector of slots
 	    (void)i;
 	  }
-	  // std::cout<< "SplitHistoHelper done " <<_histos.size()<<" "<<_resultHists->size()<<" "<<_Nhistos<<std::endl;
+	  //	  std::cout<< "SplitHistoHelper done " <<_histos.size()<<" "<<_resultHists->size()<<" "<<_Nhistos<<std::endl;
+	  
+	  //setup execution phase
+	  _Ndim = _resultHists->at(0)->GetDimension();
+	  _scaler_data=std::vector<double>(_Ndim);
+	  //note we hard-code an RVecD for variable type
+	  _vector_data=std::vector<ROOT::RVecD> (_Ndim,ROOT::RVecD());
+	  
 	}
       SplitHistoHelper(SplitHistoHelper &&) = default;
       SplitHistoHelper(const SplitHistoHelper &) = delete;
@@ -83,14 +113,50 @@ namespace rad{
       void Exec(unsigned int slot,int bin,  ColumnTypes... values)
 	{
 	  if(bin<0||bin>=static_cast<int>(_Nhistos)) return; //event out of range
-	  // std::cout<< "SplitHistoHelper Exec " <<_Nhistos<<" "<<slot<<" "<<_histos[slot].size()<<" "<<bin<<std::endl;
+	  //std::cout<< "SplitHistoHelper Exec " <<_Nhistos<<" "<<slot<<" "<<_histos[slot].size()<<" "<<bin<<" "<<_histos[slot][0]->GetName()<<std::endl;
 	  
 	  //Since TH* fill expects doubles, we build it passing through elements of  std::array<double>.
 	  //array should have 1 entry for 1D hist
-	  std::array<double, sizeof...(ColumnTypes)> valuesArr{static_cast<double>(values)...};
-
+	  //std::array<double, sizeof...(ColumnTypes)> valuesArr{static_cast<double>(values)...};
+	  //_histos[slot].at(bin)->Fill(valuesArr.data());
+	  // return;
+	  
+	  //implement vector filling TODO
+	  int index = 0;
+	  bool haveVector=false;
+	  std::vector<int> vecIndices;
+	  
+	  (process_single_argument(values,_scaler_data,_vector_data,index,vecIndices,haveVector),...);
+	  
 	  //Only want to fill 1 histogram corresponding to element bin in _histos
-	  _histos[slot].at(bin)->Fill(valuesArr.data()); 
+	  if(haveVector==false){
+	    _histos[slot].at(bin)->Fill(_scaler_data.data());
+	   
+	  }
+	  else {//fill vector
+	    //temp just fill with first entry
+	    //need to work a loop over all vectors
+	    // for(auto ival = 0 ; ival<_Ndim; ++ival){
+	    //   if(_vector_data[ival].empty()==false){
+	    // 	_scaler_data[ival]=_vector_data[ival][0];
+	    // 	_histos[slot].at(bin)->Fill(_scaler_data.data());
+	    //   }
+	    // }
+
+	    auto Nentries = _vector_data[vecIndices[0]].size();
+	    //	    std::cout<<"SplitHisto "<<Nentries<<" "<<bin<<" "<<slot<<" "<<vecIndices[0]<<std::endl;
+	    for(auto ientry=0;ientry<Nentries;++ientry){
+	      for(auto ival : vecIndices){
+		_scaler_data[ival]=_vector_data[ival][ientry];
+	      }
+	      _histos[slot].at(bin)->Fill(_scaler_data.data());
+	      
+	    }
+	    
+
+	    
+	  }
+	  
 	}
       /// This method is called at the end of the event loop. It is used to merge all the internal THnTs which
       /// were used in each of the data processing slots.
@@ -122,12 +188,16 @@ namespace rad{
 	return "SplitHistoHelper";
       }
 
-         private:
+    private:
       
       std::vector< std::vector<THn_ptr> > _histos; // one per data processing slot
       size_t _Nhistos=0;
       Result_ptr _resultHists;
- 
+      std::vector<double> _scaler_data;
+      //note we hard-code an RVecD for variable type
+      std::vector<ROOT::RVecD> _vector_data;
+
+      UInt_t _Ndim=0;
     };
  
   }
