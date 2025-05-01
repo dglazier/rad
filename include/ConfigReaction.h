@@ -64,6 +64,10 @@ namespace rad{
       }
       ConfigReaction(const std::string_view treeName, const std::vector<std::string> &filenames, const ROOT::RDF::ColumnNames_t&  columns ) : _orig_df{treeName,filenames,columns},_curr_df{_orig_df},_base_df{_orig_df},_treeName{treeName},_fileNames{filenames}{
       }
+
+      //if creating from alternative data source
+      ConfigReaction(ROOT::RDataFrame rdf ) : _orig_df{rdf},_curr_df{rdf},_base_df{rdf}{
+      }
       
 
       /** 
@@ -89,7 +93,10 @@ namespace rad{
 	setCurrFrame(CurrFrame().Define(name,func,columns));
       }
 
-      void DefineForAllTypes(const string& name,const string& expression){
+      /**
+       * Call Define for predefined data types, pprepend type string
+       */
+        void DefineForAllTypes(const string& name,const string& expression){
 	for(auto &atype:_type_comps){
 	  TString type_expr = expression.data();
 	  type_expr.ReplaceAll("components_p4",atype.second["components_p4"]);
@@ -107,7 +114,7 @@ namespace rad{
 	  Define(atype.first + name.data(),func,type_cols);
 	}
       }
- 
+     
       /**
        * Interface to RDataFrame Redefine
        */
