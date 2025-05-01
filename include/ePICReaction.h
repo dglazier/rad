@@ -9,6 +9,7 @@
 */
 #include "ElectroIonReaction.h"
 #include "ePICUtilities.h"
+#include "ReactionUtilities.h"
 
 namespace rad{
   namespace config{
@@ -41,14 +42,8 @@ namespace rad{
 	setBranchAlias("ReconstructedParticles.mass",Rec()+"m");
 	setBranchAlias("ReconstructedParticles.PDG",Rec()+"pid");
 
-	Define(Rec()+"Ngamma",Form("rad::helpers::Count(%spid,22)",Rec().data()) );
-	Define(Rec()+"Npip",Form("rad::helpers::Count(%spid,211)",Rec().data()) );
-	Define(Rec()+"Npim",Form("rad::helpers::Count(%spid,-211)",Rec().data()) );
-	Define(Rec()+"NKp",Form("rad::helpers::Count(%spid,321)",Rec().data()) );
-	Define(Rec()+"NKm",Form("rad::helpers::Count(%spid,-321)",Rec().data()) );
-	Define(Rec()+"Nele",Form("rad::helpers::Count(%spid,11)",Rec().data()) );
-	Define(Rec()+"Npos",Form("rad::helpers::Count(%spid,-11)",Rec().data()) );
-	Define(Rec()+"Npro",Form("rad::helpers::Count(%spid,2212)",Rec().data()) );
+	reaction::util::CountParticles(this,Rec());
+	
 	
 	if(IsEnd){
 	  /////RedefineFundamentalAliases();
@@ -196,14 +191,7 @@ namespace rad{
 	},{Truth()+"genStat"});//simID points from rec to tru
 
 
-	Define(Truth()+"Ngamma",Form("rad::helpers::Count(%spid,22)",Truth().data()) );
-	Define(Truth()+"Npip",Form("rad::helpers::Count(%spid,211)",Truth().data()) );
-	Define(Truth()+"Npim",Form("rad::helpers::Count(%spid,-211)",Truth().data()) );
-	Define(Truth()+"NKp",Form("rad::helpers::Count(%spid,321)",Truth().data()) );
-	Define(Truth()+"NKm",Form("rad::helpers::Count(%spid,-321)",Truth().data()) );
-	Define(Truth()+"Nele",Form("rad::helpers::Count(%spid,11)",Truth().data()) );
-	Define(Truth()+"Npos",Form("rad::helpers::Count(%spid,-11)",Truth().data()) );
-	Define(Truth()+"Npro",Form("rad::helpers::Count(%spid,2212)",Truth().data()) );
+	reaction::util::CountParticles(this,Truth());
 
 	if(IsEnd){
 	  RedefineFundamentalAliases();
@@ -378,6 +366,8 @@ namespace rad{
 	DefineForAllTypes("eta", Form("rad::ThreeVectorEta(components_p3)"));
 	DefineForAllTypes("pmag", Form("rad::ThreeVectorMag(components_p3)"));
 
+
+	///THIS LOOKS WRONG WHAT IF NO TRUTH ? FIXME
 	Filter([](const ROOT::RVecF& th,const ROOT::RVecF& pmag,const ROOT::RVecF& ph,const ROOT::RVecF& eta,const ROOT::RVecF& rth,const ROOT::RVecF& rpmag,const ROOT::RVecF& rph,const ROOT::RVecF& reta){return true;},{Truth()+"pmag",Truth()+"theta",Truth()+"phi",Truth()+"eta",Rec()+"pmag",Rec()+"theta",Rec()+"phi",Rec()+"eta"});
 
      }
