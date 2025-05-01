@@ -38,6 +38,7 @@ namespace rad{
       }
       return currIdx;
     }
+  
     /**
      * Rearrange vec in order of elements in imatch
      */
@@ -271,10 +272,10 @@ namespace rad{
     /**
      * Return the positions where c is true
      */
-    ROOT::RVecI PositionsWhere(const ROOT::RVecB& c)
+    ROOT::RVecU PositionsWhere(const ROOT::RVecB& c)
     {
       const size_t length = c.size();
-      ROOT::RVecI r(Count(c,true));//new vector sized to non-zero elements
+      ROOT::RVecU r(Count(c,true));//new vector sized to non-zero elements
       uint entry=0;
       for (auto i=0UL; i<length; ++i) {
 	if(c[i]==true)
@@ -282,6 +283,7 @@ namespace rad{
       }
       return r;
     }
-  }//helpers
+
+ }//helpers
   
 }//rad
