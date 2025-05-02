@@ -284,6 +284,15 @@ namespace rad{
       return r;
     }
 
+    /**
+    * Group a set of integers into an RVec
+    */
+    template<typename T, typename... ColumnValues>
+    ROOT::RVec<T> Group(ColumnValues... values){
+      ROOT::RVec<T> group{static_cast<T>(values)...};
+      return group;
+    }
+    
  }//helpers
   
 }//rad

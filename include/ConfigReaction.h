@@ -7,6 +7,8 @@
   for particular hadronic final states.
 */
 #include "DefineNames.h"
+#include "RVecHelpers.h"
+#include "ReactionUtilities.h"
 
 #include <ROOT/RDFHelpers.hxx>
 #include <ROOT/RDataFrame.hxx>
@@ -304,9 +306,16 @@ namespace rad{
    
       }
       */
-      
-      void setGroupParticles(const string& name,const ROOT::RDF::ColumnNames_t &particles){
+       void setGroupParticles(const string& name,const ROOT::RDF::ColumnNames_t &particles){
 	//should be able to do this with variadic args, but don't know how to pass as argument to lambda
+
+	 //	 Define(name,rad::helpers::Group<int>,particles);
+	 auto pstring = rad::reaction::ColumnsToString(particles); //"{p1,p2,p3,p4,...}"
+	 pstring = pstring.substr(1,pstring.size() - 2); //remove {}
+	 Define( name,Form("rad::helpers::Group<int>(%s)",pstring.data()) );
+	 return;
+
+	/*
 	switch( particles.size() ){
 	case 1 : 
 	  Define(name,[](const int p0){return RVecI{p0};},particles);
@@ -331,7 +340,7 @@ namespace rad{
 	  exit(0);
 	  break;
 	}
-	     
+	*/   
       }
       /**
        * Set all Pid (aka PDG) values to -1 so particles ignored
