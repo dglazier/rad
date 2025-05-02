@@ -70,7 +70,6 @@ namespace rad{
       template <typename TH >
       SplitHistoHelper(const std::vector<TH>& hists )
       {
-	std::cout<< "SplitHistoHelper construct" <<hists[0].GetName()<<std::endl;
 	  _Nhistos =hists.size();
 	  _resultHists=std::make_shared<Result_t>();
 	  
@@ -145,7 +144,7 @@ namespace rad{
 
 	    auto Nentries = _vector_data[vecIndices[0]].size();
 	    //	    std::cout<<"SplitHisto "<<Nentries<<" "<<bin<<" "<<slot<<" "<<vecIndices[0]<<std::endl;
-	    for(auto ientry=0;ientry<Nentries;++ientry){
+	    for(uint ientry=0;ientry<Nentries;++ientry){
 	      for(auto ival : vecIndices){
 		_scaler_data[ival]=_vector_data[ival][ientry];
 	      }
