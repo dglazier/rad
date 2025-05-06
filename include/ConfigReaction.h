@@ -307,10 +307,8 @@ namespace rad{
       }
       */
        void setGroupParticles(const string& name,const ROOT::RDF::ColumnNames_t &particles){
-	//should be able to do this with variadic args, but don't know how to pass as argument to lambda
 
-	 //	 Define(name,rad::helpers::Group<int>,particles);
-	 auto pstring = rad::reaction::ColumnsToString(particles); //"{p1,p2,p3,p4,...}"
+	 auto pstring =reaction::util::ColumnsToString(particles); //"{p1,p2,p3,p4,...}"
 	 pstring = pstring.substr(1,pstring.size() - 2); //remove {}
 	 Define( name,Form("rad::helpers::Group<int>(%s)",pstring.data()) );
 	 return;

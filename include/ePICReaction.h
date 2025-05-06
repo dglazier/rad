@@ -9,7 +9,6 @@
 */
 #include "ElectroIonReaction.h"
 #include "ePICUtilities.h"
-#include "ReactionUtilities.h"
 
 namespace rad{
   namespace config{
@@ -20,8 +19,8 @@ namespace rad{
 
     class ePICReaction : public ElectroIonReaction {
       
-
-
+    private:
+ 
     public:
 
       ePICReaction(const std::string_view treeName, const std::string_view fileNameGlob, const ROOT::RDF::ColumnNames_t&  columns ={} ) : ElectroIonReaction{treeName,fileNameGlob,columns} {
@@ -46,22 +45,32 @@ namespace rad{
 	
 	
 	if(IsEnd){
-	  /////RedefineFundamentalAliases();
+	  RedefineFundamentalAliases();
 
-	  rad::epic::UndoAfterBurn undoAB{_p4ion_beam,_p4el_beam,-0.025};
-	  auto undoAB_rec=[undoAB](ROOT::RVecF &px,ROOT::RVecF &py,ROOT::RVecF&pz, const ROOT::RVecF &m){
-	    undoAB(px,py,pz,m);
-	    return px;
-	  };
+	 rad::epic::UndoAfterBurn undoAB{_p4ion_beam,_p4el_beam,-0.025};
+	  // auto undoAB_rec=[undoAB](ROOT::RVecF &px,ROOT::RVecF &py,ROOT::RVecF &pz, const ROOT::RVecF &m){
+	  //   undoAB(px,py,pz,m);
+	  //   //return px;
+	  //   return true;
+	  // };
 	  
-	  
+
 	  //Undo the afterburner procedure
 	  //here we just account for crossing angle
 	  //just need to redefine 1 component. Other 2 have been updated
 	  //need to redefine at least one to make sure this is called before
 	  //any of the components
-	  RedefineViaAlias(Rec()+"px", undoAB_rec, {Rec()+"px",Rec()+"rec",Rec()+"rec",Rec()+"rec"});
-	  
+	  // RedefineViaAlias(Rec()+"px", undoAB_rec, {Rec()+"px",Rec()+"py",Rec()+"pz",Rec()+"m"});
+	  //Filter(undoAB,{Rec()+"px",Rec()+"rec",Rec()+"rec",Rec()+"rec"},"undoAB_rec");
+
+	 //currently we adopt a JIT approach
+	 //This requires that the beams P4 is specified
+	 // either   epic.SetBeamsFromMC(); or FixBeamElectronMomentum(x,y,z)...
+	 Filter(Form("rad::epic::UndoAfterBurn(ROOT::Math::PxPyPzMVector(%s),ROOT::Math::PxPyPzMVector(%s))(%s,%s,%s,%s)",
+		      Form("%lf,%lf,%lf,%lf",P4BeamEle().Px(),P4BeamEle().Py(),P4BeamEle().Pz(),P4BeamEle().M()),
+		      Form("%lf,%lf,%lf,%lf",P4BeamIon().Px(),P4BeamIon().Py(),P4BeamIon().Pz(),P4BeamIon().M()),
+		      (Rec()+"px").data(),(Rec()+"py").data(),(Rec()+"pz").data(),(Rec()+"m").data()),
+		 "undoAB_rec");
 	  //undo afterburn on beam components
 	  auto beams_px = ROOT::RVecD{_p4el_beam.X(),_p4ion_beam.X()};
 	  auto beams_py = ROOT::RVecD{_p4el_beam.Y(),_p4ion_beam.Y()};
@@ -139,18 +148,23 @@ namespace rad{
 	  RedefineFundamentalAliases();
 
 	  rad::epic::UndoAfterBurn undoAB{ _p4ion_beam,_p4el_beam,-0.025};
-	  auto undoAB_tru=[undoAB](ROOT::RVecF &px,ROOT::RVecF &py,ROOT::RVecF&pz, const ROOT::RVecD &m){
-	    undoAB(px,py,pz,m);
-	    return px;
-	  };
+	  // auto undoAB_tru=[undoAB](ROOT::RVecF &px,ROOT::RVecF &py,ROOT::RVecF&pz, const ROOT::RVecD &m){
+	  //   undoAB(px,py,pz,m);
+	  //   return px;
+	  // };
 	  //Undo the afterburner procedure
 	  //here we just account for crossing angle
 	  //just need to redefine 1 component. Other 2 have been updated
 	  //need to redefine at least one to make sure this is called before
 	  //any of the components
-	  RedefineViaAlias(Truth()+"px", undoAB_tru, {Truth()+"px",Truth()+"py",Truth()+"pz",Truth()+"m"});
+	  //RedefineViaAlias(Truth()+"px", undoAB_tru, {Truth()+"px",Truth()+"py",Truth()+"pz",Truth()+"m"});
+	  Filter(Form("rad::epic::UndoAfterBurn(ROOT::Math::PxPyPzMVector(%s),ROOT::Math::PxPyPzMVector(%s))(%s,%s,%s,%s)",
+		      Form("%lf,%lf,%lf,%lf",P4BeamEle().Px(),P4BeamEle().Py(),P4BeamEle().Pz(),P4BeamEle().M()),
+		      Form("%lf,%lf,%lf,%lf",P4BeamIon().Px(),P4BeamIon().Py(),P4BeamIon().Pz(),P4BeamIon().M()),
+		      (Truth()+"px").data(),(Truth()+"py").data(),(Truth()+"pz").data(),(Truth()+"m").data()),
+		 "undoAB_tru");
 
-	  	  //undo afterburn on beam components
+	  //undo afterburn on beam components
 	  auto beams_px = ROOT::RVecD{_p4el_beam.X(),_p4ion_beam.X()};
 	  auto beams_py = ROOT::RVecD{_p4el_beam.Y(),_p4ion_beam.Y()};
 	  auto beams_pz = ROOT::RVecD{_p4el_beam.Z(),_p4ion_beam.Z()};
@@ -197,16 +211,22 @@ namespace rad{
 	  RedefineFundamentalAliases();
 
 	  rad::epic::UndoAfterBurn undoAB{ _p4ion_beam,_p4el_beam,-0.025};
-	  auto undoAB_tru=[undoAB](ROOT::RVecF &px,ROOT::RVecF &py,ROOT::RVecF&pz, const ROOT::RVecD &m){
-	    undoAB(px,py,pz,m);
-	    return px;
-	  };
+	  // auto undoAB_tru=[undoAB](ROOT::RVecF &px,ROOT::RVecF &py,ROOT::RVecF&pz, const ROOT::RVecD &m){
+	  //   undoAB(px,py,pz,m);
+	  //   return px;
+	  // };
 	  //Undo the afterburner procedure
 	  //here we just account for crossing angle
 	  //just need to redefine 1 component. Other 2 have been updated
 	  //need to redefine at least one to make sure this is called before
 	  //any of the components
-	  RedefineViaAlias(Truth()+"px", undoAB_tru, {Truth()+"px",Truth()+"py",Truth()+"pz",Truth()+"m"});
+	  //RedefineViaAlias(Truth()+"px", undoAB_tru, {Truth()+"px",Truth()+"py",Truth()+"pz",Truth()+"m"});
+	  Filter(Form("rad::epic::UndoAfterBurn(ROOT::Math::PxPyPzMVector(%s),ROOT::Math::PxPyPzMVector(%s))(%s,%s,%s,%s)",
+		      Form("%lf,%lf,%lf,%lf",P4BeamEle().Px(),P4BeamEle().Py(),P4BeamEle().Pz(),P4BeamEle().M()),
+		      Form("%lf,%lf,%lf,%lf",P4BeamIon().Px(),P4BeamIon().Py(),P4BeamIon().Pz(),P4BeamIon().M()),
+		      (Truth()+"px").data(),(Truth()+"py").data(),(Truth()+"pz").data(),(Truth()+"m").data()),
+		 "undoAB_tru");
+
 	  //undo afterburn on beam components
 	  auto beams_px = ROOT::RVecD{_p4el_beam.X(),_p4ion_beam.X()};
 	  auto beams_py = ROOT::RVecD{_p4el_beam.Y(),_p4ion_beam.Y()};
@@ -262,15 +282,15 @@ namespace rad{
 	  RedefineViaAlias(Rec()+"m",[](const ROOT::RVecF& recm,const ROOT::RVecD& trum){return helpers::Truncate(ROOT::RVecF(trum),recm.size());},{Rec()+"m",Truth()+"m"});
 	  
 	  rad::epic::UndoAfterBurn undoAB{_p4ion_beam,_p4el_beam,-0.025};
-	  auto undoAB_tru=[undoAB](ROOT::RVecF &px,ROOT::RVecF &py,ROOT::RVecF&pz, const ROOT::RVecD &m){
-	    undoAB(px,py,pz,m);
-	    return px;
-	  };
-	  auto undoAB_rec=[undoAB](ROOT::RVecF &px,ROOT::RVecF &py,ROOT::RVecF&pz, const ROOT::RVecF &m){
-	    undoAB(px,py,pz,m);
+	  // auto undoAB_tru=[undoAB](ROOT::RVecF &px,ROOT::RVecF &py,ROOT::RVecF&pz, const ROOT::RVecD &m){
+	  //   undoAB(px,py,pz,m);
+	  //   return px;
+	  // };
+	  // auto undoAB_rec=[undoAB](ROOT::RVecF &px,ROOT::RVecF &py,ROOT::RVecF&pz, const ROOT::RVecF &m){
+	  //   undoAB(px,py,pz,m);
 
-	    return px;
-	  };
+	  //   return px;
+	  // };
 	  
 	  
 	  //Undo the afterburner procedure
@@ -278,9 +298,19 @@ namespace rad{
 	  //just need to redefine 1 component. Other 2 have been updated
 	  //need to redefine at least one to make sure this is called before
 	  //any of the components
-	  RedefineViaAlias(Truth()+"px", undoAB_tru, {Truth()+"px",Truth()+"py",Truth()+"pz",Truth()+"m"});
-	  RedefineViaAlias(Rec()+"px", undoAB_rec, {Rec()+"px",Rec()+"py",Rec()+"pz",Rec()+"m"});
-	  
+	  // RedefineViaAlias(Truth()+"px", undoAB_tru, {Truth()+"px",Truth()+"py",Truth()+"pz",Truth()+"m"});
+	  // RedefineViaAlias(Rec()+"px", undoAB_rec, {Rec()+"px",Rec()+"py",Rec()+"pz",Rec()+"m"});
+	  Filter(Form("rad::epic::UndoAfterBurn(ROOT::Math::PxPyPzMVector(%s),ROOT::Math::PxPyPzMVector(%s))(%s,%s,%s,%s)",
+		      Form("%lf,%lf,%lf,%lf",P4BeamEle().Px(),P4BeamEle().Py(),P4BeamEle().Pz(),P4BeamEle().M()),
+		      Form("%lf,%lf,%lf,%lf",P4BeamIon().Px(),P4BeamIon().Py(),P4BeamIon().Pz(),P4BeamIon().M()),
+		      (Truth()+"px").data(),(Truth()+"py").data(),(Truth()+"pz").data(),(Truth()+"m").data()),
+		 "undoAB_tru");
+	  Filter(Form("rad::epic::UndoAfterBurn(ROOT::Math::PxPyPzMVector(%s),ROOT::Math::PxPyPzMVector(%s))(%s,%s,%s,%s)",
+		      Form("%lf,%lf,%lf,%lf",P4BeamEle().Px(),P4BeamEle().Py(),P4BeamEle().Pz(),P4BeamEle().M()),
+		      Form("%lf,%lf,%lf,%lf",P4BeamIon().Px(),P4BeamIon().Py(),P4BeamIon().Pz(),P4BeamIon().M()),
+		      (Rec()+"px").data(),(Rec()+"py").data(),(Rec()+"pz").data(),(Rec()+"m").data()),
+		 "undoAB_rec");
+	  	  	  
 	  //undo afterburn on beam components
 	  auto beams_px = ROOT::RVecD{_p4el_beam.X(),_p4ion_beam.X()};
 	  auto beams_py = ROOT::RVecD{_p4el_beam.Y(),_p4ion_beam.Y()};
@@ -297,9 +327,6 @@ namespace rad{
 	
 	  //AddAdditionalComponents();
 
-	  //needed to make sure tru and rec are defined at the same time
-	  //and therefore contain same elements.
-	  //	  Filter([](const ROOT::RVecF& th,const ROOT::RVecF& pmag,const ROOT::RVecF& ph,const ROOT::RVecF& eta,const ROOT::RVecF& rth,const ROOT::RVecF& rpmag,const ROOT::RVecF& rph,const ROOT::RVecF& reta){return true;},{Truth()+"pmag",Truth()+"theta",Truth()+"phi",Truth()+"eta",Rec()+"pmag",Rec()+"theta",Rec()+"phi",Rec()+"eta"});
 
 	  _truthMatched =true;
 	}
@@ -350,8 +377,13 @@ namespace rad{
 	AddAdditionalComponents();
 
 	if(IsTruthMatched()){
+	  //needed to make sure tru and rec are defined at the same time
+	  //and therefore contain same elements.
+	  //need a function string that uses all component vectors and always return true
+	  Filter(Form("bool(%s.empty()+%s.empty()+%s.empty()+%s.empty()+%s.empty()+%s.empty()+%s.empty()+%s.empty() +1); ",(Truth()+"pmag").data(),(Truth()+"theta").data(),(Truth()+"phi").data(),(Truth()+"eta").data(),(Rec()+"pmag").data(),(Rec()+"theta").data(),(Rec()+"phi").data(),(Rec()+"eta").data()),"truthmatch");
+ 
 	  //add resolution functions
-	  ResolutionFraction<float>("pmag");
+	  ResolutionFraction("pmag");
 	  Resolution("theta");
 	  Resolution("phi");
 	  Resolution("eta");
@@ -367,10 +399,7 @@ namespace rad{
 	DefineForAllTypes("pmag", Form("rad::ThreeVectorMag(components_p3)"));
 
 
-	///THIS LOOKS WRONG WHAT IF NO TRUTH ? FIXME
-	Filter([](const ROOT::RVecF& th,const ROOT::RVecF& pmag,const ROOT::RVecF& ph,const ROOT::RVecF& eta,const ROOT::RVecF& rth,const ROOT::RVecF& rpmag,const ROOT::RVecF& rph,const ROOT::RVecF& reta){return true;},{Truth()+"pmag",Truth()+"theta",Truth()+"phi",Truth()+"eta",Rec()+"pmag",Rec()+"theta",Rec()+"phi",Rec()+"eta"});
-
-     }
+    }
       
       template<typename T> 
 	void RedefineFundamental( const string& name ){
@@ -402,11 +431,12 @@ namespace rad{
 	// },{string(Rec())+var,string(Truth())+var});
 	Define(string("res_")+var,Form("%s-%s",(Truth()+var).data(),(Rec()+var).data() ));
       }
-      template<typename T>
+      //template<typename T>
       void ResolutionFraction(const string& var){
-	Define(string("res_")+var,[](const ROOT::RVec<T> &rec,const ROOT::RVec<T> &tru){
-	   return (rec - tru)/tru;
-	},{Rec()+var,Truth()+var});
+	// Define(string("res_")+var,[](const ROOT::RVec<T> &rec,const ROOT::RVec<T> &tru){
+	//    return (rec - tru)/tru;
+	// },{Rec()+var,Truth()+var});
+	Define(string("res_")+var,Form("(%s-%s)/%s",(Truth()+var).data(),(Rec()+var).data(),(Truth()+var).data() ));
       }
       
       /**

@@ -31,7 +31,8 @@ namespace rad{
 
       //can't template as foreach requires compiletime knowledge
       template<typename Tp, typename Tm>
-      void operator()(RVec<Tp> &px,RVec<Tp> &py,RVec<Tp> &pz, const RVec<Tm> &m) const
+      // void operator()(RVec<Tp> &px,RVec<Tp> &py,RVec<Tp> &pz, const RVec<Tm> &m) const
+      bool operator()(RVec<Tp> &px,RVec<Tp> &py,RVec<Tp> &pz, const RVec<Tm> &m) const
       {
 	
 	//apply to all particles
@@ -39,6 +40,7 @@ namespace rad{
 	for(uint i=0;i<n_parts;++i){
 	  undoAfterburn(i,px,py,pz,m);
 	}
+	return true;
 	//return px;
       }
       //void  operator()(RVecF &px,RVecF &py,RVecF &pz, const RVecF &m) const
