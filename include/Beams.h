@@ -12,11 +12,11 @@ namespace rad{
     using ROOT::Math::PxPyPzMVector ;
     using ROOT::RVec;
 
-    constexpr std::array<double,4>  InitTopComponents();
-    constexpr std::array<double,4>  InitBotComponents();
+    // constexpr std::array<double,4>  InitTopComponents();
+    // constexpr std::array<double,4>  InitBotComponents();
     
-    constexpr int InitTopFix(){return 10000;}
-    constexpr int InitBotFix(){return 20000;}
+    // constexpr int InitTopFix(){return 10000;}
+    // constexpr int InitBotFix(){return 20000;}
     
     // PxPyPzMVector InitialTopVector(){
     //   return 	PxPyPzMVector(InitTopComponents()[0],InitTopComponents()[1],
@@ -29,22 +29,22 @@ namespace rad{
     // const FixedP4 InitialBotVector;
     //const FixedP4 InitialTopVector;
     
-    ///\brief return 4-vector of beam ion
+    //\brief return 4-vector of beam ion
     template<typename Tp, typename Tm>
     PxPyPzMVector InitialFourVector(const uint idx,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
       //Check if we have been provided with fixed beam parameters
       //or of we have a valid index idx
-      switch(idx){
-      case InitTopFix() :
-	return 	PxPyPzMVector(InitTopComponents()[0],InitTopComponents()[1],
-			      InitTopComponents()[2],InitTopComponents()[3]);
-      case InitBotFix() :
-	return PxPyPzMVector(InitBotComponents()[0],InitBotComponents()[1],
-			     InitBotComponents()[2],InitBotComponents()[3]);
+      // switch(idx){
+      // case InitTopFix() :
+      // 	return 	PxPyPzMVector(InitTopComponents()[0],InitTopComponents()[1],
+      // 			      InitTopComponents()[2],InitTopComponents()[3]);
+      // case InitBotFix() :
+      // 	return PxPyPzMVector(InitBotComponents()[0],InitBotComponents()[1],
+      // 			     InitBotComponents()[2],InitBotComponents()[3]);
 	
-      default:	
+      // default:	
 	return PxPyPzMVector(px[idx], py[idx], pz[idx], m[idx]);
-      }
+	// }
       
     }
     
