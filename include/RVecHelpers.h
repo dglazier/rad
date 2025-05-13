@@ -42,32 +42,36 @@ namespace rad{
     /**
      * Rearrange vec in order of elements in imatch
      */
-    template<typename T>
-    ROOT::VecOps::RVec<T> Rearrange(const ROOT::VecOps::RVec<T>& vec,const ROOT::RVecU& imatch){
+    template<typename T,typename Ti>
+    ROOT::VecOps::RVec<T> Rearrange(const ROOT::VecOps::RVec<T>& vec,const ROOT::RVec<Ti>& imatch){
       //auto test = ROOT::VecOps::Take(vec,imatch);
-      // std::cout<<"Rearrange "<<vec<<imatch<<vec.size()<<" "<<imatch.size()<<std::endl;
-       return ROOT::VecOps::Take(vec,imatch);
+      //std::cout<<"Rearrange "<<vec<<imatch<<vec.size()<<" "<<imatch.size()<<std::endl;
+      return ROOT::VecOps::Take(vec,imatch);
     }
     /**
      * Reorder vec0 moving entries at iorder0 to iorder1, 
      * with missing elements set to 0
      */
-    template<typename T>
-    ROOT::VecOps::RVec<T> Reorder(const ROOT::VecOps::RVec<T>& vec0,const ROOT::RVecU& iorder0,const ROOT::RVecU& iorder1,const size_t n){
-      // std::cout<<"reorder "<<vec0<<" "<<iorder0<<iorder0.size()<<iorder1<<iorder1.size()<<" "<<n<<std::endl;
+    template<typename T,typename T0,typename T1>
+    //ROOT::VecOps::RVec<T> Reorder(const ROOT::VecOps::RVec<T>& vec0,const ROOT::RVecU& iorder0,const ROOT::RVecU& iorder1,const size_t n){
+    ROOT::VecOps::RVec<T> Reorder(const ROOT::VecOps::RVec<T>& vec0,const ROOT::RVec<T0>& iorder0,const ROOT::RVec<T1>& iorder1,const size_t n){
+      //std::cout<<"reorder "<<vec0<<" "<<iorder0<<iorder0.size()<<iorder1<<" "<<iorder1.size()<<" "<<n<<std::endl;
+      if(iorder1.size()>4)exit(0);
       // std::cout<<"reorder "<<iorder0.size()<<" "<<iorder1.size()<<" "<<n<<std::endl;
       //create new vector size  n
       ROOT::VecOps::RVec<T> vec1(n); //create new vector size n=iorder1.size
-      //need to loop over order0
       size_t target_size = iorder1.size();
+      //need to loop over order0
       for(size_t i=0;i<target_size;++i){
 	//add value of vec0 at iorder1
-	vec1[iorder1[i]]=vec0[iorder0[i]]; //give vec1[iorder1] value of vec0[iorder0]
+	if(iorder1[i]<0) continue;
+	 if(iorder0[i]<0) continue;
+	 vec1[iorder1[i]]=vec0[iorder0[i]]; //give vec1[iorder1] value of vec0[iorder0]
       }
       //std::cout<<"reorder done "<<vec1<<std::endl;
       return vec1;
     }
-
+    
     template <typename T>
      ROOT::RVec<T> Enumerate(size_t size)
      {

@@ -85,11 +85,11 @@ namespace rad{
 	setParticleIndex(names::BeamEle().data(),idx);
       }
       void setScatElectronIndex(const int idx){
-	setParticleIndex(names::ScatEle().data(),idx);
+	setParticleIndex(names::ScatEle().data(),idx,11);
       }
       template<typename Lambda>
       void setScatElectronIndex(Lambda&& func,const ROOT::RDF::ColumnNames_t & columns = {}){
-	 setParticleIndex(names::ScatEle().data(),func,columns);
+	setParticleIndex(names::ScatEle().data(),func,columns,11);
       }
       void setBeamIonIndex(const int idx){
 	setParticleIndex(names::BeamIon().data(),idx);
@@ -99,7 +99,7 @@ namespace rad{
        */
        template<typename Lambda>
       void setScatElectron(Lambda&& func,const ROOT::RDF::ColumnNames_t & columns = {} ){
-	setParticleIndex(names::ScatEle().data(),func, columns);
+	 setParticleIndex(names::ScatEle().data(),func, columns, 11);
       }
       /**
        * Allow variable index for beam electron
@@ -153,8 +153,8 @@ namespace rad{
 	setBeamElectron(x,y,z);
 	DefineBeamElectron();
       }
-      void FixBeamIonMomentum(double x,double y,double z){
-	setBeamIon(x,y,z);
+      void FixBeamIonMomentum(double x,double y,double z,double m=0.938272){
+	setBeamIon(x,y,z,m);
 	DefineBeamIon();
       }
        /**
