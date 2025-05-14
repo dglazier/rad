@@ -6,6 +6,9 @@ void ElectronScatterKinematicsRDF(){}
 namespace rad{
   namespace rdf{
   
+    void EGammaStar(config::ConfigReaction& cr,const string& name){
+      cr.DefineForAllTypes(name, Form("rad::electroion::PhotoFourVector(%s,components_p4).E()",names::ReactionMap().data()));
+    }
     void Q2(config::ConfigReaction& cr,const string& name){
       cr.DefineForAllTypes(name, Form("rad::electro::Q2(%s,components_p4)",names::ReactionMap().data()));
     }
