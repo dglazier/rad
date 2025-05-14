@@ -10,7 +10,7 @@ namespace rad{
   namespace reaction{
     namespace util{
       
-      enum class ColType{Undef,Int,UInt,Float,Double,Short,Bool,Long};
+       enum class ColType{Undef,Int,UInt,Float,Double,Short,Bool,Long};
 
     
       // void CountParticles(rad::config::ConfigReaction* rad, const std::string& type){
@@ -114,8 +114,9 @@ namespace rad{
 	    break;
 	  }
 	}
-
+	
       }
+      
     }
   }//reaction
 }//rad
