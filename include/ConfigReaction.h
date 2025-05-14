@@ -140,9 +140,7 @@ namespace rad{
       void RedefineViaAlias(const string& alias,Lambda&& func,const ROOT::RDF::ColumnNames_t& columns ){
 	Redefine(_aliasMap[alias],func,columns);
       }
-      // template<typename T> 
-      virtual void RedefineFundamental( const string& name ){}
-
+ 
       /** 
        * Add an alias for a branch and update the current frame to the aliased one
        */
@@ -379,11 +377,14 @@ namespace rad{
 	std::cout<<"CopyToPrimaryType "<<_primary_type<<" "<<name<<std::endl;
 	Define(name,Form("return %s;",(_primary_type+name).data() ) );
       }
+
+
       /**
       * check if alias is used
       */
       bool CheckAlias(const string& alias){
-	if(_aliasMap.at(alias)!=nullptr) return true;
+	std::cout<<"CheckAlias " <<alias<<" "<<_aliasMap.size()<<std::endl;
+	if(_aliasMap.find(alias) != _aliasMap.end()) return true;
 	else return false;
       }
      
@@ -426,7 +427,7 @@ namespace rad{
       const std::map<string,string>& AliasMap() const {return _aliasMap;}
 
     protected:
-      
+
       bool _useBeamsFromMC=false; 
  
     private :
