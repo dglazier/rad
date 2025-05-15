@@ -169,6 +169,14 @@ namespace rad{
       }
       virtual void RemoveSnapshotColumns(std::vector<string>& cols){
 	cols.erase(std::remove(cols.begin(), cols.end(), names::ReactionMap() ), cols.end());
+
+	//remove any columns with the DoNotWriteTag
+	auto tag  = DoNotWriteTag();
+	cols.erase( std::remove_if( cols.begin(), cols.end(),
+				    [&tag]( const string& col ) -> bool
+				    { return col.find(tag) != std::string::npos; } ),
+		    cols.end() );
+
       }
       /** 
        * Set constant index in collection for particle
@@ -177,7 +185,6 @@ namespace rad{
        */
       void setParticleIndex(const string& particle, const int idx, int pdg=0 ){
 	Define(particle,[idx](){return idx;},{});
-	std::cout<<"setParticleIndex "<<particle <<idx<<" "<<pdg<<" check pid branch "<<ColumnExists(Rec()+"pid",CurrFrame())<<" "<<CheckAlias(Rec()+"pid")<<std::endl;
 	if(pdg!=0){
 	  if(ColumnExists(Rec()+"pid",CurrFrame())||CheckAlias(Rec()+"pid")){
 	    Define(particle+"_OK",Form("%spid[%s]==%d",Rec().data(),particle.data(),pdg));
@@ -383,7 +390,6 @@ namespace rad{
       * check if alias is used
       */
       bool CheckAlias(const string& alias){
-	std::cout<<"CheckAlias " <<alias<<" "<<_aliasMap.size()<<std::endl;
 	if(_aliasMap.find(alias) != _aliasMap.end()) return true;
 	else return false;
       }
@@ -426,6 +432,9 @@ namespace rad{
       
       const std::map<string,string>& AliasMap() const {return _aliasMap;}
 
+      const std::string DoNotWriteTag(){return "__dnwtag";};
+
+      
     protected:
 
       bool _useBeamsFromMC=false; 
