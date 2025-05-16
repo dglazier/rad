@@ -201,10 +201,35 @@ namespace rad{
 	if(TypeResult(type).at(_getIndexFromName[name])->size()==0) return hist_ptr();//nulltptr
 	return TypeResult(type).at(_getIndexFromName[name])->at(index);
       }
-
+      
       /** 
        * Draw all histograms of type name  on a single canvas
        */
+      void DrawSame(const std::string& name){
+	new TCanvas();
+	//gPad->SetLogy();
+	int iter=0;
+	for(const auto& type:_types){
+	  //check if this histogram exists for this type
+	  if(GetResult(type,name,0).get()==nullptr){
+	    continue;
+	  }
+	  else{
+	    TString opt="hist";
+	    if (iter>0) opt="hist same";
+	    //auto mymax  = GetResult(type,name,0)->GetBinContent(1);
+	    //GetResult(type,name,0)->SetMaximum(mymax);
+	    //GetResult(type,name,0)->SetMinimum(0);
+	    auto his = GetResult(type,name,0)->DrawCopy(opt);
+	    if(type=="rec_")his->SetLineColor(kRed);
+	    if(type=="tru_")his->SetLineColor(kBlue);
+	    if(type=="mc_")his->SetLineColor(kBlack);
+	    iter++;
+	    //std::cout << type << std::endl;
+	  }
+	}
+      }
+      
       void DrawAll(const std::string& name){
 	//Loop over types
 	for(const auto& type:_types){
@@ -220,7 +245,7 @@ namespace rad{
 	  }
 	  GetResult(type,name,0)->SetMaximum(hmax);
 	  GetResult(type,name,0)->SetMinimum(0);
-	
+	  
 	  for(size_t i = 0; i < Splitter().NTotal(); ++i){
 	    TString opt="";
 	    if(i>0) opt = "same";
