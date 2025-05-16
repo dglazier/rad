@@ -40,7 +40,7 @@ namespace rad{
        * requires type of variables to be histogrammed
        * e.g. rec_ tru_ mc_
        */
-      void Init(const std::vector<string>& types){
+      void Init(const std::vector<string>& types={""}){
 	//variable types
 	_types = types;
 	//create results vector for each type
@@ -126,15 +126,25 @@ namespace rad{
 	  auto badCol=false;
 	  for(auto& col:cols){//prepend type
 	    if(col==_name) continue;//dont prepend name
-	    col = type+col;
-
+	    // col = type+col;
+	    auto temp_col = type+col;
 	    //sometimes not all variables are defined for all types 
-	    if( CheckColumn(col)==false){
-	      _typeResults[type].push_back(hists_splits_ptr()  );
-	      badCol=true;
-	      std::cout<<"Warning :: Histogrammer Column "<<col<<" "<<" does not exist"<<std::endl ;
+	    if( CheckColumn(temp_col)==false){
+	      //but may be defined without type
+	      if( rad::config::ColumnExists( col,_rad.CurrFrame())==false){	      
+		_typeResults[type].push_back(hists_splits_ptr()  );
+		badCol=true;
+		std::cout<<"Warning :: Histogrammer Colunm "<<col<<" "<<" does not exist"<<std::endl ;
+	      }
+	      else{
+		//column exists but with no type
+		//just use no type column
+
+	      }
 	    }
-	    
+	    else{ //good, type column exists
+	      col = temp_col;
+	    }
 	  }
 	  if(badCol==true){
 	    continue; //column does not exist, ignore it
@@ -142,6 +152,8 @@ namespace rad{
 	  auto df = _rad.CurrFrame();
 
 	  //Book the histogram action and store it as a result
+	  // std::cout<<" book ";
+	  //for(auto& col:cols){cout<<" "<<col;}cout<<" "<<std::endl;
 	  auto result = df.Book<short, ColumnTypes...>(std::move(process), cols );
 	  _typeResults[type].push_back( result );
 
