@@ -206,6 +206,7 @@ namespace rad{
        * Draw all histograms of type name  on a single canvas
        */
       void DrawSame(const std::string& name){
+	using namespace rad::names::data_type;
 	new TCanvas();
 	//gPad->SetLogy();
 	int iter=0;
@@ -221,9 +222,9 @@ namespace rad{
 	    //GetResult(type,name,0)->SetMaximum(mymax);
 	    //GetResult(type,name,0)->SetMinimum(0);
 	    auto his = GetResult(type,name,0)->DrawCopy(opt);
-	    if(type=="rec_")his->SetLineColor(kRed);
-	    if(type=="tru_")his->SetLineColor(kBlue);
-	    if(type=="mc_")his->SetLineColor(kBlack);
+	    if(type==Rec())his->SetLineColor(kRed);
+	    if(type==Truth())his->SetLineColor(kBlue);
+	    if(type==MC())his->SetLineColor(kBlack);
 	    iter++;
 	    //std::cout << type << std::endl;
 	  }
