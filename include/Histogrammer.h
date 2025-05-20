@@ -204,11 +204,13 @@ namespace rad{
       
       /** 
        * Draw all histograms of type name  on a single canvas
+       * optional pad argument if drawing on existing tcanvas/pad
+       * useful for drawing on divided canvas, for example.
        */
-      void DrawSame(const std::string& name){
+      void DrawSame(const std::string& name, const TVirtualPad* pad = nullptr){
 	using namespace rad::names::data_type;
-	new TCanvas();
-	//gPad->SetLogy();
+	if(!pad)
+	  new TCanvas();
 	int iter=0;
 	for(const auto& type:_types){
 	  //check if this histogram exists for this type
