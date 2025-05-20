@@ -224,6 +224,20 @@ namespace rad{
 	if(!pad)
 	  new TCanvas();
 	int iter=0;
+	auto oldmax=-1;
+	//loop over histograms to get the max y value
+	for(const auto& type:_types){
+	  //check if this histogram exists for this type
+	  if(GetResult(type,name,0).get()==nullptr){
+	    continue;
+	  }
+	  else{
+	    auto newmax = GetResult(type,name,0)->GetMaximum();
+	    if(newmax>oldmax)
+	      oldmax=newmax;
+	  }
+	}
+	//re-loop to draw them
 	for(const auto& type:_types){
 	  //check if this histogram exists for this type
 	  if(GetResult(type,name,0).get()==nullptr){
@@ -232,10 +246,9 @@ namespace rad{
 	  else{
 	    TString opt="hist";
 	    if (iter>0) opt="hist same";
-	    //auto mymax  = GetResult(type,name,0)->GetBinContent(1);
-	    //GetResult(type,name,0)->SetMaximum(mymax);
-	    //GetResult(type,name,0)->SetMinimum(0);
 	    auto his = GetResult(type,name,0)->DrawCopy(opt);
+	    if(oldmax!=-1)
+	      his->SetMaximum(oldmax*1.2);
 	    if(type==Rec())his->SetLineColor(kRed);
 	    if(type==Truth())his->SetLineColor(kBlue);
 	    if(type==MC())his->SetLineColor(kBlack);
@@ -245,6 +258,7 @@ namespace rad{
 	}
       }
       
+    
       void DrawAll(const std::string& name){
 	//Loop over types
 	for(const auto& type:_types){
