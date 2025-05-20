@@ -40,7 +40,7 @@ namespace rad{
        * requires type of variables to be histogrammed
        * e.g. rec_ tru_ mc_
        */
-      void Init(const std::vector<string>& types){
+      void Init(const std::vector<string>& types={""}){
 	//variable types
 	_types = types;
 	//create results vector for each type
@@ -126,15 +126,25 @@ namespace rad{
 	  auto badCol=false;
 	  for(auto& col:cols){//prepend type
 	    if(col==_name) continue;//dont prepend name
-	    col = type+col;
-
+	    // col = type+col;
+	    auto temp_col = type+col;
 	    //sometimes not all variables are defined for all types 
-	    if( CheckColumn(col)==false){
-	      _typeResults[type].push_back(hists_splits_ptr()  );
-	      badCol=true;
-	      std::cout<<"Warning :: Histogrammer Column "<<col<<" "<<" does not exist"<<std::endl ;
+	    if( CheckColumn(temp_col)==false){
+	      //but may be defined without type
+	      if( rad::config::ColumnExists( col,_rad.CurrFrame())==false){	      
+		_typeResults[type].push_back(hists_splits_ptr()  );
+		badCol=true;
+		std::cout<<"Warning :: Histogrammer Colunm "<<col<<" "<<" does not exist"<<std::endl ;
+	      }
+	      else{
+		//column exists but with no type
+		//just use no type column
+
+	      }
 	    }
-	    
+	    else{ //good, type column exists
+	      col = temp_col;
+	    }
 	  }
 	  if(badCol==true){
 	    continue; //column does not exist, ignore it
@@ -142,6 +152,8 @@ namespace rad{
 	  auto df = _rad.CurrFrame();
 
 	  //Book the histogram action and store it as a result
+	  // std::cout<<" book ";
+	  //for(auto& col:cols){cout<<" "<<col;}cout<<" "<<std::endl;
 	  auto result = df.Book<short, ColumnTypes...>(std::move(process), cols );
 	  _typeResults[type].push_back( result );
 
@@ -201,10 +213,38 @@ namespace rad{
 	if(TypeResult(type).at(_getIndexFromName[name])->size()==0) return hist_ptr();//nulltptr
 	return TypeResult(type).at(_getIndexFromName[name])->at(index);
       }
-
+      
       /** 
        * Draw all histograms of type name  on a single canvas
+       * optional pad argument if drawing on existing tcanvas/pad
+       * useful for drawing on divided canvas, for example.
        */
+      void DrawSame(const std::string& name, const TVirtualPad* pad = nullptr){
+	using namespace rad::names::data_type;
+	if(!pad)
+	  new TCanvas();
+	int iter=0;
+	for(const auto& type:_types){
+	  //check if this histogram exists for this type
+	  if(GetResult(type,name,0).get()==nullptr){
+	    continue;
+	  }
+	  else{
+	    TString opt="hist";
+	    if (iter>0) opt="hist same";
+	    //auto mymax  = GetResult(type,name,0)->GetBinContent(1);
+	    //GetResult(type,name,0)->SetMaximum(mymax);
+	    //GetResult(type,name,0)->SetMinimum(0);
+	    auto his = GetResult(type,name,0)->DrawCopy(opt);
+	    if(type==Rec())his->SetLineColor(kRed);
+	    if(type==Truth())his->SetLineColor(kBlue);
+	    if(type==MC())his->SetLineColor(kBlack);
+	    iter++;
+	    //std::cout << type << std::endl;
+	  }
+	}
+      }
+      
       void DrawAll(const std::string& name){
 	//Loop over types
 	for(const auto& type:_types){
@@ -220,7 +260,7 @@ namespace rad{
 	  }
 	  GetResult(type,name,0)->SetMaximum(hmax);
 	  GetResult(type,name,0)->SetMinimum(0);
-	
+	  
 	  for(size_t i = 0; i < Splitter().NTotal(); ++i){
 	    TString opt="";
 	    if(i>0) opt = "same";

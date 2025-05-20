@@ -40,11 +40,11 @@ namespace rad{
   
   ///\brief print all particles for event
     template<typename Tpid, typename Tp, typename Tm>
-    bool PrintParticles(ULong64_t entry,const RVec<Tpid> &pid,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
+    bool PrintParticles(const std::string& type, ULong64_t entry,const RVec<Tpid> &pid,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
       
-      std::cout<< "PrintParticles Event = "<< entry <<std::endl;
+      std::cout<< type <<"  PrintParticles Event = "<< entry <<std::endl;
       for(size_t  idx=0; idx<px.size();++idx){
-	std::cout<< " "<<pid[idx]<<"\t"<<PxPyPzMVector(px[idx], py[idx], pz[idx], m[idx])<<" "<<m[idx]<<std::endl;
+	std::cout<< " "<<pid[idx]<<"\t"<<PxPyPzMVector(px[idx], py[idx], pz[idx], m[idx])<<std::endl;
       }
       return true;
     }

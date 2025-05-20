@@ -140,6 +140,7 @@ namespace rad{
       void RedefineViaAlias(const string& alias,Lambda&& func,const ROOT::RDF::ColumnNames_t& columns ){
 	Redefine(_aliasMap[alias],func,columns);
       }
+ 
       /** 
        * Add an alias for a branch and update the current frame to the aliased one
        */
@@ -162,12 +163,27 @@ namespace rad{
        * Make a snapshot of newly defined columns
        */
       void Snapshot(const string& filename){
+	ROOT::RDF::RSnapshotOptions opts;
+	opts.fLazy = true;
+ 	auto cols = CurrFrame().GetDefinedColumnNames();
+	RemoveSnapshotColumns(cols);
+	CurrFrame().Snapshot("rad_tree",filename, cols , opts);
+      }
+      void ImmediateSnapshot(const string& filename){
 	auto cols = CurrFrame().GetDefinedColumnNames();
 	RemoveSnapshotColumns(cols);
 	CurrFrame().Snapshot("rad_tree",filename, cols );
       }
       virtual void RemoveSnapshotColumns(std::vector<string>& cols){
 	cols.erase(std::remove(cols.begin(), cols.end(), names::ReactionMap() ), cols.end());
+
+	//remove any columns with the DoNotWriteTag
+	auto tag  = DoNotWriteTag();
+	cols.erase( std::remove_if( cols.begin(), cols.end(),
+				    [&tag]( const string& col ) -> bool
+				    { return col.find(tag) != std::string::npos; } ),
+		    cols.end() );
+
       }
       /** 
        * Set constant index in collection for particle
@@ -176,9 +192,8 @@ namespace rad{
        */
       void setParticleIndex(const string& particle, const int idx, int pdg=0 ){
 	Define(particle,[idx](){return idx;},{});
-
 	if(pdg!=0){
-	  if(ColumnExists(Rec()+"pid",CurrFrame())){
+	  if(ColumnExists(Rec()+"pid",CurrFrame())||CheckAlias(Rec()+"pid")){
 	    Define(particle+"_OK",Form("%spid[%s]==%d",Rec().data(),particle.data(),pdg));
 	  }
 	}
@@ -196,7 +211,7 @@ namespace rad{
 	Define(particle,func,columns);
 
 	if(pdg!=0){
-	  if(ColumnExists(Rec()+"pid",CurrFrame())){
+	  if(ColumnExists(Rec()+"pid",CurrFrame())||CheckAlias(Rec()+"pid")){
 	    Define(string(particle)+"_OK",Form("%spid[%s]==%d",Rec().data(),particle.data(),pdg));
 	  }
 	}
@@ -376,19 +391,17 @@ namespace rad{
 	std::cout<<"CopyToPrimaryType "<<_primary_type<<" "<<name<<std::endl;
 	Define(name,Form("return %s;",(_primary_type+name).data() ) );
       }
-      enum class ColType{Undef,Int,UInt,Float,Double,Short,Bool,Long};
-      
-      ColType DeduceColumnVectorType(const string& name){
-	TString col_type = CurrFrame().GetColumnType(name);
-	if(col_type.Contains("Int_t")) return ColType::Int;
-	if(col_type.Contains("UInt_t")) return ColType::UInt;
- 	if(col_type.Contains("Float_t")) return ColType::Float;
- 	if(col_type.Contains("Double_t")) return ColType::Double;
- 	if(col_type.Contains("Short_t")) return ColType::Short;
- 	if(col_type.Contains("Bool_t")) return ColType::Bool;
- 	if(col_type.Contains("Long_t")) return ColType::Long;
-	return ColType::Undef;
+
+
+      /**
+      * check if alias is used
+      */
+      bool CheckAlias(const string& alias){
+	if(_aliasMap.find(alias) != _aliasMap.end()) return true;
+	else return false;
       }
+     
+  
 
       std::map<string, std::map<string,string>> GetTypes() const {return _type_comps;}
 
@@ -424,9 +437,13 @@ namespace rad{
       
       void AddParticleName(const std::string& particle){_particleNames.push_back(particle);}
       
-     protected:
-
       const std::map<string,string>& AliasMap() const {return _aliasMap;}
+
+      const std::string DoNotWriteTag(){return "__dnwtag";};
+
+      
+    protected:
+
       bool _useBeamsFromMC=false; 
  
     private :
