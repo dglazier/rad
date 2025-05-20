@@ -163,6 +163,13 @@ namespace rad{
        * Make a snapshot of newly defined columns
        */
       void Snapshot(const string& filename){
+	ROOT::RDF::RSnapshotOptions opts;
+	opts.fLazy = true;
+ 	auto cols = CurrFrame().GetDefinedColumnNames();
+	RemoveSnapshotColumns(cols);
+	CurrFrame().Snapshot("rad_tree",filename, cols , opts);
+      }
+      void ImmediateSnapshot(const string& filename){
 	auto cols = CurrFrame().GetDefinedColumnNames();
 	RemoveSnapshotColumns(cols);
 	CurrFrame().Snapshot("rad_tree",filename, cols );
