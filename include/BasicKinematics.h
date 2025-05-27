@@ -95,15 +95,17 @@ namespace rad{
     }
     ///\brief return magnitude of momentum
     template<typename T>
-    RVec<T> ThreeVectorMag(const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
+      RVec<double> ThreeVectorMag(const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
+      //RVec<T> ThreeVectorMag(const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
       return sqrt(x * x + y * y + z * z);
     }
     ///\brief return eta of momentum
     template<typename T>
-    RVec<T> ThreeVectorTheta(const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
+      RVec<double> ThreeVectorTheta(const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
+      // RVec<T> ThreeVectorTheta(const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
       auto mag = ThreeVectorMag(x,y,z);
       auto costh = z/mag;
-         // if(test.size()>4)
+      // if(test.size()>4)
       // 	if(test[4]<2.1){
       // 	  cout<<"**********************ThreeVectorTheta"<<test<<x<<y<<z<<endl;
       // 	  exit(0);
@@ -113,32 +115,37 @@ namespace rad{
     }
     ///\brief return eta of momentum
     template<typename T>
-    RVec<T> ThreeVectorPhi(const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
+      RVec<double> ThreeVectorPhi(const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
+      //RVec<T> ThreeVectorPhi(const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
       //std::cout<<" ThreeVectorPhi "<<x.size()<<std::endl;
-       return atan2(y,x); //will use vectorised version
+      return atan2(y,x); //will use vectorised version
     }
    ///\brief return eta of momentum
     template<typename T>
-    RVec<T> ThreeVectorEta(const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
+      RVec<double> ThreeVectorEta(const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
+      //RVec<T> ThreeVectorEta(const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
       auto theta = ThreeVectorTheta(x,y,z);
       return -log(tan(0.5 * theta));//will use vectorised version
     }
     ///\brief return x-component
     template<typename T>
-    RVec<T> ThreeVectorX(const RVec<T> &p, const RVec<T> &theta, const RVec<T> &phi){
+      RVec<double> ThreeVectorX(const RVec<T> &p, const RVec<T> &theta, const RVec<T> &phi){
+      //RVec<T> ThreeVectorX(const RVec<T> &p, const RVec<T> &theta, const RVec<T> &phi){
       return p*sin(theta)*cos(phi);
     }
-    ///\brief return x-component
+    ///\brief return y-component
     template<typename T>
-    RVec<T> ThreeVectorY(const RVec<T> &p, const RVec<T> &theta, const RVec<T> &phi){
+      RVec<double> ThreeVectorY(const RVec<T> &p, const RVec<T> &theta, const RVec<T> &phi){
+      //RVec<T> ThreeVectorY(const RVec<T> &p, const RVec<T> &theta, const RVec<T> &phi){
       return p*sin(theta)*sin(phi);
     }
-    ///\brief return x-component
+    ///\brief return z-component
     template<typename T>
-    RVec<T> ThreeVectorZ(const RVec<T> &p, const RVec<T> &theta, const RVec<T> &phi){
+      RVec<double> ThreeVectorZ(const RVec<T> &p, const RVec<T> &theta, const RVec<T> &phi){
+      //RVec<T> ThreeVectorZ(const RVec<T> &p, const RVec<T> &theta, const RVec<T> &phi){
       return p*cos(theta);
     }
-
+    
     /* NOTE : we might want to change to using edm4hep functions. Then VecMag would change to 
        template <typename T>
        auto VecMag = [](ROOT::VecOps::RVec<T> momenta) {
