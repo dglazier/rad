@@ -73,9 +73,11 @@ namespace rad{
     //simple general function to return zeroth index of branch
     //subtracts 2 to accounts for beam indices being removed
     //from list
-    auto UseAsID(int entry) {
-      return [entry](const ROOT::RVec<int> id) -> int {
-    	return id[entry]-2;
+    //offset exists incase submodule (i.e. epic-rad) remove/add
+    //particles in the list ordering.
+    auto UseAsID(int entry, int offset=0) {
+      return [entry, offset](const ROOT::RVec<int> id) -> int {
+    	return id[entry]-offset;
       };
     }
     
