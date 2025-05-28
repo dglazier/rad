@@ -183,10 +183,10 @@ namespace rad{
 	  auto new_col = col;
 	  new_col.replace(col.find('['), 1,1, '_');
 	  new_col.replace(col.find(']'), 1,1, '_');
-	  if(_verbose) std::cout<<"CheckColumn create new column from array element : "<<new_col<<endl;
 
 	  //Check if already defined new_col
 	  if(rad::config::ColumnExists(new_col,_rad.CurrFrame())==false){
+	    if(_verbose) std::cout<<"CheckColumn create new column from array element : "<<new_col<<endl;
 	    _rad.Define(new_col,col);
 	  }
 	  //change col, so we use the new one
