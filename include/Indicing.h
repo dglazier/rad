@@ -69,6 +69,16 @@ namespace rad{
     // 	return helpers::findNthIndex(reorderValues,n_occurance,value);
     //   };
     // }
-
-  }//pindice
+    
+    //simple general function to return zeroth index of branch
+    //subtracts 2 to accounts for beam indices being removed
+    //from list
+    auto UseAsID(int entry) {
+      return [entry](const ROOT::RVec<int> id) -> int {
+    	return id[entry]-2;
+      };
+    }
+    
+    
+  }//indice
 }//rad
