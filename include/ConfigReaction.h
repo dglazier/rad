@@ -33,8 +33,7 @@ namespace rad{
       e.g. rdf::RVecIndexMap& react; ... ; auto index = react[ScatEleIdx()]; 
     */
     using RVecIndexMap = ROOT::RVec<ROOT::RVecI>;
-
-
+    
     void PrintDefinedColumnNames(RDFstep  df){
       std::cout<<"Print Column Names : ";
       auto cols =  df.GetDefinedColumnNames();
@@ -57,8 +56,7 @@ namespace rad{
     //! Class definition
 
     class ConfigReaction {
-
-
+    
     public:
 
       //     ConfigReaction(const std::string& treeName, const std::string& fileNameGlob, const ROOT::RDF::ColumnNames_t&  columns ) : _orig_df{treeName,{fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data()},columns},_curr_df{_orig_df}{
@@ -71,7 +69,15 @@ namespace rad{
       ConfigReaction(ROOT::RDataFrame rdf ) : _orig_df{rdf},_curr_df{rdf},_base_df{rdf}{
       }
       
-
+      ~ConfigReaction(){ 
+	for (auto& trigger : _triggerSnapshots) {
+	  if (trigger) trigger();
+	}
+	
+	//std::cout << "ConfigReaction destructor: " << CurrFrame().Count().GetValue() << std::endl;
+      }
+      
+      
       /** 
        * Get the current dataframe to add further actions
        */
@@ -80,7 +86,7 @@ namespace rad{
        * Set the current dataframe after adding further actions
        */
       void setCurrFrame(RDFstep  df){ _curr_df = df ;}
-
+      
       /**
        * Interface to RDataFrame Define
        */
@@ -162,6 +168,17 @@ namespace rad{
       /**
        * Make a snapshot of newly defined columns
        */
+      void BookLazySnapshot(const string& filename){
+      	ROOT::RDF::RSnapshotOptions opts;
+      	opts.fLazy = true;
+      	auto cols = CurrFrame().GetDefinedColumnNames();
+      	RemoveSnapshotColumns(cols);
+	//CurrFrame().Snapshot("rad_tree",filename, cols , opts); 
+	auto snapshot_result = CurrFrame().Snapshot("rad_tree",filename, cols , opts); 
+	_triggerSnapshots.emplace_back([snapshot = std::move(snapshot_result)]() mutable{} );
+      }
+      
+      
       void Snapshot(const string& filename){
 	auto cols = CurrFrame().GetDefinedColumnNames();
 	RemoveSnapshotColumns(cols);
@@ -438,8 +455,9 @@ namespace rad{
     protected:
 
       bool _useBeamsFromMC=false; 
- 
-    private :
+      
+      
+    private:
     
       /**
        * _bare_df
@@ -460,7 +478,7 @@ namespace rad{
        * Typically after a SetAlias call.
        */
       RDFstep _base_df;
-
+      
       /**
        * Store name of any aliased branches
        */
@@ -479,7 +497,10 @@ namespace rad{
       std::string _fileName;//if single file (or wildcards)
       std::string _treeName;
       ROOT::RDF::ColumnNames_t  _particleNames; //list of all particles, so index calculation can be enforced at start of operations
-
+      
+      //snapshot
+      std::vector<std::function<void()>> _triggerSnapshots;
+      
     };//ConfigReaction
 
   }//config
