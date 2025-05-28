@@ -70,16 +70,12 @@ namespace rad{
       }
       
       ~ConfigReaction(){ 
-	 if (_triggerSnapshot) _triggerSnapshot();
+	for (auto& trigger : _triggerSnapshots) {
+	  if (trigger) trigger();
+	}
+	
+	//std::cout << "ConfigReaction destructor: " << CurrFrame().Count().GetValue() << std::endl;
       }
-	/* 	if (_snapshotNode){ */
-      /* 	  try{ */
-      /* 	    _snapshotNode->GetTree(); //this should trigger the snapshot? */
-      /* 	  }catch(const std::exception& e){ */
-      /* 	    std::cerr << "Snapshot failed in destructor: " << e.what() << std::endl; */
-      /* 	  } */
-      /* 	} */
-      /* } */
       
       
       /** 
@@ -177,14 +173,13 @@ namespace rad{
       	opts.fLazy = true;
       	auto cols = CurrFrame().GetDefinedColumnNames();
       	RemoveSnapshotColumns(cols);
+	//CurrFrame().Snapshot("rad_tree",filename, cols , opts); 
 	auto snapshot_result = CurrFrame().Snapshot("rad_tree",filename, cols , opts); 
-	_triggerSnapshot = [snapshot = std::move(snapshot_result)]() mutable{
-	  
-	};
+	_triggerSnapshots.emplace_back([snapshot = std::move(snapshot_result)]() mutable{} );
       }
       
       
-      void ImmediateSnapshot(const string& filename){
+      void Snapshot(const string& filename){
 	auto cols = CurrFrame().GetDefinedColumnNames();
 	RemoveSnapshotColumns(cols);
 	CurrFrame().Snapshot("rad_tree",filename, cols );
@@ -504,7 +499,7 @@ namespace rad{
       ROOT::RDF::ColumnNames_t  _particleNames; //list of all particles, so index calculation can be enforced at start of operations
       
       //snapshot
-      std::function<void()> _triggerSnapshot;
+      std::vector<std::function<void()>> _triggerSnapshots;
       
     };//ConfigReaction
 
