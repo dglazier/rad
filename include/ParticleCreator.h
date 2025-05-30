@@ -51,7 +51,7 @@ namespace rad{
 	  //Make sure any created particle uses type_idx
 	  //This ensures its Create function is called prior to this one
 	  string sum ="{";
-	  for(string p:parts){
+	  for(std::string p:parts){
 	    if( std::find(_created.begin(),_created.end(),p)!=_created.end() ){
 	      std::string type_p = atype.first + p;
 	      p=type_p;
