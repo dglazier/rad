@@ -134,7 +134,7 @@ namespace rad{
 	      if( rad::config::ColumnExists( col,_rad.CurrFrame())==false){	      
 		_typeResults[type].push_back(hists_splits_ptr()  );
 		badCol=true;
-		std::cout<<"Warning :: Histogrammer Colunm "<<col<<" "<<" does not exist"<<std::endl ;
+		std::cout<<"Warning :: Histogrammer Colunm "<<col<<" "<<" does not exist "<<type<<std::endl ;
 	      }
 	      else{
 		//column exists but with no type
