@@ -153,9 +153,12 @@ namespace rad{
       /**
        * Interface to RDataFrame Redefine via any aliases that may be used
        */
-      void RedefineViaAlias(const string& alias,const string& expression){
-	Redefine(_aliasMap[alias],expression);
-      }
+      //The redefine with alias does not work as the branchname
+      //is not a mathematical expression. This is not checked for
+      //the Lambda version below and works.
+      // void RedefineViaAlias(const string& alias,const string& expression){
+      // 	RedefineExpr(_aliasMap[alias],expression);
+      // }
       template<typename Lambda>
       void RedefineViaAlias(const string& alias,Lambda&& func,const ROOT::RDF::ColumnNames_t& columns ){
 	Redefine(_aliasMap[alias],func,columns);
