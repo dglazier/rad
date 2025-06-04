@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RVecHelpers.h"
+#include "Constants.h"
 
 namespace rad{
   namespace indice{
@@ -69,18 +70,36 @@ namespace rad{
     // 	return helpers::findNthIndex(reorderValues,n_occurance,value);
     //   };
     // }
-    
-    //simple general function to return zeroth index of branch
-    //subtracts 2 to accounts for beam indices being removed
-    //from list
-    //offset exists incase submodule (i.e. epic-rad) remove/add
-    //particles in the list ordering.
+
+    /**
+     *simple general function to return zeroth index of branch
+     *subtracts 2 to accounts for beam indices being removed
+     *from list
+     *offset exists incase submodule (i.e. epic-rad) remove/add
+     *particles in the list ordering.
+     */
     auto UseAsID(int entry, int offset=0) {
-      return [entry, offset](const ROOT::RVec<int> id) -> int {
+      return [entry, offset](const ROOT::RVec<int>& id) -> int {
     	return id[entry]-offset;
       };
     }
-    
-    
+    /**
+     * Function to check if all indices in a vec are valid
+     * i.e. != -1
+     */
+    template<typename T>
+    bool InvalidIndices(const ROOT::RVec<T>& indices){
+      return ROOT::VecOps::Any( ( indices==-1 ) );
+    }
+
+   /**
+    * Invalidate index if it is not in liost of valid indices
+    */
+    template<typename T,typename Ti>
+    void InvalidateIndices(const ROOT::RVec<T>& valid,Ti& index){
+      if( ROOT::VecOps::Any((valid==index)))
+	return;
+      index=constant::InvalidIndex();
+    }
   }//indice
 }//rad
