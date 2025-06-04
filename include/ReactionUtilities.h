@@ -1,6 +1,5 @@
 #pragma once
 
-//#include "ConfigReaction.h"
 #include "DefineNames.h"
 
 #include <TString.h>

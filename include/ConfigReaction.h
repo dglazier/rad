@@ -84,6 +84,7 @@ namespace rad{
       }
       
       ~ConfigReaction(){ 
+	//	std::cout << "ConfigReaction destructor: " <<_triggerSnapshots.size() << std::endl;
 	for (auto& trigger : _triggerSnapshots) {
 	  if (trigger) trigger();
 	}
@@ -200,7 +201,7 @@ namespace rad{
 	auto cols = CurrFrame().GetDefinedColumnNames();
 	RemoveSnapshotColumns(cols);
 	CurrFrame().Snapshot("rad_tree",filename, cols );
-      }
+     }
       virtual void RemoveSnapshotColumns(std::vector<string>& cols){
 	cols.erase(std::remove(cols.begin(), cols.end(), names::ReactionMap() ), cols.end());
 
@@ -225,6 +226,7 @@ namespace rad{
 	  }
 	}
  	AddParticleName(particle);
+ 	AddFinalParticleName(particle);
      }
       
       /** 
@@ -243,6 +245,7 @@ namespace rad{
 	  }
 	}
 	AddParticleName(particle);
+	AddFinalParticleName(particle);
       }
 
       /**
@@ -433,6 +436,14 @@ namespace rad{
       std::map<string, std::map<string,string>> GetTypes() const {return _type_comps;}
 
       /**
+       * Check if currently using type
+       */
+      bool CheckForType(const string& type){
+	if(_type_comps.find(type) != _type_comps.end()) return true;
+	else return false;
+ 
+      }
+      /**
        * get or set the base df
        * this should include the configuration of the input
        * data to rad format (arrays of px,px,pz,m)
@@ -463,6 +474,9 @@ namespace rad{
       }
       
       void AddParticleName(const std::string& particle){_particleNames.push_back(particle);}
+      void AddFinalParticleName(const std::string& particle){_finalNames.push_back(particle);}
+      const ROOT::RDF::ColumnNames_t& ParticleNames() const {return _particleNames;}
+      const ROOT::RDF::ColumnNames_t& FinalParticleNames() const {return _finalNames;}
       
       const std::map<string,string>& AliasMap() const {return _aliasMap;}
 
@@ -514,6 +528,7 @@ namespace rad{
       std::string _fileName;//if single file (or wildcards)
       std::string _treeName;
       ROOT::RDF::ColumnNames_t  _particleNames; //list of all particles, so index calculation can be enforced at start of operations
+      ROOT::RDF::ColumnNames_t  _finalNames; //list of detectable particles
       
       //snapshot
       std::vector<std::function<void()>> _triggerSnapshots;

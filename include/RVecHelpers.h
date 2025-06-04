@@ -1,4 +1,5 @@
 #pragma once
+#include "Constants.h"
 #include <ROOT/RVec.hxx>
 #include <algorithm>
 #include <iostream>
@@ -64,14 +65,15 @@ namespace rad{
     }
     /**
      * Reorder vec0 moving entries at iorder0 to iorder1, 
-     * with missing elements set to 0
+     * with missing elements set to InvalidEntry()
      */
     template<typename T,typename T0,typename T1>
     //ROOT::VecOps::RVec<T> Reorder(const ROOT::VecOps::RVec<T>& vec0,const ROOT::RVecU& iorder0,const ROOT::RVecU& iorder1,const size_t n){
     ROOT::VecOps::RVec<T> Reorder(const ROOT::VecOps::RVec<T>& vec0,const ROOT::RVec<T0>& iorder0,const ROOT::RVec<T1>& iorder1,const size_t n){
 
       //create new vector size  n
-      ROOT::VecOps::RVec<T> vec1(n); //create new vector size n=iorder1.size
+      // ROOT::VecOps::RVec<T> vec1(n); //create new vector size n=iorder1.size
+      ROOT::VecOps::RVec<T> vec1(n,rad::constant::InvalidEntry()); //create new vector size n=iorder1.size
       size_t target_size = iorder1.size();
       //need to loop over order0
       for(size_t i=0;i<target_size;++i){

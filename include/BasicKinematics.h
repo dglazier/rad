@@ -1,4 +1,6 @@
 #pragma once
+#include "Indicing.h"
+#include "Constants.h"
 
 #include <Math/Vector4D.h>
 #include <Math/Vector3D.h>
@@ -88,6 +90,12 @@ namespace rad{
     template<typename Tp, typename Tm>
     double FourVectorMassCalc(const RVecI &ipos, const RVecI &ineg,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m)
     {
+      /*
+	//Optional we could add in check like this for indices
+      if(indice::InvalidIndices(ipos)) return constant::InvalidEntry();
+      if(indice::InvalidIndices(ineg)) return constant::InvalidEntry();
+      */
+      
       PxPyPzMVector psum(0,0,0,0);
       SumFourVector(psum,ipos,px,py,pz,m);
       SubtractFourVector(psum,ineg,px,py,pz,m);
