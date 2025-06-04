@@ -93,7 +93,7 @@ namespace rad{
     }
 
    /**
-    * Invalidate index if it is not in liost of valid indices
+    * Invalidate index if it is not in lost of valid indices
     */
     template<typename T,typename Ti>
     void InvalidateIndices(const ROOT::RVec<T>& valid,Ti& index){
