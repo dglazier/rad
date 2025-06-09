@@ -11,9 +11,6 @@
 #include <TBenchmark.h>
 #include <TCanvas.h>
 
-//beam components must be defined even if 0
-inline constexpr std::array<double,4>  rad::beams::InitBotComponents() {return {0.,0.,0,0};}
-inline constexpr std::array<double,4>  rad::beams::InitTopComponents() {return {0.,0.,0.,0};}
 
 void ProcessHepMCZ(){
   using namespace rad::names::data_type; //for MC()

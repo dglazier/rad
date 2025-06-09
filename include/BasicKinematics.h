@@ -46,7 +46,7 @@ namespace rad{
       
       std::cout<< type <<"  PrintParticles Event = "<< entry <<std::endl;
       for(size_t  idx=0; idx<px.size();++idx){
-	std::cout<< " "<<pid[idx]<<"\t"<<PxPyPzMVector(px[idx], py[idx], pz[idx], m[idx])<<std::endl;
+	std::cout<< " "<<pid[idx]<<"\t"<<PxPyPzMVector(px[idx], py[idx], pz[idx], m[idx])<<"\n";
       }
       return true;
     }
@@ -62,19 +62,36 @@ namespace rad{
     void SumFourVector(PxPyPzMVector& p4, const RVecI &ip,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
     
       auto np = ip.size();
+      // for (size_t i = 0; i < np; ++i) {
+      // 	p4 += PxPyPzMVector(px[ip[i]], py[ip[i]], pz[ip[i]], m[ip[i]]);
+      // }
+      double sum_px = 0.0, sum_py = 0.0, sum_pz = 0.0, sum_m = 0.0;
       for (size_t i = 0; i < np; ++i) {
-	p4 += PxPyPzMVector(px[ip[i]], py[ip[i]], pz[ip[i]], m[ip[i]]);
+	auto ipi = ip[i];
+	sum_px += px[ipi];
+	sum_py += py[ipi];
+	sum_pz += pz[ipi];
+	sum_m  += m[ipi];
       }
+      p4.SetCoordinates(p4.X()+sum_px,p4.Y()+ sum_py,p4.Z()+ sum_pz,p4.M()+ sum_m);
     }
   
     ///\brief subtract 4-vectors of particles ip from p4
     template<typename Tp, typename Tm>
     void SubtractFourVector(PxPyPzMVector& p4, const RVecI &ip,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
       auto np = ip.size();
-      for (size_t i = 0; i <np ; ++i) {
-	p4 -= PxPyPzMVector(px[ip[i]], py[ip[i]], pz[ip[i]], m[ip[i]]);
+      // for (size_t i = 0; i <np ; ++i) {
+      // 	p4 -= PxPyPzMVector(px[ip[i]], py[ip[i]], pz[ip[i]], m[ip[i]]);
+      // }
+      double sum_px = 0.0, sum_py = 0.0, sum_pz = 0.0, sum_m = 0.0;
+      for (size_t i = 0; i < np; ++i) {
+	auto ipi = ip[i];
+	sum_px = px[ipi];
+	sum_py = py[ipi];
+	sum_pz = pz[ipi];
+	sum_m  = m[ipi];
       }
-  
+      p4.SetCoordinates(p4.X()-sum_px,p4.Y() - sum_py,p4.Z() - sum_pz,p4.M() - sum_m);
     }
   
     ///\brief return 4-vector of summed particles ipart
@@ -113,12 +130,6 @@ namespace rad{
       // RVec<T> ThreeVectorTheta(const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
       auto mag = ThreeVectorMag(x,y,z);
       auto costh = z/mag;
-      // if(test.size()>4)
-      // 	if(test[4]<2.1){
-      // 	  cout<<"**********************ThreeVectorTheta"<<test<<x<<y<<z<<endl;
-      // 	  exit(0);
-      // 	}
-      //  std::cout<<" ThreeVectorTheta "<<x.size()<<std::endl;
       return acos(costh);
     }
     ///\brief return eta of momentum
