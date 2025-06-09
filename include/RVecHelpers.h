@@ -73,7 +73,7 @@ namespace rad{
 
       //create new vector size  n
       // ROOT::VecOps::RVec<T> vec1(n); //create new vector size n=iorder1.size
-      ROOT::VecOps::RVec<T> vec1(n,rad::constant::InvalidEntry()); //create new vector size n=iorder1.size
+      ROOT::VecOps::RVec<T> vec1(n,rad::constant::InvalidEntry<T>()); //create new vector size n=iorder1.size
       size_t target_size = iorder1.size();
       //need to loop over order0
       for(size_t i=0;i<target_size;++i){
