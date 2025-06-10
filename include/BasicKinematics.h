@@ -46,7 +46,7 @@ namespace rad{
       
       std::cout<< type <<"  PrintParticles Event = "<< entry <<std::endl;
       for(size_t  idx=0; idx<px.size();++idx){
-	std::cout<< " "<<pid[idx]<<"\t"<<PxPyPzMVector(px[idx], py[idx], pz[idx], m[idx])<<std::endl;
+	std::cout<< " "<<pid[idx]<<"\t"<<PxPyPzMVector(px[idx], py[idx], pz[idx], m[idx])<<"\n";
       }
       return true;
     }
@@ -74,7 +74,6 @@ namespace rad{
       for (size_t i = 0; i <np ; ++i) {
 	p4 -= PxPyPzMVector(px[ip[i]], py[ip[i]], pz[ip[i]], m[ip[i]]);
       }
-  
     }
   
     ///\brief return 4-vector of summed particles ipart
@@ -113,12 +112,6 @@ namespace rad{
       // RVec<T> ThreeVectorTheta(const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
       auto mag = ThreeVectorMag(x,y,z);
       auto costh = z/mag;
-      // if(test.size()>4)
-      // 	if(test[4]<2.1){
-      // 	  cout<<"**********************ThreeVectorTheta"<<test<<x<<y<<z<<endl;
-      // 	  exit(0);
-      // 	}
-      //  std::cout<<" ThreeVectorTheta "<<x.size()<<std::endl;
       return acos(costh);
     }
     ///\brief return eta of momentum

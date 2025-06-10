@@ -3,8 +3,31 @@
 
 namespace rad{
   namespace constant{
+    /**
+     *    InvalidEntry
+     */
+    // Generic template declaration
+    template<typename T>
+    constexpr T InvalidEntry();
 
-    constexpr double InvalidEntry(){return std::numeric_limits<double>::quiet_NaN();};
+    template<typename T>
+    constexpr T InvalidEntry() {
+      return std::numeric_limits<T>::quiet_NaN();
+    }
+  
+    // Specialization for int
+    template<>
+    constexpr int InvalidEntry<int>() {
+      return std::numeric_limits<int>::max();
+    }
+
+    // Specialization for unsigned int
+    template<>
+    constexpr unsigned int InvalidEntry<unsigned int>() {
+      return std::numeric_limits<unsigned int>::max();
+    }
+
+    // constexpr double InvalidEntry(){return std::numeric_limits<double>::quiet_NaN();};
     constexpr int InvalidIndex(){return -1;};
 
 
