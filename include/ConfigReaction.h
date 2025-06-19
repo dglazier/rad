@@ -9,6 +9,7 @@
 #include "DefineNames.h"
 #include "RVecHelpers.h"
 #include "ReactionUtilities.h"
+#include "StringUtilities.h"
 
 #include <ROOT/RDFHelpers.hxx>
 #include <ROOT/RDataFrame.hxx>
@@ -150,7 +151,33 @@ namespace rad{
 	  Define(atype.first + name.data(),func,type_cols);
 	}
       }
-     
+      /**
+       * @brief make a new column for each particle based on applying func_name
+       *        the new columns will called name_particle
+       * @param name base name if new variable
+       * @param particles list of particles to define this variable from
+       * @param func_name the function to apply, should be defined in a .h file
+       * @param values variables to be used by func to define new column
+       */
+      void DefineForParticles(const string& name,const ROOT::RDF::ColumnNames_t &particles,const ROOT::RDF::ColumnNames_t &values, const std::string& func_name){
+	//loop over particles
+	for(const auto& p : particles){
+	  auto selected_entries = values;
+	  //create string selecting particle entry from the values arrays
+	  std::for_each(selected_entries.begin(), selected_entries.end(),
+			[&p](std::string& s) {
+			  s += '[';
+			  s += p;
+			  s += ']';
+			});
+	  //create the function for the Define call
+	  auto selected_func = rad::utils::createFunctionCallStringFromVec(func_name,selected_entries);
+	  cout<<"DefineForParticles "<<name+"_"+p<<" "<<selected_func<<endl;
+	  //Define this variable for this particle
+	  Define(name+"_"+p,selected_func);
+	}
+      }
+
       /**
        * Interface to RDataFrame Redefine
        */
