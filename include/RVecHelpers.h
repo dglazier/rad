@@ -81,7 +81,7 @@ namespace rad{
 	if(iorder0[i]<0) continue;
 	vec1[iorder1[i]]=vec0[iorder0[i]]; //give vec1[iorder1] value of vec0[iorder0]
       }
-      //std::cout<<"reorder done "<<vec1<<std::endl;
+      // std::cout<<"reorder done "<<vec1<<std::endl;
       return vec1;
     }
     
@@ -309,6 +309,33 @@ namespace rad{
       ROOT::RVec<T> group{static_cast<T>(values)...};
       return group;
     }
+    
+    /**
+    * Return first entry in RVec
+    */
+    template<typename T>
+    T First(const ROOT::RVec<T>& values){
+      cout<<"First "<<values[0]<<endl;
+      return values.empty() ? rad::constant::InvalidEntry<T>() : values[0];
+    }
+    
+    /**
+    * Return mean value of RVec
+    */
+    template<typename T>
+      T Mean(const ROOT::RVec<T>& values){
+      return values.empty() ? rad::constant::InvalidEntry<T>() : ROOT::VecOps::Mean(values);
+    }
+    
+    /**
+    * Return sum value of RVec
+    */
+    template<typename T>
+      T Sum(const ROOT::RVec<T>& values){
+      return values.empty() ? rad::constant::InvalidEntry<T>() : ROOT::VecOps::Sum(values);
+    }
+    
+
     
  }//helpers
   
