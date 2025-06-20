@@ -20,9 +20,7 @@ namespace rad{
   namespace histo{
 
     template <typename T>
-    //void process_single_argument(ROOT::RVec<T> arg,std::vector<double>& sc,std::vector<ROOT::RVecD>& vec,int& index,std::vector<int>& veci,bool& isvec) {
     void process_single_argument(ROOT::RVec<T> arg,ROOT::RVecD& sc,std::vector<ROOT::RVecD>& vec,int& index,std::vector<int>& veci,bool& isvec) {
-      // std::cout<< arg <<std::endl;
       isvec=true;
       ROOT::RVec<T> rvec(arg.size());
       int i=0;
@@ -32,17 +30,13 @@ namespace rad{
      }
       vec[index]=(rvec);
       veci.push_back(index);
-      // std::cout<<index<<" "<<rvec<<" "<<veci.back()<<" "<<vec.size()<<std::endl;
       ++index;
     }
     template <typename T>
-    //void process_single_argument(T arg,std::vector<double>& sc,std::vector<ROOT::RVecD>& vec,int& index,std::vector<int>& veci,bool& isvec) {
-    void process_single_argument(T arg,ROOT::RVecD& sc,std::vector<ROOT::RVecD>& vec,int& index,std::vector<int>& veci,bool& isvec) {
-      // if constexpr (std::is_same_v<ROOT::RVec<typename T::value_type>, T>) {
+     void process_single_argument(T arg,ROOT::RVecD& sc,std::vector<ROOT::RVecD>& vec,int& index,std::vector<int>& veci,bool& isvec) {
       sc[index]=(arg);
       ++index;
-	// }
-    }
+   }
     
     /*
      * Template on the data type for intermediate THnT<T>
@@ -124,7 +118,7 @@ namespace rad{
 	  
 	  //Only want to fill 1 histogram corresponding to element bin in _histos
 	  if(haveVector==false){
-	    std::cout<<"SplitHisto "<<slot<<" "<<bin<<" "<<_scaler_data<<std::endl;
+	    // std::cout<<"SplitHisto "<<slot<<" "<<bin<<" "<<_scaler_data<<std::endl;
 	    _histos[slot].at(bin)->Fill(_scaler_data.data());
 	   
 	  }
