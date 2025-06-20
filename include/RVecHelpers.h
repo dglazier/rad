@@ -315,7 +315,6 @@ namespace rad{
     */
     template<typename T>
     T First(const ROOT::RVec<T>& values){
-      cout<<"First "<<values[0]<<endl;
       return values.empty() ? rad::constant::InvalidEntry<T>() : values[0];
     }
     
