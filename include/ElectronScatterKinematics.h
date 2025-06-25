@@ -19,7 +19,21 @@ namespace rad{
       return -phot.M2();
     
     }
-
+    
+    template<typename Tp, typename Tm>
+      double PolGammaStar(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
+      
+      auto phot = PhotoFourVector(react,px,py,pz,m);
+      auto scatele = FourVector(react[names::ScatEleIdx()],px,py,pz,m);
+      
+      auto q2 = phot.M2();
+      auto GammaE = phot.E();
+      auto ElScatTh = scatele.Theta();
+      
+      auto pol = 1./(1.+2.*(1.+GammaE*GammaE/q2)*TMath::Tan(ElScatTh/2.)*TMath::Tan(ElScatTh/2.));
+      return pol;
+    }
+    
     //would like to use a struct here, but define cannot take structs or classes
     //must be basic types or RVecs of basic types
     //HAve added method to deal with structs by defining seperate columns for
