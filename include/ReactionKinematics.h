@@ -177,6 +177,9 @@ namespace rad{
     
       //return  M1*M1 + M3*M3  - 2 * ( E1*E3 -p1*p3*costh );
       Double_t t0 = CMBar.M2() + CMTar.M2() - 2*(CMBar.E()*CMTar.E() - CMBar.P()*CMTar.P() ) ;
+      /* cout << "Inside T0 Func" << endl; */
+      /* cout << "CMBar: " << CMBar << endl; */
+      /* cout << "CMTar: " << CMTar << endl; */
       return t0;
     }
   
@@ -185,7 +188,11 @@ namespace rad{
     template<typename Tp, typename Tm>
     double TBot(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
       auto psum = beams::InitialFourVector(react[names::InitialBotIdx()][0],px,py,pz,m);
-      SubtractFourVector(psum,react[names::BaryonsIdx()],px,py,pz,m);
+      /* cout << "Inside TBot Func" << endl; */
+      /* cout << "pbeam: " << psum << endl; */
+      SubtractFourVector(psum,react[names::BaryonsIdx()],px,py,pz,m); 
+      /* cout << "pbeam_sub_pprime: " << psum << endl; */
+
       return - (psum.M2());
     }
     ///\brief return 4 momentum transfer squared of "in particles" - "out particles" on top vertex
@@ -196,7 +203,10 @@ namespace rad{
       auto phot=PhotoFourVector(react,px,py,pz,m);
       //Get meson (Top) 4-vector
       auto meso=FourVector(react[names::MesonsIdx()],px,py,pz,m);
-      //subtract 
+      //subtract
+      /* cout << "Inside TTop Func" << endl; */
+      /* cout << "phot: " << phot << endl; */
+      /* cout << "meso: " << meso << endl; */
       auto psum = phot-meso;
       //return t
       return - (psum.M2());
@@ -213,14 +223,26 @@ namespace rad{
     ///\brief return 4 momentum transfer squared, t, minus t0 (or tmin) of "in particles" - "out particles"
     template<typename Tp, typename Tm>
     double TPrimeBot(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
-  
-      return TBot(react,px,py,pz,m) + T0(react,px,py,pz,m);
+      auto tbot = TBot(react,px,py,pz,m);
+      auto t0 = T0(react,px,py,pz,m);
+      /* cout << "TBot: " << tbot << endl; */
+      /* cout << "T0: " << t0 << endl; */
+      /* cout << "TpBot; " << tbot+t0 << endl; */
+      /* cout << endl; */
+      return tbot + t0;
+    //return TBot(react,px,py,pz,m) + T0(react,px,py,pz,m);
     }
     ///\brief return 4 momentum transfer squared, t, minus t0 (or tmin) of "in particles" - "out particles"
     template<typename Tp, typename Tm>
     double TPrimeTop(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
-  
-      return TTop(react,px,py,pz,m) + T0(react,px,py,pz,m);
+      auto ttop = TTop(react,px,py,pz,m);
+      auto t0 = T0(react,px,py,pz,m);
+      /* cout << "TTop: " << ttop << endl; */
+      /* cout << "T0: " << t0 << endl; */
+      /* cout << "TpTot; " << ttop+t0 << endl; */
+      /* cout << endl; */
+      return ttop + t0;
+      //return TTop(react,px,py,pz,m) + T0(react,px,py,pz,m);
     }
   
 
