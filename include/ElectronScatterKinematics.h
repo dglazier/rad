@@ -63,8 +63,16 @@ namespace rad{
       XYZVector zV=CMGamma.Vect().Unit();
       XYZVector yV=CMGamma.Vect().Cross(CMBeam.Vect()).Unit();
       XYZVector xV=yV.Cross(zV).Unit();
-  
+      
       XYZVector angles(CMMes.Vect().Dot(xV),CMMes.Vect().Dot(yV),CMMes.Vect().Dot(zV));
+      //cout << names::BaryonsIdx() << " " << names::MesonsIdx() << " " << names::VirtGammaIdx() << endl;
+      //if(cos(angles.Theta())==1)
+      /* cout << "CMBeam: " << CMBeam << endl; */
+      /* cout << "CMMeson: " << CMMes << endl; */
+      /* cout << "CMGamma: " << CMGamma << endl; */
+      /* cout << "zV: " << zV << endl;  */
+      /* cout << "Cos(theta): " << cos(angles.Theta()) << endl; */
+      /* cout << endl; */
       // ElCMDecay_t result;
       // result.CosTheta=(TMath::Cos(angles.Theta()));
       // result.Phi=angles.Phi();

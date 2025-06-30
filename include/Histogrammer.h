@@ -134,7 +134,7 @@ namespace rad{
 	      if( rad::config::ColumnExists( col,_rad.CurrFrame())==false){	      
 		_typeResults[type].push_back(hists_splits_ptr()  );
 		badCol=true;
-		std::cout<<"Warning :: Histogrammer Colunm "<<col<<" "<<" does not exist"<<std::endl ;
+		std::cout<<"Warning :: Histogrammer Column "<<col<<" "<<" does not exist "<<type<<std::endl ;
 	      }
 	      else{
 		//column exists but with no type
@@ -183,10 +183,10 @@ namespace rad{
 	  auto new_col = col;
 	  new_col.replace(col.find('['), 1,1, '_');
 	  new_col.replace(col.find(']'), 1,1, '_');
-	  if(_verbose) std::cout<<"CheckColumn create new column from array element : "<<new_col<<endl;
 
 	  //Check if already defined new_col
 	  if(rad::config::ColumnExists(new_col,_rad.CurrFrame())==false){
+	    if(_verbose) std::cout<<"CheckColumn create new column from array element : "<<new_col<<endl;
 	    _rad.Define(new_col,col);
 	  }
 	  //change col, so we use the new one
@@ -324,7 +324,8 @@ namespace rad{
 	  }//type
 	}//hist
       }
-      
+
+      void SetVerbose(int val){_verbose = val;}
     private:
      
       config::ConfigReaction& _rad;// = nullptr;
@@ -336,7 +337,7 @@ namespace rad{
       
       std::vector<string> _types;
       std::string _name;
-      ushort _verbose=1;
+      ushort _verbose=0;
       ushort _nResults=0;
     };
 

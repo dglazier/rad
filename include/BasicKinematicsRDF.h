@@ -17,16 +17,8 @@ namespace rad{
 
     
     void PrintParticles(config::ConfigReaction& cr,const string& type=rad::names::data_type::Truth()){
-      //cr.DefineForAllTypes(name, (Form("rad::PrintParticles(rdfentry_,components_p4)")) );
-      //auto cf = cr.CurrFrame();
-      //std::vector<std::string> cols ={"rdfentry_",type+"pid",type+"px",type+"py",type+"pz",type+"m"};
-      //C++20 templated lambdas !
-      // cf.Foreach([]<typename Tp, typename Tm >(ULong64_t entry,const ROOT::RVecI &pid,const ROOT::RVec<Tp> &px, const ROOT::RVec<Tp> &py, const ROOT::RVec<Tp> &pz, const ROOT::RVec<Tm> &m){
-      // cf.Foreach([](ULong64_t entry,const ROOT::RVecI &pid,const ROOT::RVecF &px, const ROOT::RVecF &py, const ROOT::RVecF &pz, const ROOT::RVecD &m){
-      //rad::PrintParticles(entry,pid,px,py,pz,m);},
-      //cols);
-
-      //Note can't sue templa ted lambdas so use JITing, but can't use Foreach for this
+    
+      //Note can't sue templated lambdas so use JITing, but can't use Foreach for this
       //So just use Filter returning true.
       cr.Filter(Form("rad::PrintParticles(\"%s\",rdfentry_,%spid,%spx,%spy,%spz,%sm);return true;",type.data(),type.data(),type.data(),type.data(),type.data(),type.data()),type+"print");
       //cr.setCurrFrame(cf);

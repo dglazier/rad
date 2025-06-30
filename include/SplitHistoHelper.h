@@ -20,8 +20,7 @@ namespace rad{
   namespace histo{
 
     template <typename T>
-    void process_single_argument(ROOT::RVec<T> arg,std::vector<double>& sc,std::vector<ROOT::RVecD>& vec,int& index,std::vector<int>& veci,bool& isvec) {
-      // std::cout<< arg <<std::endl;
+    void process_single_argument(ROOT::RVec<T> arg,ROOT::RVecD& sc,std::vector<ROOT::RVecD>& vec,int& index,std::vector<int>& veci,bool& isvec) {
       isvec=true;
       ROOT::RVec<T> rvec(arg.size());
       int i=0;
@@ -31,16 +30,13 @@ namespace rad{
      }
       vec[index]=(rvec);
       veci.push_back(index);
-      // std::cout<<index<<" "<<rvec<<" "<<veci.back()<<" "<<vec.size()<<std::endl;
       ++index;
     }
     template <typename T>
-      void process_single_argument(T arg,std::vector<double>& sc,std::vector<ROOT::RVecD>& vec,int& index,std::vector<int>& veci,bool& isvec) {
-      // if constexpr (std::is_same_v<ROOT::RVec<typename T::value_type>, T>) {
+     void process_single_argument(T arg,ROOT::RVecD& sc,std::vector<ROOT::RVecD>& vec,int& index,std::vector<int>& veci,bool& isvec) {
       sc[index]=(arg);
       ++index;
-	// }
-    }
+   }
     
     /*
      * Template on the data type for intermediate THnT<T>
@@ -112,13 +108,6 @@ namespace rad{
       void Exec(unsigned int slot,int bin,  ColumnTypes... values)
 	{
 	  if(bin<0||bin>=static_cast<int>(_Nhistos)) return; //event out of range
-	  //std::cout<< "SplitHistoHelper Exec " <<_Nhistos<<" "<<slot<<" "<<_histos[slot].size()<<" "<<bin<<" "<<_histos[slot][0]->GetName()<<std::endl;
-	  
-	  //Since TH* fill expects doubles, we build it passing through elements of  std::array<double>.
-	  //array should have 1 entry for 1D hist
-	  //std::array<double, sizeof...(ColumnTypes)> valuesArr{static_cast<double>(values)...};
-	  //_histos[slot].at(bin)->Fill(valuesArr.data());
-	  // return;
 	  
 	  //implement vector filling TODO
 	  int index = 0;
@@ -129,6 +118,7 @@ namespace rad{
 	  
 	  //Only want to fill 1 histogram corresponding to element bin in _histos
 	  if(haveVector==false){
+	    // std::cout<<"SplitHisto "<<slot<<" "<<bin<<" "<<_scaler_data<<std::endl;
 	    _histos[slot].at(bin)->Fill(_scaler_data.data());
 	   
 	  }
@@ -143,7 +133,11 @@ namespace rad{
 	    // }
 
 	    auto Nentries = _vector_data[vecIndices[0]].size();
-	    //	    std::cout<<"SplitHisto "<<Nentries<<" "<<bin<<" "<<slot<<" "<<vecIndices[0]<<std::endl;
+	    //std::cout<<"SplitHisto "<<Nentries<<" "<<bin<<" "<<slot<<" "<<vecIndices[0]<<std::endl;
+	    //loop over all entries in vector data
+	    //assume each vector is same size
+	    //scalar arguments will keep same value
+	    //as ival is only for vector arguments
 	    for(uint ientry=0;ientry<Nentries;++ientry){
 	      for(auto ival : vecIndices){
 		_scaler_data[ival]=_vector_data[ival][ientry];
@@ -192,7 +186,8 @@ namespace rad{
       std::vector< std::vector<THn_ptr> > _histos; // one per data processing slot
       size_t _Nhistos=0;
       Result_ptr _resultHists;
-      std::vector<double> _scaler_data;
+      // std::vector<double> _scaler_data;
+      ROOT::RVecD _scaler_data;
       //note we hard-code an RVecD for variable type
       std::vector<ROOT::RVecD> _vector_data;
 

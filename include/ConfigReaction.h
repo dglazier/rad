@@ -9,6 +9,7 @@
 #include "DefineNames.h"
 #include "RVecHelpers.h"
 #include "ReactionUtilities.h"
+#include "StringUtilities.h"
 
 #include <ROOT/RDFHelpers.hxx>
 #include <ROOT/RDataFrame.hxx>
@@ -42,12 +43,21 @@ namespace rad{
       }
       cout<<"\n";
     }
+   void PrintAllColumnNames(RDFstep  df){
+      std::cout<<"Print Column Names : ";
+      auto cols =  df.GetColumnNames();
+      for(auto& col:cols){
+	std::cout<<col<<", ";
+      }
+      cout<<"\n";
+    }
 
     bool ColumnExists(const string& col,RDFstep  df){
       auto cols =  df.GetDefinedColumnNames();
       if(std::find(cols.begin(),cols.end(),col)==cols.end()) return false;
       return true;
     }
+    
     
     std::string as_string(std::string_view v) { 
       return {v.data(), v.size()}; 
@@ -61,15 +71,26 @@ namespace rad{
 
       //     ConfigReaction(const std::string& treeName, const std::string& fileNameGlob, const ROOT::RDF::ColumnNames_t&  columns ) : _orig_df{treeName,{fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data()},columns},_curr_df{_orig_df}{
       ConfigReaction(const std::string_view treeName, const std::string_view fileNameGlob, const ROOT::RDF::ColumnNames_t&  columns ) : _orig_df{treeName,{fileNameGlob.data()},columns},_curr_df{_orig_df},_base_df{_orig_df},_treeName{treeName},_fileName{fileNameGlob}{
+	if (fileNameGlob.empty()) {
+	  throw std::invalid_argument("ConfigReaction: fileNameGlob cannot be empty.");
+	}
+	_orig_col_names = _orig_df.GetColumnNames();
       }
       ConfigReaction(const std::string_view treeName, const std::vector<std::string> &filenames, const ROOT::RDF::ColumnNames_t&  columns ) : _orig_df{treeName,filenames,columns},_curr_df{_orig_df},_base_df{_orig_df},_treeName{treeName},_fileNames{filenames}{
+	if (filenames.empty()) {
+	  throw std::invalid_argument("ConfigReaction: fileNameGlob cannot be empty.");
+	}
+	_orig_col_names = _orig_df.GetColumnNames();
+ 	
       }
 
       //if creating from alternative data source
       ConfigReaction(ROOT::RDataFrame rdf ) : _orig_df{rdf},_curr_df{rdf},_base_df{rdf}{
+	_orig_col_names = _orig_df.GetColumnNames();
       }
       
       ~ConfigReaction(){ 
+	//	std::cout << "ConfigReaction destructor: " <<_triggerSnapshots.size() << std::endl;
 	for (auto& trigger : _triggerSnapshots) {
 	  if (trigger) trigger();
 	}
@@ -106,6 +127,10 @@ namespace rad{
        */
         void DefineForAllTypes(const string& name,const string& expression){
 	for(auto &atype:_type_comps){
+	  if (atype.second.find("components_p4") == atype.second.end() ||
+	      atype.second.find("components_p3") == atype.second.end()) {
+            throw std::runtime_error("DefineForAllTypes: Missing 'components_p4' or 'components_p3' for type: " + atype.first);
+	  }
 	  TString type_expr = expression.data();
 	  type_expr.ReplaceAll("components_p4",atype.second["components_p4"]);
 	  type_expr.ReplaceAll("components_p3",atype.second["components_p3"]);
@@ -115,6 +140,10 @@ namespace rad{
       template<typename Lambda>
       void DefineForAllTypes(const string& name,Lambda&& func,const ROOT::RDF::ColumnNames_t&  columns ){
 	for(auto &atype:_type_comps){
+	  if (atype.second.find("components_p4") == atype.second.end() ||
+	      atype.second.find("components_p3") == atype.second.end()) {
+            throw std::runtime_error("DefineForAllTypes: Missing 'components_p4' or 'components_p3' for type: " + atype.first);
+	  }
 	  ROOT::RDF::ColumnNames_t type_cols;
 	  for(auto& acol:columns){
 	    type_cols.push_back(atype.first + acol);
@@ -122,7 +151,33 @@ namespace rad{
 	  Define(atype.first + name.data(),func,type_cols);
 	}
       }
-     
+      /**
+       * @brief make a new column for each particle based on applying func_name
+       *        the new columns will called name_particle
+       * @param name base name if new variable
+       * @param particles list of particles to define this variable from
+       * @param func_name the function to apply, should be defined in a .h file
+       * @param values variables to be used by func to define new column
+       */
+      void DefineForParticles(const string& name,const ROOT::RDF::ColumnNames_t &particles,const ROOT::RDF::ColumnNames_t &values, const std::string& func_name){
+	//loop over particles
+	for(const auto& p : particles){
+	  auto selected_entries = values;
+	  //create string selecting particle entry from the values arrays
+	  std::for_each(selected_entries.begin(), selected_entries.end(),
+			[&p](std::string& s) {
+			  s += '[';
+			  s += p;
+			  s += ']';
+			});
+	  //create the function for the Define call
+	  auto selected_func = rad::utils::createFunctionCallStringFromVec(func_name,selected_entries);
+	  cout<<"DefineForParticles "<<name+"_"+p<<" "<<selected_func<<endl;
+	  //Define this variable for this particle
+	  Define(name+"_"+p,selected_func);
+	}
+      }
+
       /**
        * Interface to RDataFrame Redefine
        */
@@ -139,18 +194,32 @@ namespace rad{
       /**
        * Interface to RDataFrame Redefine via any aliases that may be used
        */
-      void RedefineViaAlias(const string& alias,const string& expression){
-	Redefine(_aliasMap[alias],expression);
-      }
+      //The redefine with alias does not work as the branchname
+      //is not a mathematical expression. This is not checked for
+      //the Lambda version below and works.
+      // void RedefineViaAlias(const string& alias,const string& expression){
+      // 	RedefineExpr(_aliasMap[alias],expression);
+      // }
       template<typename Lambda>
       void RedefineViaAlias(const string& alias,Lambda&& func,const ROOT::RDF::ColumnNames_t& columns ){
-	Redefine(_aliasMap[alias],func,columns);
+	//	Redefine(_aliasMap[alias],func,columns);
+	
+	auto it = _aliasMap.find(alias);
+	if (it == _aliasMap.end()) {
+	  throw std::invalid_argument("RedefineViaAlias: alias '" + alias + "' does not exist in _aliasMap.");
+	}
+	Redefine(it->second, std::forward<Lambda>(func), columns);
+
       }
  
       /** 
        * Add an alias for a branch and update the current frame to the aliased one
        */
       void setBranchAlias(const string& old_name,const string& new_name){
+	//Check if the old_name column exists before creating the alias
+	if (!OriginalColumnExists(old_name)) {
+	  throw std::invalid_argument("setBranchAlias: Source column '" + old_name + "' does not exist in the DataFrame.");
+	}
 	_aliasMap[new_name] = old_name;
 	setCurrFrame(CurrFrame().Alias(new_name,old_name));
       }
@@ -169,21 +238,32 @@ namespace rad{
        * Make a snapshot of newly defined columns
        */
       void BookLazySnapshot(const string& filename){
-      	ROOT::RDF::RSnapshotOptions opts;
-      	opts.fLazy = true;
-      	auto cols = CurrFrame().GetDefinedColumnNames();
-      	RemoveSnapshotColumns(cols);
-	//CurrFrame().Snapshot("rad_tree",filename, cols , opts); 
-	auto snapshot_result = CurrFrame().Snapshot("rad_tree",filename, cols , opts); 
-	_triggerSnapshots.emplace_back([snapshot = std::move(snapshot_result)]() mutable{} );
+	try {
+	  ROOT::RDF::RSnapshotOptions opts;
+	  opts.fLazy = true;
+	  auto cols = CurrFrame().GetDefinedColumnNames();
+	  RemoveSnapshotColumns(cols);
+	  auto snapshot_result = CurrFrame().Snapshot("rad_tree", filename, cols, opts);
+	  _triggerSnapshots.emplace_back([snapshot = std::move(snapshot_result)]() mutable{});
+	} catch (const std::exception& ex) {
+	  std::cerr << "BookLazySnapshot failed: " << ex.what() << std::endl;
+	  throw; // or handle gracefully
+	}
+      
       }
       
       
       void Snapshot(const string& filename){
-	auto cols = CurrFrame().GetDefinedColumnNames();
-	RemoveSnapshotColumns(cols);
-	CurrFrame().Snapshot("rad_tree",filename, cols );
+	try {
+	  auto cols = CurrFrame().GetDefinedColumnNames();
+	  RemoveSnapshotColumns(cols);
+	  CurrFrame().Snapshot("rad_tree", filename, cols);
+	} catch (const std::exception& ex) {
+	  std::cerr << "Snapshot failed: " << ex.what() << std::endl;
+	  throw;
+	}
       }
+
       virtual void RemoveSnapshotColumns(std::vector<string>& cols){
 	cols.erase(std::remove(cols.begin(), cols.end(), names::ReactionMap() ), cols.end());
 
@@ -201,6 +281,10 @@ namespace rad{
        * and update the current frame to the aliased one
        */
       void setParticleIndex(const string& particle, const int idx, int pdg=0 ){
+	// Check if particle index column already exists to avoid accidental overwrite
+	if (ColumnExists(particle, CurrFrame())) {
+	  throw std::invalid_argument("setParticleIndex: Index column for particle '" + particle + "' already exists!");
+	}
 	Define(particle,[idx](){return idx;},{});
 	if(pdg!=0){
 	  if(ColumnExists(Rec()+"pid",CurrFrame())||CheckAlias(Rec()+"pid")){
@@ -208,6 +292,7 @@ namespace rad{
 	  }
 	}
  	AddParticleName(particle);
+ 	AddFinalParticleName(particle);
      }
       
       /** 
@@ -218,6 +303,10 @@ namespace rad{
        */
       template<typename Lambda>
       void setParticleIndex(const string& particle, Lambda&& func,const ROOT::RDF::ColumnNames_t & columns = {}, int pdg=0 ){
+	// Check if particle index column already exists to avoid accidental overwrite
+	if (ColumnExists(particle, CurrFrame())) {
+	  throw std::invalid_argument("setParticleIndex: Index column for particle '" + particle + "' already exists!");
+	}
 	Define(particle,func,columns);
 
 	if(pdg!=0){
@@ -226,6 +315,7 @@ namespace rad{
 	  }
 	}
 	AddParticleName(particle);
+	AddFinalParticleName(particle);
       }
 
       /**
@@ -390,7 +480,10 @@ namespace rad{
        */
       void AliasToPrimaryType(const string& name){
 	if(_primary_type.empty()==true) return;
-	std::cout<<"AliasToPrimaryType "<<_primary_type<<" "<<name<<std::endl;
+	std::string fullName = _primary_type + name;
+	if (!OriginalColumnExists(fullName)) {
+	  throw std::invalid_argument("AliasToPrimaryType: Column '" + fullName + "' does not exist.");
+	}
 	setBranchAlias(_primary_type+name,name);
       }
      /**
@@ -415,6 +508,14 @@ namespace rad{
 
       std::map<string, std::map<string,string>> GetTypes() const {return _type_comps;}
 
+      /**
+       * Check if currently using type
+       */
+      bool CheckForType(const string& type){
+	if(_type_comps.find(type) != _type_comps.end()) return true;
+	else return false;
+ 
+      }
       /**
        * get or set the base df
        * this should include the configuration of the input
@@ -445,7 +546,17 @@ namespace rad{
 	return _fileNames;
       }
       
+      bool OriginalColumnExists(const string& col){
+	if(std::find(_orig_col_names.begin(),_orig_col_names.end(),col)==_orig_col_names.end()){
+	  return false;
+	}
+	return true;
+      }
+ 
       void AddParticleName(const std::string& particle){_particleNames.push_back(particle);}
+      void AddFinalParticleName(const std::string& particle){_finalNames.push_back(particle);}
+      const ROOT::RDF::ColumnNames_t& ParticleNames() const {return _particleNames;}
+      const ROOT::RDF::ColumnNames_t& FinalParticleNames() const {return _finalNames;}
       
       const std::map<string,string>& AliasMap() const {return _aliasMap;}
 
@@ -497,6 +608,8 @@ namespace rad{
       std::string _fileName;//if single file (or wildcards)
       std::string _treeName;
       ROOT::RDF::ColumnNames_t  _particleNames; //list of all particles, so index calculation can be enforced at start of operations
+      ROOT::RDF::ColumnNames_t  _finalNames; //list of detectable particles
+      ROOT::RDF::ColumnNames_t _orig_col_names; //columns in origin tree
       
       //snapshot
       std::vector<std::function<void()>> _triggerSnapshots;

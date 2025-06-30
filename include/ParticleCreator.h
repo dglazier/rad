@@ -39,6 +39,8 @@ namespace rad{
       void Miss(const string& name,const std::vector<std::string>& parts) const{
 	DefineParticle(name,parts,Form("rad::reactkine::ParticleCreateByMiss(%s,%s",BeamIndices().data(),VectorToString(parts).data()));
       }
+      //
+      
       //////////////////////////////////////////////////////////////////
       void DefineParticle(const string& name,const std::vector<std::string> parts,const string& funcExpr) const{
 	
@@ -51,7 +53,7 @@ namespace rad{
 	  //Make sure any created particle uses type_idx
 	  //This ensures its Create function is called prior to this one
 	  string sum ="{";
-	  for(string p:parts){
+	  for(std::string p:parts){
 	    if( std::find(_created.begin(),_created.end(),p)!=_created.end() ){
 	      std::string type_p = atype.first + p;
 	      p=type_p;
@@ -84,7 +86,7 @@ namespace rad{
 	//std::cout<<"Sum names "<<snames<<" "<<Form("ROOT::RVecU%s[0]",snames.data())<<std::endl;
 	_reaction->Define(name.data(),Form("ROOT::RVecI%s[0]",snames.data()));
 	Reaction()->AddParticleName(name);
- 
+	
       }
     
       //////////////////////////////////////////////////////////////////
@@ -131,6 +133,18 @@ namespace rad{
       m.push_back(p4.M());
       return idx;
     }
- 
-  }
+    
+  /* template<typename Tp, typename Tm> */
+  /*   int  ParticleCreate( Tp &tpx, Tp &tpy, Tp &tpz, Tp &tm, RVec<Tp> &px, RVec<Tp> &py, RVec<Tp> &pz, RVec<Tm> &m, const RVecI& iafter){ */
+  /*   auto idx = px.size(); */
+    
+  /*   px.push_back(tpx); */
+  /*   py.push_back(tpy); */
+  /*   pz.push_back(tpz); */
+  /*   m.push_back(tm); */
+  /*   return idx; */
+  /* } */
+  
+  
+  }//end config
 }
