@@ -1,6 +1,5 @@
 #pragma once
 #include "ParticleGenerator.h"
-#include "Utilities.h"
 
 //void ParticleGeneratorRDF(){}
 
