@@ -4,7 +4,7 @@
 #include "HepMCElectro.h"
 #include "ParticleCreator.h"
 #include "ParticleGenerator.h"
-#include "ParticleGeneratorRDF.h"
+//#include "ParticleGeneratorRDF.h"
 #include "Indicing.h"
 #include "Histogrammer.h"
 #include "BasicKinematicsRDF.h"
@@ -39,7 +39,12 @@ void ProcessHepMCDDVCS(){
   
   //if regenerating lepton pair
   hepmc.setParticleIndex("gprime",4);//
-  rad::generator::GenerateTwoBody(hepmc,{"ele","pos"},"gprime");
+  rad::generator::ParticleGenerator gen{hepmc};
+  double m_e = 0.000511;
+  ROOT::VecOps::RVec<double> masses;
+  masses.push_back(m_e);
+  masses.push_back(m_e);
+  gen.GenerateTwoBody({"ele","pos"},masses,"gprime");
   hepmc.setMesonParticles({"ele","pos"});
 
   //must call this after all particles are configured
@@ -183,17 +188,6 @@ void ProcessHepMCDDVCS(){
   c00->cd(8);
   histo.DrawSame("tpbot",gPad);
   
-  TCanvas *c04 = new TCanvas("c04","Helicity and Polarisation");
-  c04->Divide(2,2);
-  c04->cd(1);
-  histo.DrawSame("Heli_CosTheta",gPad);
-  c04->cd(2);
-  histo.DrawSame("Heli_Phi",gPad);
-  c04->cd(3);
-  histo.DrawSame("GammaPol",gPad);
-  c04->cd(4);
-  histo.DrawSame("GammaE",gPad);
-  
   TCanvas *c01 = new TCanvas("c01","Exclusivity Plots",800,400);
   c01->Divide(3,2);
   c01->cd(1);
@@ -209,6 +203,17 @@ void ProcessHepMCDDVCS(){
   //c01->cd(6);
   //histo.DrawSame("MissMass",gPad);
   
+    TCanvas *c02 = new TCanvas("c02","");
+  c02->Divide(2,2);
+  c02->cd(1);
+  histo.DrawSame("tbot_mesonmass",gPad);
+  c02->cd(2);
+  histo.DrawSame("tpbot_mesonmass",gPad);
+  c02->cd(3);
+  histo.DrawSame("tbot_W",gPad);
+  c02->cd(4);
+  histo.DrawSame("tpbot_W",gPad);
+
   TCanvas *c03 = new TCanvas("c03","CM and PR Frame Angles");
   c03->Divide(2,2);
   c03->cd(1);
@@ -219,27 +224,21 @@ void ProcessHepMCDDVCS(){
   histo.DrawSame("cthPR",gPad);
   c03->cd(4);
   histo.DrawSame("phPR",gPad);
-
-
   
-  histo.DrawSame("pprime_phi");
+  TCanvas *c04 = new TCanvas("c04","Helicity and Polarisation");
+  c04->Divide(2,2);
+  c04->cd(1);
+  histo.DrawSame("Heli_CosTheta",gPad);
+  c04->cd(2);
+  histo.DrawSame("Heli_Phi",gPad);
+  c04->cd(3);
+  histo.DrawSame("GammaPol",gPad);
+  c04->cd(4);
+  histo.DrawSame("GammaE",gPad);
   
-  TCanvas *c05 = new TCanvas("c05","");
-  c05->Divide(2,2);
-  c05->cd(1);
-  histo.DrawSame("tbot_mesonmass",gPad);
-  c05->cd(2);
-  histo.DrawSame("tpbot_mesonmass",gPad);
-  c05->cd(3);
-  histo.DrawSame("tbot_W",gPad);
-  c05->cd(4);
-  histo.DrawSame("tpbot_W",gPad);
-
-  histo.DrawSame("pprime_phi");
-  
-  histo.DrawSame("MissMassPprime");
-  
-  histo.DrawSame("W_mesonmass");
+  // histo.DrawSame("pprime_phi");
+  // histo.DrawSame("MissMassPprime");
+  // histo.DrawSame("W_mesonmass");
   
   gBenchmark->Stop("processing");
   gBenchmark->Print("processing");
