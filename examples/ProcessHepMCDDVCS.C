@@ -40,11 +40,11 @@ void ProcessHepMCDDVCS(){
   //if regenerating lepton pair
   hepmc.setParticleIndex("gprime",4);//
   rad::generator::ParticleGenerator gen{hepmc};
-  double m_e = 0.000511;
+  double m_e = 0.000510999;
   ROOT::VecOps::RVec<double> masses;
   masses.push_back(m_e);
   masses.push_back(m_e);
-  gen.GenerateTwoBody({"ele","pos"},masses,"gprime");
+  gen.GenerateTwoBody({"ele","pos"},masses,"gprime","pprime");
   hepmc.setMesonParticles({"ele","pos"});
 
   //must call this after all particles are configured
