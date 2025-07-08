@@ -6,7 +6,6 @@
 #include "ParticleGenerator.h"
 //#include "ParticleGeneratorRDF.h"
 #include "Indicing.h"
-//#include "Random.h"
 #include "Histogrammer.h"
 #include "BasicKinematicsRDF.h"
 #include "ReactionKinematicsRDF.h"
@@ -16,18 +15,14 @@
 #include <TCanvas.h>
 
 void ProcessHepMCDDVCS(){
-  // Enable implicit multi-threading
-  ROOT::EnableImplicitMT(4);
-  
-  
   using namespace rad::names::data_type; //for MC()
-  gBenchmark->Start("df");
-  
-  //create reaction dataframe
-  rad::config::HepMCElectro hepmc{"hepmc3_tree", {"../../18x275_ddvcs_events_plus.root","../../18x275_ddvcs_events_plus.root","../../18x275_ddvcs_events_plus.root","../../18x275_ddvcs_events_plus.root","../../18x275_ddvcs_events_plus.root","../../18x275_ddvcs_events_plus.root","../../18x275_ddvcs_events_plus.root","../../18x275_ddvcs_events_plus.root","../../18x275_ddvcs_events_plus.root","../../18x275_ddvcs_events_plus.root"}};
-  hepmc.AliasMomentumComponents();
+   gBenchmark->Start("df");
 
- //Assign particles names and indices
+   //create reaction dataframe
+   rad::config::HepMCElectro hepmc{"hepmc3_tree", "/w/work5/home/garyp/18x275_ddvcs_events_plus.root"};
+  hepmc.AliasMomentumComponents();
+    
+  //Assign particles names and indices
   //indicing comes from ordering in hepmc file
   hepmc.setBeamIonIndex(3);
   hepmc.setBeamElectronIndex(0);
@@ -45,7 +40,7 @@ void ProcessHepMCDDVCS(){
   //if regenerating lepton pair
   hepmc.setParticleIndex("gprime",4);//
   rad::generator::ParticleGenerator gen{hepmc};
-  double m_e = 0.000511;
+  double m_e = 0.000510999;
   ROOT::VecOps::RVec<double> masses;
   masses.push_back(m_e);
   masses.push_back(m_e);
@@ -160,8 +155,8 @@ void ProcessHepMCDDVCS(){
   //theta phi pol t eepEgamma
   histo.Create<TH1D,double>({"GammaPol","Polarisation of Virtual Photon",100,0,1},{"GammaPol"});
   histo.Create<TH1D,double>({"GammaE","Energy of Virtual Photon",100,0,18},{"GammaE"});
-  histo.Create<TH1D,double>({"Heli_CosTheta","#theta decay angle",10000,-TMath::Pi(),TMath::Pi()},{"Heli_CosTheta"});
-  histo.Create<TH1D,double>({"Heli_Phi","#phi decay angle",10000,-TMath::Pi()-1,TMath::Pi()+1},{"Heli_Phi"});
+  histo.Create<TH1D,double>({"Heli_CosTheta","#theta decay angle",100,-TMath::Pi(),TMath::Pi()},{"Heli_CosTheta"});
+  histo.Create<TH1D,double>({"Heli_Phi","#phi decay angle",100,-TMath::Pi()-1,TMath::Pi()+1},{"Heli_Phi"});
  
   
   gBenchmark->Start("snapshot");
