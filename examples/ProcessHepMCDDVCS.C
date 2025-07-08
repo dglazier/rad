@@ -44,7 +44,7 @@ void ProcessHepMCDDVCS(){
   ROOT::VecOps::RVec<double> masses;
   masses.push_back(m_e);
   masses.push_back(m_e);
-  gen.GenerateTwoBody({"ele","pos"},masses,"gprime","pprime");
+  gen.GenerateTwoBody({"ele","pos"},masses,"gprime");
   hepmc.setMesonParticles({"ele","pos"});
 
   //must call this after all particles are configured
