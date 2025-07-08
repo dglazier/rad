@@ -163,7 +163,15 @@ std::string combineVectorToString(const std::vector<std::string>& stringVector) 
 }
 
 
- inline std::string combineVectorToQuotedString(const std::vector<std::string>& parts) {
+/**
+ * @brief Combines a vector of strings into a single string, formatted as a
+ * comma-separated list enclosed in curly braces, with each item given quotes.
+ *
+ * @param stringVector The vector of strings to combine.
+ * @return A single string representing the combined vector (e.g., "{"item1", "item2", "item3"}").
+ */
+
+    inline std::string combineVectorToQuotedString(const std::vector<std::string>& parts) {
    std::string result = "{";
    for (const auto& part : parts) {
      result += "\"" + part + "\",";
@@ -172,7 +180,35 @@ std::string combineVectorToString(const std::vector<std::string>& stringVector) 
    result += "}";
    return result;
  }
+    
+/**
+ * @brief Combines a vector of strings into a single string, formatted as a
+ * comma-separated list enclosed in curly braces.
+ *
+ * @param stringVector The vector of strings to combine.
+ * @return A single string representing the combined vector (e.g., "{item1, item2, item3}").
+ */
+  template<typename T>
+  inline std::string combineAnyVectorToString(const ROOT::RVec<T>& vec){
+      
+      std::string result = "{";
+      
+      //go through vec and make string of each element
+      for (auto iter:vec){
+	auto p = std::to_string(iter);
+	result.append(p);
+	result.append(",");
+      }
 
+      //remove last "," easily
+      if(!result.empty()){
+	result.pop_back();
+      }
+      //close the curly brackets {}
+      result.append("}");
+      return result;
+    }
+    
 // Helper function to convert a string to lowercase
 // This is useful for case-insensitive comparisons
 std::string toLower(std::string s) {
