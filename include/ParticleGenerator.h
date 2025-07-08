@@ -4,7 +4,6 @@
 #include "ConfigReaction.h"
 #include "StringUtilities.h"
 #include "Random.h"
-//#include <TRandom.h>
 
 namespace rad{
   namespace generator{
@@ -19,13 +18,17 @@ namespace rad{
       
       //pmag of 2body decay
       auto Mpar = parent.M();
-      auto term1 = pow(Mpar,2) - pow(masses[0]+masses[1],2);
-      auto term2 = pow(Mpar,2) - pow(masses[0]-masses[1],2);
-      auto p = sqrt(term1*term2)/(2*Mpar);
+
+      //Calculate 2-body breakup rest-frame momentum
+      auto sum_masses = masses[0]+masses[1];
+      auto dif_masses = masses[0]+masses[1];
+      auto term1 = Mpar*Mpar - sum_masses*sum_masses;
+      auto term2 = Mpar*Mpar - dif_masses*dif_masses;
+      auto p = TMath::Sqrt(term1*term2)/(2*Mpar);
       
       //random thetaphi in helicity frame
-      double costheta = rad::random::Generator().Uniform(-1,1);
-      auto sintheta = sqrt(1 - costheta*costheta);
+      double costheta = rad::random::Generator().Uniform(-1.,1.);
+      auto sintheta = TMath::Sqrt(1 - costheta*costheta);
       auto phi =  rad::random::Generator().Uniform(0, 2.0*TMath::Pi());
       
       //define momentum components
@@ -35,10 +38,7 @@ namespace rad{
       
       //define first decay product
       PxPyPzMVector cmpart1 = {dpx,dpy,dpz,masses[0]};
-      
-      //check validity
-      if(TMath::Abs(TMath::Cos(cmpart1.Theta()))>1||TMath::Abs(costheta)>1||TMath::Abs(sintheta)>1) exit(0);
-      
+           
       //boost back to lab frame
       auto part1 = boost(cmpart1,-decBoost);
       
@@ -63,26 +63,7 @@ namespace rad{
     }
     
     
-    template<typename T>
-      std::string fVecToString(const RVec<T> vec){
-      
-      std::string result = "{";
-      
-      //go through vec and make string of each element
-      for (auto iter:vec){
-	auto p = std::to_string(iter);
-	result.append(p);
-	result.append(",");
-      }
-
-      //remove last "," easily
-      if(!result.empty()){
-	result.pop_back();
-      }
-      //close the curly brackets {}
-      result.append("}");
-      return result;
-    }
+  
 
     
     class ParticleGenerator : public rad::config::ParticleCreator{
@@ -90,17 +71,29 @@ namespace rad{
     public:
       
       ParticleGenerator() = default;
-      ParticleGenerator(rad::config::ConfigReaction &cr,size_t seed=1):rad::config::ParticleCreator{cr}{
+      ParticleGenerator(rad::config::ConfigReaction &cr,size_t seed=1):
+	rad::config::ParticleCreator{cr}
+      {
+	
       Reaction()->InitRandom(seed);
+
       };
       
-      template<typename Tm>
-	void GenerateTwoBody(const std::vector<std::string> &names, const RVec<Tm> masses, const string &parent){
-        
-	std::string smasses=fVecToString(masses);
-	TString expr0 = Form( "rad::generator::ParticleCreateTwoBody(%s,%s",parent.data(), smasses.data());
-	DefineParticle(names[0],std::vector<string>(),expr0.Data());
-	Diff(names[1],std::vector<string>{parent.data()},std::vector<string>{names[0]});
+
+      void GenerateTwoBody(const std::vector<std::string> &names,
+			   const ROOT::RVecD& masses, const string &parent){
+
+	//combine masses vector to string
+	std::string smasses=rad::utils::combineAnyVectorToString(masses);
+	
+	//create Define function string
+	auto expr = Form( "rad::generator::ParticleCreateTwoBody(%s,%s",parent.data(), smasses.data());
+	
+	//create first decay particle
+	DefineParticle(names[0],std::vector<string>(),expr);
+	
+	//create second decay particle
+	Diff(names[1],{parent},{names[0]});
       }
       
     };// end Class ParticleGenerator
