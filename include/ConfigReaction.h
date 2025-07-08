@@ -16,11 +16,12 @@
 #include <ROOT/RDataFrame.hxx>
 #include <ROOT/RVec.hxx>
 
+
 namespace rad{
   namespace config{
     using rad::names::data_type::Rec;
- 
-    // class ParticleCreator;
+    class ParticleCreator;
+    
     
     //! Code simplifications
   
@@ -76,7 +77,8 @@ namespace rad{
 	  throw std::invalid_argument("ConfigReaction: fileNameGlob cannot be empty.");
 	}
 	_orig_col_names = _orig_df.GetColumnNames();
-      }
+
+    }
       ConfigReaction(const std::string_view treeName, const std::vector<std::string> &filenames, const ROOT::RDF::ColumnNames_t&  columns ) : _orig_df{treeName,filenames,columns},_curr_df{_orig_df},_base_df{_orig_df},_treeName{treeName},_fileNames{filenames}{
 	if (filenames.empty()) {
 	  throw std::invalid_argument("ConfigReaction: fileNameGlob cannot be empty.");
@@ -88,7 +90,8 @@ namespace rad{
       //if creating from alternative data source
       ConfigReaction(ROOT::RDataFrame rdf ) : _orig_df{rdf},_curr_df{rdf},_base_df{rdf}{
 	_orig_col_names = _orig_df.GetColumnNames();
-      }
+
+   }
       
       ~ConfigReaction(){ 
 	//	std::cout << "ConfigReaction destructor: " <<_triggerSnapshots.size() << std::endl;
@@ -98,7 +101,6 @@ namespace rad{
 	
 	//std::cout << "ConfigReaction destructor: " << CurrFrame().Count().GetValue() << std::endl;
       }
-      
       
       /** 
        * Get the current dataframe to add further actions
@@ -210,7 +212,6 @@ namespace rad{
 	  throw std::invalid_argument("RedefineViaAlias: alias '" + alias + "' does not exist in _aliasMap.");
 	}
 	Redefine(it->second, std::forward<Lambda>(func), columns);
-
       }
  
       /** 
@@ -323,8 +324,6 @@ namespace rad{
        * Make map that links particle names to indices in user functions
        * in C++ functions you can use the RVecIndexMap object indexed by 
        * name of the reaction component you need
-       *
-       * This function must be implmented by a derived class
        */
       virtual void makeParticleMap() {
 	std::string particle_func("1E6+");
@@ -336,8 +335,7 @@ namespace rad{
 	Filter(particle_func.data(),"particle_list");
 
 	PostParticles();
-      }//= 0; do not make abstract class so can copy derived types to this
-
+      }
       /**
        *Any additional stuff to be done after all particles have been indiced
        */
@@ -563,8 +561,8 @@ namespace rad{
 
       const std::string DoNotWriteTag(){return "__dnwtag";};
 
-      void InitRandom(size_t seed){
-	if(_initRandom==true){
+        void InitRandom(size_t seed){
+	 if(_initRandom==true){
 	  std::cout<<"Warning, ConfigReaction::InitRandom() random generator already initialised"<<std::endl;
 	  return;
 	}
@@ -581,7 +579,7 @@ namespace rad{
 
       bool _useBeamsFromMC=false; 
       
-      
+    
     private:
     
       /**

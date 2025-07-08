@@ -40,17 +40,7 @@ namespace rad{
     
   // };
   
-  ///\brief print all particles for event
-    template<typename Tpid, typename Tp, typename Tm>
-    bool PrintParticles(const std::string& type, ULong64_t entry,const RVec<Tpid> &pid,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
-      
-      std::cout<< type <<"  PrintParticles Event = "<< entry <<std::endl;
-      for(size_t  idx=0; idx<px.size();++idx){
-	std::cout<< " "<<pid[idx]<<"\t"<<PxPyPzMVector(px[idx], py[idx], pz[idx], m[idx])<<"\n";
-      }
-      return true;
-    }
-  
+ 
    ///\brief return 4-vector of particle idx
     template<typename Tp, typename Tm>
     PxPyPzMVector FourVector(const uint idx,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
@@ -103,7 +93,6 @@ namespace rad{
     ///\brief return magnitude of momentum
     template<typename T>
       RVec<double> ThreeVectorMag(const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
-      //RVec<T> ThreeVectorMag(const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
       return sqrt(x * x + y * y + z * z);
     }
     ///\brief return eta of momentum
@@ -146,7 +135,18 @@ namespace rad{
       //RVec<T> ThreeVectorZ(const RVec<T> &p, const RVec<T> &theta, const RVec<T> &phi){
       return p*cos(theta);
     }
+
+  ///\brief print all particles for event
+  template<typename Tpid, typename Tp, typename Tm>
+  bool PrintParticles(const std::string& type, ULong64_t entry,const RVec<Tpid> &pid,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
     
+    std::cout<< type <<"  PrintParticles Event = "<< entry <<std::endl;
+    for(size_t  idx=0; idx<px.size();++idx){
+      std::cout<< " "<<pid[idx]<<"\t"<<PxPyPzMVector(px[idx], py[idx], pz[idx], m[idx])<<" pmag "<< ThreeVectorMag(px, py, pz)[idx] << " theta "<<ThreeVectorTheta(px, py, pz)[idx]<<"\n";
+    }
+    return true;
+  }
+  
     /* NOTE : we might want to change to using edm4hep functions. Then VecMag would change to 
        template <typename T>
        auto VecMag = [](ROOT::VecOps::RVec<T> momenta) {

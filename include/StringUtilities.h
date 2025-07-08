@@ -1,13 +1,18 @@
 #pragma once
 
+#include <ROOT/RVec.hxx> // For ROOT::RVecS alias (which is RVec<std::string>)
 #include <iostream>    // Required for input/output operations (e.g., std::cout)
 #include <string>      // Required for std::string
 #include <sstream>     // Required for std::stringstream (for efficient string building)
 #include <utility>     // Required for std::forward (for perfect forwarding in templates)
+#include <algorithm> // Required for std::transform and std::tolower
+#include <cctype>    // Required for std::tolower
 
 
 namespace rad{
   namespace utils{
+    using RVecS = ROOT::RVec<std::string>;
+
     /**
      * @brief Helper struct to append arguments with a comma separator.
      * This is used internally by the createFunctionCallString template.
@@ -157,6 +162,7 @@ std::string combineVectorToString(const std::vector<std::string>& stringVector) 
     return ss.str(); // Return the final combined string.
 }
 
+
  inline std::string combineVectorToQuotedString(const std::vector<std::string>& parts) {
    std::string result = "{";
    for (const auto& part : parts) {
@@ -167,5 +173,82 @@ std::string combineVectorToString(const std::vector<std::string>& stringVector) 
    return result;
  }
 
+// Helper function to convert a string to lowercase
+// This is useful for case-insensitive comparisons
+std::string toLower(std::string s) {
+    std::transform(s.begin(), s.end(), s.begin(),
+                   [](unsigned char c){ return std::tolower(c); });
+    return s;
+}
+
+    /**
+     * @brief Filters a vector of strings, returning only those that contain the specified substring.
+     *
+     * @param stringList A constant reference to the vector of strings to be filtered.
+     * @param substring The substring to search for within each string.
+     * @param caseSensitive If true, the search is case-sensitive. If false, the search is case-insensitive.
+     * @return A new vector containing only the strings that contain the substring.
+     */
+    std::vector<std::string> filterStrings(
+					   const std::vector<std::string>& stringList,
+					   const std::string& substring,
+					   bool caseSensitive = true)
+    {
+      std::vector<std::string> filteredList;
+
+      if (substring.empty()) { // If substring is empty, all strings contain it (or none, depending on interpretation).
+	// Here, we'll return all strings if the substring is empty.
+        return stringList;
+      }
+
+      if (caseSensitive) {
+        for (const std::string& s : stringList) {
+	  // std::string::find returns std::string::npos if the substring is not found
+	  if (s.find(substring) != std::string::npos) {
+	    filteredList.push_back(s);
+	  }
+        }
+      } else { // Case-insensitive search
+        std::string lowerSubstring = toLower(substring);
+        for (const std::string& s : stringList) {
+	  std::string lowerS = toLower(s);
+	  if (lowerS.find(lowerSubstring) != std::string::npos) {
+	    filteredList.push_back(s);
+	  }
+        }
+      }
+
+
+      return filteredList;
+    }
+    /**
+     * @brief Filters a ROOT::RVecS (RVec of strings), returning only those that contain the specified substring.
+     * This function acts as a wrapper, converting RVecS to std::vector<std::string> for filtering,
+     * and then converting the result back to RVecS.
+     *
+     * @param rvecS A constant reference to the ROOT::RVecS to be filtered.
+     * @param substring The substring to search for within each string.
+     * @param caseSensitive If true, the search is case-sensitive. If false, the search is case-insensitive.
+     * @return A new ROOT::RVecS containing only the strings that contain the substring.
+     */
+    RVecS filterStrings(
+			const RVecS& rvecS,
+			const std::string& substring,
+			bool caseSensitive = true)
+    {
+      // 1. Convert ROOT::RVecS to std::vector<std::string>
+      // RVecs can be directly constructed from iterators, or implicitly converted
+      // to std::vector in many contexts. Explicit construction is clear.
+      std::vector<std::string> stdVec(rvecS.begin(), rvecS.end());
+
+      // 2. Call the core filtering function
+      auto filteredStdVec = filterStrings(stdVec, substring, caseSensitive );
+      
+      // 3. Convert the result back to ROOT::RVecS
+      // RVec can be constructed from a std::vector.
+      RVecS filteredRVecS(filteredStdVec);
+
+      return filteredRVecS;
+    }
   }
 }
