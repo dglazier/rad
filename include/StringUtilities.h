@@ -162,6 +162,17 @@ std::string combineVectorToString(const std::vector<std::string>& stringVector) 
     return ss.str(); // Return the final combined string.
 }
 
+
+ inline std::string combineVectorToQuotedString(const std::vector<std::string>& parts) {
+   std::string result = "{";
+   for (const auto& part : parts) {
+     result += "\"" + part + "\",";
+   }
+   if (!parts.empty()) result.pop_back(); // remove trailing comma
+   result += "}";
+   return result;
+ }
+
 // Helper function to convert a string to lowercase
 // This is useful for case-insensitive comparisons
 std::string toLower(std::string s) {
@@ -206,6 +217,7 @@ std::string toLower(std::string s) {
 	  }
         }
       }
+
 
       return filteredList;
     }
