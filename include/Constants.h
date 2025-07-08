@@ -3,6 +3,19 @@
 
 namespace rad{
   namespace constant{
+
+    /**
+     * Useful physics
+     */
+    constexpr double M_ele() { return 0.000510999;}
+    constexpr double M_pro() { return 0.93827210;}
+    constexpr double M_neu() { return 0.93956540;}
+    constexpr double M_pi0() { return 0.13497680;}
+    constexpr double M_pi() { return 0.13957040;}
+    constexpr double M_K() { return 0.49367700;}
+    constexpr double M_K0() { return 0.49761100;}
+    constexpr double M_Jpsi() { return 3.0969000;}
+
     /**
      *    InvalidEntry
      */
