@@ -15,11 +15,15 @@
 #include <TCanvas.h>
 
 void ProcessHepMCDDVCS(){
+  // Enable implicit multi-threading
+  ROOT::EnableImplicitMT(4);
+
   using namespace rad::names::data_type; //for MC()
-   gBenchmark->Start("df");
+  
+  gBenchmark->Start("df");
 
    //create reaction dataframe
-   rad::config::HepMCElectro hepmc{"hepmc3_tree", "/w/work5/home/garyp/18x275_ddvcs_events_plus.root"};
+   rad::config::HepMCElectro hepmc{"hepmc3_tree", {"/home/dglazier/dump/gary/18x275_ddvcs_events_plus.root", "/home/dglazier/dump/gary/18x275_ddvcs_events_plus.root", "/home/dglazier/dump/gary/18x275_ddvcs_events_plus.root", "/home/dglazier/dump/gary/18x275_ddvcs_events_plus.root"} };
   hepmc.AliasMomentumComponents();
     
   //Assign particles names and indices
@@ -32,19 +36,19 @@ void ProcessHepMCDDVCS(){
   hepmc.setBaryonParticles({"pprime"});
   
   //if using existing lepton pair
+  //create gprime first from their sums
   rad::config::ParticleCreator particles{hepmc};
-  // hepmc.setParticleIndex("ele",6);
-  // hepmc.setParticleIndex("pos",7);
-  // particles.Sum("gprime",{"ele","pos"});
+  hepmc.setParticleIndex("ele0",6);
+  hepmc.setParticleIndex("pos0",7);
+  particles.Sum("gprime",{"ele0","pos0"});
   
-  //if regenerating lepton pair
-  hepmc.setParticleIndex("gprime",4);//
+  //use ParticleGenerator to decay gprime to 2 M_ele particles ele,pos
+  // hepmc.setParticleIndex("gprime",4);//
   rad::generator::ParticleGenerator gen{hepmc};
-  double m_e = 0.000510999;
-  ROOT::VecOps::RVec<double> masses;
-  masses.push_back(m_e);
-  masses.push_back(m_e);
-  gen.GenerateTwoBody({"ele","pos"},masses,"gprime");
+  gen.GenerateTwoBody({"ele","pos"},
+		      {rad::constant::M_ele(),rad::constant::M_ele()},
+		      "gprime");
+  
   hepmc.setMesonParticles({"ele","pos"});
 
   //must call this after all particles are configured
