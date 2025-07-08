@@ -57,8 +57,8 @@ namespace rad{
       }
       template<typename T> //use template so can #include this in ConfigReaction
       void ResolutionFraction(T* const rdf,const string& var){
-	// Define(string("res_")+var,[](const ROOT::RVec<T> &rec,const ROOT::RVec<T> &tru){
-	//    return (rec - tru)/tru;
+	// rdf->Define(string("res_")+var,[](const ROOT::RVecD &rec,const ROOT::RVecD &tru){
+	//   return ROOT::RVecD((rec - tru)/tru);
 	// },{Rec()+var,Truth()+var});
 	rdf->Define(string("res_")+var,Form("(%s-%s)/%s",(Truth()+var).data(),(Rec()+var).data(),(Truth()+var).data() ));
       }

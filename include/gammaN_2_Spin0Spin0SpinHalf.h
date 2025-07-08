@@ -76,12 +76,12 @@ namespace rad{
       return result;
     }
     template<typename Tp, typename Tm>
-    Tp CosThetaHel(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
+    double CosThetaHel(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
       auto angles = PhotoHelicityDecay(react,px,py,pz,m);
       return angles.CosTheta;
     }
      template<typename Tp, typename Tm>
-    Tp PhiHel(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
+    double PhiHel(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
       auto angles = PhotoHelicityDecay(react,px,py,pz,m);
       return angles.Phi;
     }
@@ -115,6 +115,16 @@ namespace rad{
       result.CosTheta=TMath::Cos(angles.Theta());
       result.Phi=angles.Phi();
       return result;
+    }
+    template<typename Tp, typename Tm>
+    double CosThetaGJ(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
+      auto angles = PhotoGJDecay(react,px,py,pz,m);
+      return angles.CosTheta;
+    }
+     template<typename Tp, typename Tm>
+    double PhiGJ(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
+      auto angles = PhotoGJDecay(react,px,py,pz,m);
+      return angles.Phi;
     }
   }
 }

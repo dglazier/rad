@@ -324,7 +324,8 @@ namespace rad{
 	  }//type
 	}//hist
       }
-      
+
+      void SetVerbose(int val){_verbose = val;}
     private:
      
       config::ConfigReaction& _rad;// = nullptr;

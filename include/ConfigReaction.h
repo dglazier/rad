@@ -9,16 +9,19 @@
 #include "DefineNames.h"
 #include "RVecHelpers.h"
 #include "ReactionUtilities.h"
+#include "StringUtilities.h"
+#include "Random.h"
 
 #include <ROOT/RDFHelpers.hxx>
 #include <ROOT/RDataFrame.hxx>
 #include <ROOT/RVec.hxx>
 
+
 namespace rad{
   namespace config{
     using rad::names::data_type::Rec;
- 
-    // class ParticleCreator;
+    class ParticleCreator;
+    
     
     //! Code simplifications
   
@@ -74,7 +77,8 @@ namespace rad{
 	  throw std::invalid_argument("ConfigReaction: fileNameGlob cannot be empty.");
 	}
 	_orig_col_names = _orig_df.GetColumnNames();
-      }
+
+    }
       ConfigReaction(const std::string_view treeName, const std::vector<std::string> &filenames, const ROOT::RDF::ColumnNames_t&  columns ) : _orig_df{treeName,filenames,columns},_curr_df{_orig_df},_base_df{_orig_df},_treeName{treeName},_fileNames{filenames}{
 	if (filenames.empty()) {
 	  throw std::invalid_argument("ConfigReaction: fileNameGlob cannot be empty.");
@@ -86,7 +90,8 @@ namespace rad{
       //if creating from alternative data source
       ConfigReaction(ROOT::RDataFrame rdf ) : _orig_df{rdf},_curr_df{rdf},_base_df{rdf}{
 	_orig_col_names = _orig_df.GetColumnNames();
-      }
+
+   }
       
       ~ConfigReaction(){ 
 	//	std::cout << "ConfigReaction destructor: " <<_triggerSnapshots.size() << std::endl;
@@ -96,7 +101,6 @@ namespace rad{
 	
 	//std::cout << "ConfigReaction destructor: " << CurrFrame().Count().GetValue() << std::endl;
       }
-      
       
       /** 
        * Get the current dataframe to add further actions
@@ -150,7 +154,33 @@ namespace rad{
 	  Define(atype.first + name.data(),func,type_cols);
 	}
       }
-     
+      /**
+       * @brief make a new column for each particle based on applying func_name
+       *        the new columns will called name_particle
+       * @param name base name if new variable
+       * @param particles list of particles to define this variable from
+       * @param func_name the function to apply, should be defined in a .h file
+       * @param values variables to be used by func to define new column
+       */
+      void DefineForParticles(const string& name,const ROOT::RDF::ColumnNames_t &particles,const ROOT::RDF::ColumnNames_t &values, const std::string& func_name){
+	//loop over particles
+	for(const auto& p : particles){
+	  auto selected_entries = values;
+	  //create string selecting particle entry from the values arrays
+	  std::for_each(selected_entries.begin(), selected_entries.end(),
+			[&p](std::string& s) {
+			  s += '[';
+			  s += p;
+			  s += ']';
+			});
+	  //create the function for the Define call
+	  auto selected_func = rad::utils::createFunctionCallStringFromVec(func_name,selected_entries);
+	  cout<<"DefineForParticles "<<name+"_"+p<<" "<<selected_func<<endl;
+	  //Define this variable for this particle
+	  Define(name+"_"+p,selected_func);
+	}
+      }
+
       /**
        * Interface to RDataFrame Redefine
        */
@@ -182,7 +212,6 @@ namespace rad{
 	  throw std::invalid_argument("RedefineViaAlias: alias '" + alias + "' does not exist in _aliasMap.");
 	}
 	Redefine(it->second, std::forward<Lambda>(func), columns);
-
       }
  
       /** 
@@ -295,8 +324,6 @@ namespace rad{
        * Make map that links particle names to indices in user functions
        * in C++ functions you can use the RVecIndexMap object indexed by 
        * name of the reaction component you need
-       *
-       * This function must be implmented by a derived class
        */
       virtual void makeParticleMap() {
 	std::string particle_func("1E6+");
@@ -308,8 +335,7 @@ namespace rad{
 	Filter(particle_func.data(),"particle_list");
 
 	PostParticles();
-      }//= 0; do not make abstract class so can copy derived types to this
-
+      }
       /**
        *Any additional stuff to be done after all particles have been indiced
        */
@@ -535,12 +561,25 @@ namespace rad{
 
       const std::string DoNotWriteTag(){return "__dnwtag";};
 
+        void InitRandom(size_t seed){
+	 if(_initRandom==true){
+	  std::cout<<"Warning, ConfigReaction::InitRandom() random generator already initialised"<<std::endl;
+	  return;
+	}
+	auto frame = CurrFrame();
+	frame = frame.DefineSlot("RDF_Internal_RNG_Init", [seed](unsigned int slot) {
+	  rad::random::initializeAllThreadRNGs(slot,seed);
+	  return true; // Return dummy value
+	}).Filter("RDF_Internal_RNG_Init");
+	
+	setCurrFrame(frame);
+      }
       
     protected:
 
       bool _useBeamsFromMC=false; 
       
-      
+    
     private:
     
       /**
@@ -586,6 +625,8 @@ namespace rad{
       
       //snapshot
       std::vector<std::function<void()>> _triggerSnapshots;
+
+      bool _initRandom = false; //flag to ensure random generator only init once
       
     };//ConfigReaction
 

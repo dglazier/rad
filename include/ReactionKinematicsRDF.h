@@ -61,7 +61,13 @@ namespace rad{
     void TPrimeBot(config::ConfigReaction& cr,const string& name){
       cr.DefineForAllTypes(name, Form("rad::reactkine::TPrimeBot(%s,components_p4)",names::ReactionMap().data()));
     }
-
+    
+    //instead of neg use all meson, baryon and scat_elec by default for this function
+    //work in progress
+    /* void ConservationCheck(config::ConfigReaction& cr){ */
+    /*   cr.DefineForAllTypes(name, Form("rad::reactkine::FourVectorMissMassCalc(%s,%s,components_p4)",names::ReactionMap().data(),neg.data())); */
+    
+    /* } */
 
 
   }//rdf

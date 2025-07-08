@@ -10,23 +10,23 @@ namespace rad{
 	 cr.DefineForAllTypes(name, Form("rad::gn2s0s0s12::PhotoCMDecay(%s,components_p4)",names::ReactionMap().data()));
        }
 
-       void CosThetaHel(config::ConfigReaction& cr,const string& name){
-	 cr.DefineForAllTypes(name, Form("rad::gn2s0s0s12::CosThetaHel(%s,components_p4)",names::ReactionMap().data()));
+       void CosThetaHel(config::ConfigReaction& cr,const string& name,const string& convention){
+	 cr.DefineForAllTypes(name, Form("rad::gn2s0s0s12::CosTheta%s(%s,components_p4)",convention.data(),names::ReactionMap().data()));
        }
-       void PhiHel(config::ConfigReaction& cr,const string& name){
-	 cr.DefineForAllTypes(name, Form("rad::gn2s0s0s12::PhiHel(%s,components_p4)",names::ReactionMap().data()));
+       void PhiHel(config::ConfigReaction& cr,const string& name,const string& convention){
+	 cr.DefineForAllTypes(name, Form("rad::gn2s0s0s12::Phi%s(%s,components_p4)",convention.data(),names::ReactionMap().data()));
        }
     
        void HelicityAngles(config::ConfigReaction& cr,const string& name){
-	 CosThetaHel(cr,name+"_CosTheta");
-	 PhiHel(cr,name+"_Phi");
-	 //    cr.DefineForAllTypes(name, Form("rad::gn2s0s0s12::PhotoHelicityDecay(%s,components_p4)",names::ReactionMap().data()));
-       }
-
+	 CosThetaHel(cr,name+"_CosTheta","Hel");
+	 PhiHel(cr,name+"_Phi","Hel");
+      }
        void GJAngles(config::ConfigReaction& cr,const string& name){
-	 cr.DefineForAllTypes(name, Form("rad::gn2s0s0s12::PhotoGJDecay(%s,components_p4)",names::ReactionMap().data()));
-       }
+	 CosThetaHel(cr,name+"_CosTheta","GJ");
+	 PhiHel(cr,name+"_Phi","GJ");
+      }
 
+ 
     
      }
   }
