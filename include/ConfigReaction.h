@@ -10,6 +10,7 @@
 #include "RVecHelpers.h"
 #include "ReactionUtilities.h"
 #include "StringUtilities.h"
+#include "Random.h"
 
 #include <ROOT/RDFHelpers.hxx>
 #include <ROOT/RDataFrame.hxx>
@@ -562,6 +563,19 @@ namespace rad{
 
       const std::string DoNotWriteTag(){return "__dnwtag";};
 
+      void InitRandom(size_t seed){
+	if(_initRandom==true){
+	  std::cout<<"Warning, ConfigReaction::InitRandom() random generator already initialised"<<std::endl;
+	  return;
+	}
+	auto frame = CurrFrame();
+	frame = frame.DefineSlot("RDF_Internal_RNG_Init", [seed](unsigned int slot) {
+	  rad::random::initializeAllThreadRNGs(slot,seed);
+	  return true; // Return dummy value
+	}).Filter("RDF_Internal_RNG_Init");
+	
+	setCurrFrame(frame);
+      }
       
     protected:
 
@@ -613,6 +627,8 @@ namespace rad{
       
       //snapshot
       std::vector<std::function<void()>> _triggerSnapshots;
+
+      bool _initRandom = false; //flag to ensure random generator only init once
       
     };//ConfigReaction
 

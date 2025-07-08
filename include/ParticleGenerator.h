@@ -3,6 +3,8 @@
 #include "ParticleCreator.h"
 #include "ConfigReaction.h"
 #include "StringUtilities.h"
+#include "Random.h"
+//#include <TRandom.h>
 
 namespace rad{
   namespace generator{
@@ -18,16 +20,8 @@ namespace rad{
       auto meson = FourVector(pidx,px,py,pz,m);
       auto baryon = FourVector(nbidx,px,py,pz,m);
       auto gamma = FourVector(ngidx,px,py,pz,m);
-      /* cout << "New event" << endl; */
-      /* auto n=px.size(); */
-      /* for (int iter=0; iter<n; iter++){ */
-      /* 	auto thisvec = FourVector(iter,px,py,pz,m); */
-      /* 	cout << iter << ": " << thisvec << endl; */
-      /* } */
-      /* cout << pidx << " " << meson << endl; */
-      /* cout << bidx << " " << baryon << endl; */
-      /* cout << gidx << " "<< gamma << endl; */
-      /* cout << endl; */
+      auto CM = meson+baryon;
+    
       //get boost
       auto decBoost = meson.BoostToCM();
       //vectors in rest/decay frame of meson
@@ -37,28 +31,25 @@ namespace rad{
       XYZVector  zV=-decBar.Vect().Unit();
       XYZVector  yV=(decBar.Vect().Cross(decGamma.Vect())).Unit();
       XYZVector  xV=yV.Cross(zV).Unit();
-      
-      auto axis1 = meson.Vect().Cross(XYZVector(0,0,1)).Unit();
-      ROOT::Math::AxisAngle rot1(axis1,-meson.Theta());
-      
+
+
       //pmag of 2body decay
       auto Mpar = meson.M();
       auto term1 = pow(Mpar,2) - pow(masses[0]+masses[1],2);
       auto term2 = pow(Mpar,2) - pow(masses[0]-masses[1],2);
       auto p = sqrt(term1*term2)/(2*Mpar);
-      
-      /* std::cout << "decBar direction: " << decBar.Vect().Unit() << std::endl; */
-      /* std::cout << "decGamma direction: " << decGamma.Vect().Unit() << std::endl; */
-      /* std::cout << "zV: " << zV << "  |zV| = " << zV.R() << std::endl; */
-      /* std::cout << "yV: " << yV << "  |yV| = " << yV.R() << std::endl; */
-      /* std::cout << endl; */
-      
+       
       //random thetaphi in helicity frame
-      auto costheta = gRandom->Uniform(-1,1);
-      costheta = 0.2;
+     
+      // double costheta = gRandom->Uniform(-1.0,1);
+      // double costheta = getUniformRandom(-1,1);
+      double costheta = rad::random::Generator().Uniform(-1,1);
+      //auto costheta = TMath::Cos(CMParent.Theta());
+      //costheta = -0.001;
       auto sintheta = sqrt(1 - costheta*costheta);
-      auto phi = gRandom->Uniform( 0, 2.0*TMath::Pi() );
-      phi = 1.1;
+      // auto phi = gRandom->Uniform( 0, 2.0*TMath::Pi() );
+      //auto phi =  getUniformRandom(0, 2.0*TMath::Pi());
+      auto phi =  rad::random::Generator().Uniform(0, 2.0*TMath::Pi());
       
       //define momentum in helicity frame using axes
       auto dpx = p * sintheta * cos(phi);
@@ -67,24 +58,24 @@ namespace rad{
       
       //
       XYZVector V1 = dpx*xV + dpy*yV + dpz*zV;
-      XYZVector V2 = (-dpx)*xV + (-dpy)*yV + (-dpz)*zV;
+      //XYZVector V2 = (-dpx)*xV + (-dpy)*yV + (-dpz)*zV;
       
-      /* PxPyPzMVector cmpart1 = {V1.X(),V1.Y(),V1.Z(),masses[0]}; */
-      /* PxPyPzMVector cmpart2 = {V2.X(),V2.Y(),V2.Z(),masses[1]}; */
+       PxPyPzMVector cmpart1 = {V1.X(),V1.Y(),V1.Z(),masses[0]};
+      //PxPyPzMVector cmpart2 = {V2.X(),V2.Y(),V2.Z(),masses[1]};
       
-      PxPyPzMVector  cmpart1 = {dpx,dpy,dpz,masses[0]};
-      PxPyPzMVector cmpart2 = {-dpx,-dpy,-dpz,masses[1]};
+       // PxPyPzMVector  cmpart1 = {dpx,dpy,dpz,masses[0]};
+      //PxPyPzMVector cmpart2 = {-dpx,-dpy,-dpz,masses[1]};
       
-      cmpart1 = rot1*cmpart1;
+      //cmpart1 = rot1*cmpart1;
       //cmpart2 = meson-cmpart1;
-      //cout << cmpart1 << " " << cmpart2 << endl;
-
+       //cout << "cm "<<cmpart1 << " " <<TMath::Cos(cmpart1.Theta())<<  " rand gen "<<costheta<<" "<<sintheta<<endl;
+      if(TMath::Abs(TMath::Cos(cmpart1.Theta()))>1||TMath::Abs(costheta)>1||TMath::Abs(sintheta)>1) exit(0);
       
       auto part1 = boost(cmpart1,-decBoost);
       //auto part2 = boost(cmpart2,-decBoost);
       auto part2 = meson-part1;
       auto part3=(part1+part2);
-      cout << meson << " " << part3 << endl;
+      // cout << meson << " " << part3 << " "<<part1<<part2<<endl;
       
       RVec<double> result1={part1.X(),part1.Y(),part1.Z(),masses[0]};
       RVec<double> result2={part2.X(),part2.Y(),part2.Z(),masses[1]};
@@ -97,18 +88,23 @@ namespace rad{
     }
     
     template<typename Tp, typename Tm>
-      int ParticleCreateTwoBody(const int &id, const int &pidx, const int &bidx, const int &gidx, const RVec<Tm> masses, RVec<Tp> &px, RVec<Tp> &py, RVec<Tp> &pz, RVec<Tm> &m, const RVecI &iafter){
+      RVecI ParticleCreateTwoBody(const int &id, const int &pidx, const int &bidx, const int &gidx, const RVec<Tm> masses, RVec<Tp> &px, RVec<Tp> &py, RVec<Tp> &pz, RVec<Tm> &m, const RVecI &iafter){
       
       RVec<RVecD> result = CalculateTwoBody(pidx,bidx,gidx,masses,px,py,pz,m);
       
-      auto idx = px.size();
+      int idx = px.size();
 	
-      px.push_back(result[id][0]);
-      py.push_back(result[id][1]);
-      pz.push_back(result[id][2]);
-      m.push_back(result[id][3]);
+      px.push_back(result[0][0]);
+      py.push_back(result[0][1]);
+      pz.push_back(result[0][2]);
+      m.push_back(result[0][3]);
       
-      return idx;
+      px.push_back(result[1][0]);
+      py.push_back(result[1][1]);
+      pz.push_back(result[1][2]);
+      m.push_back(result[1][3]);
+      
+      return ROOT::RVecI{idx,idx+1};
     }
     
 
@@ -136,17 +132,21 @@ namespace rad{
     public:
       
       ParticleGenerator() = default;
-    ParticleGenerator(rad::config::ConfigReaction &cr):rad::config::ParticleCreator{cr}{};
+      ParticleGenerator(rad::config::ConfigReaction &cr,size_t seed=1):rad::config::ParticleCreator{cr}{
+      Reaction()->InitRandom(seed);
+    };
       
       template<typename Tm>
 	void GenerateTwoBody(const std::vector<std::string> &names, const RVec<Tm> masses, const string &parent){
         
 	std::string smasses=fVecToString(masses);
-        TString expr0 = Form( "rad::generator::ParticleCreateTwoBody(0,%s,%i,%i,%s",parent.data(), names::BaryonsIdx(), names::VirtGammaIdx(), smasses.data());
-	TString expr1 = Form( "rad::generator::ParticleCreateTwoBody(1,%s,%i,%i,%s",parent.data(), names::BaryonsIdx(), names::VirtGammaIdx(), smasses.data() );
-	
-	DefineParticle(names[0],std::vector<string>(),expr0.Data());
-	DefineParticle(names[1],std::vector<string>(),expr1.Data());
+        TString expr0 = Form( "rad::generator::ParticleCreateTwoBody(0,%s,%i,%i,%s,mc_px,mc_py,mc_pz,mc_m,{})",parent.data(),0,1 , smasses.data());
+	auto diparticle = names[0]+"_"+names[1];
+
+	Reaction()->Define(diparticle,expr0.Data());
+	Reaction()->Define(names[0],Form("%s[0]",diparticle.data() ));
+	Reaction()->Define(names[1],Form("%s[1]",diparticle.data() ));
+		       
       }
       
     };// end Class ParticleGenerator
