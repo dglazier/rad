@@ -14,6 +14,9 @@ namespace rad{
       // Function names need to be slightly unusual
       cr.DefineForAllTypes(name, (Form("rad::FourVectorMassCalc(%s,%s,components_p4)",pos.data(),neg.data() )) );
     }
+    void DeltaPhi(config::ConfigReaction& cr,const string& name, const string& idxs){
+      cr.DefineForAllTypes(name, (Form("rad::DeltaPhi(%s,%s,components_p4)",idxs.data() )) );
+    }
 
     
     void PrintParticles(config::ConfigReaction& cr,const string& type=rad::names::data_type::Truth()){

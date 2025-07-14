@@ -136,6 +136,16 @@ namespace rad{
       return p*cos(theta);
     }
 
+    ///\brief return Find azimutal Angle difference between two vectors 
+  template<typename Ti,typename T>
+      double DeltaPhi(const RVec<Ti> &idx,const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
+      auto i0= idx[0];
+      auto p0 = XYZVector(x[i0],y[i0],z[i0]);
+      auto i1= idx[1];
+      auto p1 = XYZVector(x[i1],y[i1],z[i1]);
+      return ROOT::Math::VectorUtil::DeltaPhi(p0,p1);
+    }
+
   ///\brief print all particles for event
   template<typename Tpid, typename Tp, typename Tm>
   bool PrintParticles(const std::string& type, ULong64_t entry,const RVec<Tpid> &pid,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
