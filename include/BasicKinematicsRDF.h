@@ -15,7 +15,13 @@ namespace rad{
       cr.DefineForAllTypes(name, (Form("rad::FourVectorMassCalc(%s,%s,components_p4)",pos.data(),neg.data() )) );
     }
     void DeltaPhi(config::ConfigReaction& cr,const string& name, const string& idxs){
-      cr.DefineForAllTypes(name, (Form("rad::DeltaPhi(%s,%s,components_p4)",idxs.data() )) );
+      cr.DefineForAllTypes(name, (Form("rad::DeltaPhi(%s,components_p3)",idxs.data() )) );
+    }
+    void DeltaTheta(config::ConfigReaction& cr,const string& name, const string& idxs){
+      cr.DefineForAllTypes(name, (Form("rad::DeltaTheta(%s,components_p3)",idxs.data() )) );
+    }
+    void DeltaP(config::ConfigReaction& cr,const string& name, const string& idxs){
+      cr.DefineForAllTypes(name, (Form("rad::DeltaP(%s,components_p3)",idxs.data() )) );
     }
 
     

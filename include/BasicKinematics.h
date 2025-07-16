@@ -136,15 +136,45 @@ namespace rad{
       return p*cos(theta);
     }
 
-    ///\brief return Find azimutal Angle difference between two vectors 
-  template<typename Ti,typename T>
-      double DeltaPhi(const RVec<Ti> &idx,const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
+  ///\brief return Find azimutal Angle difference between two vectors, with indices idx
+  template<typename T>
+      double DeltaPhi(const RVec<Int_t> &idx,const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
       auto i0= idx[0];
-      auto p0 = XYZVector(x[i0],y[i0],z[i0]);
       auto i1= idx[1];
+      if(i0<0||i1<0)return rad::constant::InvalidEntry<double>();
+      auto p0 = XYZVector(x[i0],y[i0],z[i0]);
       auto p1 = XYZVector(x[i1],y[i1],z[i1]);
+      if(p0.Mag2()==0) return rad::constant::InvalidEntry<double>();
+      if(p1.Mag2()==0) return rad::constant::InvalidEntry<double>();
+      
       return ROOT::Math::VectorUtil::DeltaPhi(p0,p1);
     }
+
+ ///\brief return Find  Angle difference between two vectors , with indices idx
+  template<typename T>
+      double DeltaTheta(const RVec<Int_t> &idx,const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
+      auto i0= idx[0];
+      auto i1= idx[1];
+      if(i0<0||i1<0)return rad::constant::InvalidEntry<double>();
+      auto p0 = XYZVector(x[i0],y[i0],z[i0]);
+      auto p1 = XYZVector(x[i1],y[i1],z[i1]);
+      if(p0.Mag2()==0) return rad::constant::InvalidEntry<double>();
+      if(p1.Mag2()==0) return rad::constant::InvalidEntry<double>();
+      return TMath::ACos(ROOT::Math::VectorUtil::CosTheta(p0,p1));
+    }
+
+ ///\brief return Find length of difference between two vectors , with indices idx
+  template<typename T>
+      double DeltaP(const RVec<Int_t> &idx,const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
+      auto i0= idx[0];
+      auto i1= idx[1];
+      if(i0<0||i1<0)return rad::constant::InvalidEntry<double>();
+      auto p0 = XYZVector(x[i0],y[i0],z[i0]);
+      auto p1 = XYZVector(x[i1],y[i1],z[i1]);
+      if(p0.Mag2()==0) return rad::constant::InvalidEntry<double>();
+      if(p1.Mag2()==0) return rad::constant::InvalidEntry<double>();
+      return TMath::Sqrt( (p0-p1).Mag2() );
+     }
 
   ///\brief print all particles for event
   template<typename Tpid, typename Tp, typename Tm>
