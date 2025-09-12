@@ -9,8 +9,9 @@ namespace rad{
   namespace gn2s0s0s12{
     
    struct Angles_t{
-      double CosTheta=0.;
-      double Phi=0.;
+     double Theta=0;
+     double CosTheta=0.;
+     double Phi=0.;
     };
 
    ///\brief functions to compute standard reaction kinematics
@@ -40,7 +41,8 @@ namespace rad{
       PxPyPzMVector cm_mes=boost(mes,cmBoost);
 
       Angles_t result;
-      result.CosTheta=(TMath::Cos(cm_mes.Theta()));
+      result.CosTheta=TMath::Cos(cm_mes.Theta());
+      result.Theta=cm_mes.Theta();
       result.Phi=cm_mes.Phi();
       return result;
      }
@@ -72,6 +74,7 @@ namespace rad{
       //store in angles struct
       Angles_t result;
       result.CosTheta=TMath::Cos(angles.Theta());
+      result.Theta=angles.Theta();
       result.Phi=angles.Phi();
       return result;
     }
@@ -80,12 +83,17 @@ namespace rad{
       auto angles = PhotoHelicityDecay(react,px,py,pz,m);
       return angles.CosTheta;
     }
-     template<typename Tp, typename Tm>
-    double PhiHel(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
+    template<typename Tp, typename Tm>
+      double ThetaHel(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
+      auto angles = PhotoHelicityDecay(react,px,py,pz,m);
+      return angles.Theta;
+    }
+    template<typename Tp, typename Tm>
+      double PhiHel(const config::RVecIndexMap& react,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
       auto angles = PhotoHelicityDecay(react,px,py,pz,m);
       return angles.Phi;
     }
-     /**
+    /**
     * calculate GJ decay angles
     * z-axis along gamma direction in meson rest frame
     */
@@ -113,6 +121,7 @@ namespace rad{
       //store in angles struct
       Angles_t result;
       result.CosTheta=TMath::Cos(angles.Theta());
+      result.Theta=angles.Theta();
       result.Phi=angles.Phi();
       return result;
     }

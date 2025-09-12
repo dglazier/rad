@@ -16,17 +16,22 @@
 #include <ROOT/RDataFrame.hxx>
 #include <ROOT/RVec.hxx>
 
+/* /\* #include "HepMC3/GenEvent.h" *\/ */
+/* #include "HepMC3/GenParticle.h" */
+/* #include "HepMC3/FourVector.h" */
 
 namespace rad{
   namespace config{
     using rad::names::data_type::Rec;
+    using rad::names::data_type::MC;
     class ParticleCreator;
     
     
     //! Code simplifications
   
     using ROOT::RVecI;
-  
+    using ROOT::RVec;
+    
     /*! RDFstep is used to update the dataframe handle after each filter or define step */
     // using RDFstep = ROOT::RDF::RInterface<ROOT::Detail::RDF::RLoopManager, void> ;
     using RDFstep = ROOT::RDF::RNode ;
@@ -72,21 +77,23 @@ namespace rad{
     public:
 
       //     ConfigReaction(const std::string& treeName, const std::string& fileNameGlob, const ROOT::RDF::ColumnNames_t&  columns ) : _orig_df{treeName,{fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data()},columns},_curr_df{_orig_df}{
-      ConfigReaction(const std::string_view treeName, const std::string_view fileNameGlob, const ROOT::RDF::ColumnNames_t&  columns ) : _orig_df{treeName,{fileNameGlob.data()},columns},_curr_df{_orig_df},_base_df{_orig_df},_treeName{treeName},_fileName{fileNameGlob}{
+    
+    ConfigReaction(const std::string_view treeName, const std::string_view fileNameGlob, const ROOT::RDF::ColumnNames_t&  columns ) : _orig_df{treeName,{fileNameGlob.data()},columns},_curr_df{_orig_df},_base_df{_orig_df},_treeName{treeName},_fileName{fileNameGlob}{
 	if (fileNameGlob.empty()) {
 	  throw std::invalid_argument("ConfigReaction: fileNameGlob cannot be empty.");
 	}
 	_orig_col_names = _orig_df.GetColumnNames();
-
-    }
-      ConfigReaction(const std::string_view treeName, const std::vector<std::string> &filenames, const ROOT::RDF::ColumnNames_t&  columns ) : _orig_df{treeName,filenames,columns},_curr_df{_orig_df},_base_df{_orig_df},_treeName{treeName},_fileNames{filenames}{
+	
+      }
+    
+    ConfigReaction(const std::string_view treeName, const std::vector<std::string> &filenames, const ROOT::RDF::ColumnNames_t&  columns ) : _orig_df{treeName,filenames,columns},_curr_df{_orig_df},_base_df{_orig_df},_treeName{treeName},_fileNames{filenames}{
 	if (filenames.empty()) {
 	  throw std::invalid_argument("ConfigReaction: fileNameGlob cannot be empty.");
 	}
 	_orig_col_names = _orig_df.GetColumnNames();
  	
       }
-
+      
       //if creating from alternative data source
       ConfigReaction(ROOT::RDataFrame rdf ) : _orig_df{rdf},_curr_df{rdf},_base_df{rdf}{
 	_orig_col_names = _orig_df.GetColumnNames();
@@ -235,7 +242,53 @@ namespace rad{
       void Filter(const std::string& expression,const std::string& 	name ){
 	setCurrFrame(CurrFrame().Filter(expression,name));
       }
-     
+	
+	/* void BookHepMC3Snapshot(const string& filename){ */
+      /* 	try { */
+      /* 	  ROOT::RDF::RSnapshotOptions opts; */
+      /* 	  opts.fLazy = true; */
+      /* 	  //auto cols = _base_df.GetColumnNames(); */
+      /* 	  //auto cols = CurrFrame().GetColumnNames(); */
+      /* 	  //RemoveSnapshotColumns(cols); */
+      /* 	  std::vector<std::string> cols = { */
+      /* 	    /\* "hepmc3_event.particles.momentum.m_v1", *\/ */
+      /* 	    /\* "hepmc3_event.particles.momentum.m_v2", *\/ */
+      /* 	    /\* "hepmc3_event.particles.momentum.m_v3", *\/ */
+      /* 	    /\* "hepmc3_event.particles.mass", *\/ */
+      /* 	    /\* "hepmc3_event.particles.pid", *\/ */
+      /* 	    "hepmc3_event", */
+      /* 	    "GenRunInfo" */
+      /* 	    //"hepmc3_event_modified" */
+      /* 	    // add more as needed... */
+      /* 	  }; */
+	  
+      /* 	  SetupHepMC3SnapshotColumns(cols); */
+      /* 	  auto snapshot_result = CurrFrame().Snapshot("hepmc3_tree",filename,cols,opts); */
+      /* 	  //CurrFrame().Display({MC()+"px", "hepmc3_event.particles.momentum.m_v1"})->Print(); */
+      /* 	  _triggerSnapshots.emplace_back([snapshot = std::move(snapshot_result)]() mutable{}); */
+      /* 	} catch (const std::exception& ex) { */
+      /* 	  std::cerr << "BookHepMC3Snapshot failed: " << ex.what() << std::endl; */
+      /* 	  throw; // or handle gracefully */
+      /* 	} */
+	
+      /* } */
+      
+      /* void HepMC3Snapshot(const string& filename){ */
+      /* 	try { */
+      /* 	  std::vector<std::string> cols = { */
+      /* 	    "hepmc3_event", */
+      /* 	    "GenRunInfo" */
+      /* 	  }; */
+	  
+      /* 	  SetupHepMC3SnapshotColumns(cols); */
+      /* 	  auto snapshot_result = CurrFrame().Snapshot("hepmc3_tree",filename,cols); */
+      /* 	  _triggerSnapshots.emplace_back([snapshot = std::move(snapshot_result)]() mutable{}); */
+      /* 	} catch (const std::exception& ex) { */
+      /* 	  std::cerr << "BookHepMC3Snapshot failed: " << ex.what() << std::endl; */
+      /* 	  throw; // or handle gracefully */
+      /* 	} */
+      /* } */
+      
       /**
        * Make a snapshot of newly defined columns
        */
@@ -265,18 +318,68 @@ namespace rad{
 	  throw;
 	}
       }
-
+      
       virtual void RemoveSnapshotColumns(std::vector<string>& cols){
 	cols.erase(std::remove(cols.begin(), cols.end(), names::ReactionMap() ), cols.end());
-
+        
 	//remove any columns with the DoNotWriteTag
 	auto tag  = DoNotWriteTag();
 	cols.erase( std::remove_if( cols.begin(), cols.end(),
 				    [&tag]( const string& col ) -> bool
 				    { return col.find(tag) != std::string::npos; } ),
 		    cols.end() );
-
+	
       }
+      
+      
+      /* virtual void SetupHepMC3SnapshotColumns(std::vector<string>& cols){ */
+	
+      /* 	setCurrFrame(CurrFrame().Redefine("hepmc3_event", */
+      /* 					  [](const HepMC3::GenEventData &evt_data, */
+      /* 					     const ROOT::RVec<double> &px, */
+      /* 					     const ROOT::RVec<double> &py, */
+      /* 					     const ROOT::RVec<double> &pz, */
+      /* 					     const ROOT::RVec<double> &mass) */
+      /* 					  { */
+      /* 					    // Convert from data struct to GenEvent object: */
+      /* 					    //HepMC3::GenEvent evt = HepMC3::Convert(evt_data); */
+      /* 					    HepMC3::GenEvent new_evt(HepMC3::Units::GEV, HepMC3::Units::MM); */
+      /* 					    //HepMC3::GenEventData new_data = evt_data; */
+      /* 					    new_evt.read_data(evt_data); */
+					    
+      /* 					    auto &particles = new_evt.particles(); */
+      /* 					    size_t N = std::min({particles.size(), px.size(), py.size(), pz.size(), mass.size()}); */
+					    
+      /* 					    /\* std::cout << "[DEBUG] new_evt.particles().size(): " << new_evt.particles().size() << std::endl; *\/ */
+      /* 					    /\* std::cout << "[DEBUG] px.size(): " << px.size() *\/ */
+      /* 					    /\* 	      << ", py.size(): " << py.size() *\/ */
+      /* 					    /\* 	      << ", pz.size(): " << pz.size() *\/ */
+      /* 					    /\* 	      << ", mass.size(): " << mass.size() << std::endl; *\/ */
+
+      /* 					    for (size_t i = 0; i < N; ++i) { */
+      /* 					      HepMC3::FourVector new_mom(px[i], py[i], pz[i], */
+      /* 									 std::sqrt(px[i]*px[i] + py[i]*py[i] + pz[i]*pz[i] + mass[i]*mass[i])); */
+      /* 					      particles[i]->set_momentum(new_mom); */
+      /* 					    } */
+
+      /* 					    // Convert back to data struct for ROOT: */
+      /* 					    //HepMC3::GenEventData modified_data = HepMC3::GenEvent::to_data(evt); */
+      /* 					    HepMC3::GenEventData modified_data; */
+      /* 					    new_evt.write_data(modified_data);  // Convert back */
+      /* 					    return modified_data; */
+      /* 					    //return new_evt; */
+      /* 					  }, */
+      /* 					  {"hepmc3_event", MC()+"px", MC()+"py", MC()+"pz", MC()+"m"} */
+      /* 					  )); */
+	
+      /* 	/\* //print final column output *\/ */
+      /* 	/\* for (auto& col : cols) { *\/ */
+      /* 	/\*   cout << "'" << col << "'" << endl; *\/ */
+      /* 	/\* } *\/ */
+	
+      /* } */
+      
+      
       /** 
        * Set constant index in collection for particle
        * This assumes constant position in collection (e.g in some HepMC3 files)

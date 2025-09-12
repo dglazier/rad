@@ -3,17 +3,16 @@
 
 #include "HepMCElectro.h"
 #include "ParticleCreator.h"
+#include "ParticleGenerator.h"
+#include "ParticleModifier.h"
 #include "Indicing.h"
 #include "Histogrammer.h"
 #include "BasicKinematicsRDF.h"
 #include "ReactionKinematicsRDF.h"
 #include "ElectronScatterKinematicsRDF.h"
+#include "gammaN_2_Spin0Spin0SpinHalfRDF.h"
 #include <TBenchmark.h>
 #include <TCanvas.h>
-
-//beam components must be defined even if 0
-inline constexpr std::array<double,4>  rad::beams::InitBotComponents() {return {0.,0.,0,0};}
-inline constexpr std::array<double,4>  rad::beams::InitTopComponents() {return {0.,0.,0.,0};}
 
 void ProcessHepMCZ(){
   using namespace rad::names::data_type; //for MC()

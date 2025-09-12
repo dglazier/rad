@@ -30,6 +30,8 @@ namespace rad{
 
      void AliasMomentumComponents(){
       AddType(MC());
+      //setBranchAlias("particles","particles");
+      //setBranchAlias("vertices","vertices");
       setBranchAlias("particles.momentum.m_v1",MC()+"px");
       setBranchAlias("particles.momentum.m_v2",MC()+"py");
       setBranchAlias("particles.momentum.m_v3",MC()+"pz");

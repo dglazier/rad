@@ -4,7 +4,7 @@
 #include "HepMCElectro.h"
 #include "ParticleCreator.h"
 #include "ParticleGenerator.h"
-//#include "ParticleGeneratorRDF.h"
+#include "ParticleModifier.h"
 #include "Indicing.h"
 #include "Histogrammer.h"
 #include "BasicKinematicsRDF.h"
@@ -14,42 +14,47 @@
 #include <TBenchmark.h>
 #include <TCanvas.h>
 
-void ProcessHepMCDDVCS(){
+void elspectro(const std::string infile="/w/work5/home/garyp/JPsi_rootfiles/jpac_jpsi_18_275.root", const std::string outfile="elspectro_jpsi.root"){
   // Enable implicit multi-threading
-  ROOT::EnableImplicitMT(4);
-
+  //ROOT::EnableImplicitMT(4);
+ 
   using namespace rad::names::data_type; //for MC()
   
   gBenchmark->Start("df");
-
-   //create reaction dataframe
-   rad::config::HepMCElectro hepmc{"hepmc3_tree", {"/home/dglazier/dump/gary/18x275_ddvcs_events_plus.root", "/home/dglazier/dump/gary/18x275_ddvcs_events_plus.root", "/home/dglazier/dump/gary/18x275_ddvcs_events_plus.root", "/home/dglazier/dump/gary/18x275_ddvcs_events_plus.root"} };
-  hepmc.AliasMomentumComponents();
+  
+  //create reaction dataframe
+   rad::config::HepMCElectro hepmc{"hepmc3_tree", infile };
+   
+   //can we mix helicity and get new tree here before operations?
+   //hepmc.MixHelicity(0.8);
+   
+   hepmc.AliasMomentumComponents();
     
-  //Assign particles names and indices
-  //indicing comes from ordering in hepmc file
-  hepmc.setBeamIonIndex(3);
-  hepmc.setBeamElectronIndex(0);
-  hepmc.setScatElectronIndex(1);
-  
-  hepmc.setParticleIndex("pprime",5);
-  hepmc.setBaryonParticles({"pprime"});
-  
-  //if using existing lepton pair
-  //create gprime first from their sums
-  rad::config::ParticleCreator particles{hepmc};
-  hepmc.setParticleIndex("ele0",6);
-  hepmc.setParticleIndex("pos0",7);
-  particles.Sum("gprime",{"ele0","pos0"});
-  
+   //Assign particles names and indices
+   //indicing comes from ordering in hepmc file
+   hepmc.setBeamIonIndex(1);
+   hepmc.setBeamElectronIndex(0);
+   hepmc.setScatElectronIndex(2);
+   
+   hepmc.setParticleIndex("pprime",3);
+   hepmc.setBaryonParticles({"pprime"});
+   
+   //if using existing lepton pair
+   //create gprime first from their sums
+   rad::config::ParticleCreator particles{hepmc};
+   hepmc.setParticleIndex("ele",4);
+   hepmc.setParticleIndex("pos",5);
+   particles.Sum("gprime",{"ele","pos"});
+   
   //use ParticleGenerator to decay gprime to 2 M_ele particles ele,pos
-  // hepmc.setParticleIndex("gprime",4);//
-  rad::generator::ParticleGenerator gen{hepmc};
-  gen.GenerateTwoBody({"ele","pos"},
-		      {rad::constant::M_ele(),rad::constant::M_ele()},
-		      "gprime");
+  //hepmc.setParticleIndex("gprime",4);//
+  // rad::generator::ParticleGenerator gen{hepmc};
+  // gen.GenerateTwoBody({"ele0","pos0"},
+  // 		      {rad::constant::M_ele(),rad::constant::M_ele()},
+  // 		      "gprime");
   
   hepmc.setMesonParticles({"ele","pos"});
+  //hepmc.setMesonParticles({"ele0","pos0"});
 
   //must call this after all particles are configured
   hepmc.makeParticleMap();
@@ -65,7 +70,15 @@ void ProcessHepMCDDVCS(){
   rad::rdf::MissMass(hepmc,"W","{scat_ele}");
   rad::rdf::Mass(hepmc,"Whad","{gprime,pprime}");
   rad::rdf::Mass(hepmc,"GMass","{gprime}");
+  
+  //dis kinematics
   rad::rdf::Q2(hepmc,"Q2");
+  rad::rdf::nu(hepmc,"nu");
+  rad::rdf::y(hepmc,"y");
+  rad::rdf::xbj(hepmc,"xbj");
+  
+  //q2prime tau
+  rad::rdf::TauPrime(hepmc,"tau");
   
   //t distribution, column name
   rad::rdf::TTop(hepmc,"t_top");
@@ -92,16 +105,15 @@ void ProcessHepMCDDVCS(){
   rad::rdf::gn2s0s0s12::HelicityAngles(hepmc,"Heli");
   //photon polarisation
   rad::rdf::PolGammaStar(hepmc,"GammaPol");
+  rad::rdf::CircPolGammaStar(hepmc,"GammaPolCirc");
   rad::rdf::EGammaStar(hepmc,"GammaE");
   
-  //hepmc.Filter("Q2_tru>0.15");
   ///////////////////////////////////////////////////////////////
   //Define subsets of particles and corresponing variables to plot
   ///////////////////////////////////////////////////////////////
-  hepmc.Define("electrons","rad::helpers::PositionsWhere(mc_pid==11)");
-  hepmc.Define(MC()+"elsP",Form("Take(%spmag,electrons)",MC().data()));
-  hepmc.Define("e_helicity","1");
-
+  // hepmc.Define("electrons","rad::helpers::PositionsWhere(mc_pid==11)");
+  // hepmc.Define(MC()+"elsP",Form("Take(%spmag,electrons)",MC().data()));
+  
   ///////////////////////////////////////////////////////////
   //Define histograms
   ///////////////////////////////////////////////////////////
@@ -116,17 +128,21 @@ void ProcessHepMCDDVCS(){
 
   //Kinematics
   histo.Create<TH1D,double>({"Q2","Q2",100,0,2.},{"Q2"});
+  histo.Create<TH1D,double>({"nu","nu",100,0,10000.},{"nu"});
+  histo.Create<TH1D,double>({"xbj","xbj",100,0,1.},{"xbj"});
+  histo.Create<TH1D,double>({"y","y",100,0,1.},{"y"});
+  
   histo.Create<TH1D,double>({"W","W",100,0,200.},{"W"});
   histo.Create<TH1D,double>({"Whad","Whad",100,0,200.},{"Whad"});
   
-  histo.Create<TH1D,double>({"MesonMass","M(e-,e+) [GeV]",100,-1,5.},{"GMass"});
+  histo.Create<TH1D,double>({"MesonMass","M(e-,e+) [GeV]",100,0,5.},{"GMass"});
   
-  histo.Create<TH1D,double>({"ttop","t(p,pprime) [GeV^{2}]",100,-0.1,1.5},{"t_top"});
-  histo.Create<TH1D,double>({"tbot","t(g,gprime) [GeV^{2}]",100,-0.1,1.5},{"t_bot"});
-  histo.Create<TH1D,double>({"tptop","t' top [GeV^{2}]",100,-0.1,1.5},{"tp_top"});
-  histo.Create<TH1D,double>({"tpbot","t' bot [GeV^{2}]",100,-0.1,1.5},{"tp_bot"});
+  histo.Create<TH1D,double>({"ttop","t(p,pprime) [GeV^{2}]",100,0,2.0},{"t_top"});
+  histo.Create<TH1D,double>({"tbot","t(p,pprime) [GeV^{2}]",100,0,2.0},{"t_bot"});
+  histo.Create<TH1D,double>({"tptop","t' top [GeV^{2}]",100,0,2.0},{"tp_top"});
+  histo.Create<TH1D,double>({"tpbot","t' bot [GeV^{2}]",100,0,2.0},{"tp_bot"});
 
-  histo.Create<TH2D,double,double>({"tbot_mesonmass","tbot vs meson mass",100,-0.1,1.5,100,0.3,5.},{"t_bot","GMass"});
+  histo.Create<TH2D,double,double>({"tbot_mesonmass","tbot vs meson mass",100,0.0,0.2,100,0.3,5.},{"t_bot","GMass"});
   histo.Create<TH2D,double,double>({"tpbot_mesonmass","t'bot vs meson mass",100,-0.1,1.5,100,0.3,5.},{"tp_bot","GMass"});
   histo.Create<TH2D,double,double>({"tbot_W","tbot vs W",100,-0.1,1.5,100,0.,200.},{"t_bot","W"});
   histo.Create<TH2D,double,double>({"tpbot_W","t'bot vs W",100,-0.1,1.5,100,0.,200.},{"tp_bot","W"});
@@ -139,32 +155,38 @@ void ProcessHepMCDDVCS(){
   histo.Create<TH1D,double>({"phPR","#phi_{PR}",100,-TMath::Pi(),TMath::Pi()},{"PR_Phi"});
   
   //exclusivity
-  histo.Create<TH1D,double>({"MissMass","Mmiss [GeV]",1000,-10,10},{"MissMass"});
-  histo.Create<TH1D,double>({"missP","p_{miss}(e',#gamma',p')",105,0,105},{"MissP"});
+  histo.Create<TH1D,double>({"MissMass","Mmiss [GeV]",100,-10,10},{"MissMass"});
+  histo.Create<TH1D,double>({"missP","p_{miss}(e',#gamma',p')",100,0,100},{"MissP"});
   histo.Create<TH1D,double>({"missPt","p_{t,miss}(e',#gamma',p')",100,0,10},{"MissPt"});
-  histo.Create<TH1D,double>({"missPz","p_{z,miss}(e',#gamma',p')",105,0,105},{"MissPz"});
+  histo.Create<TH1D,double>({"missPz","p_{z,miss}(e',#gamma',p')",100,0,100},{"MissPz"});
   histo.Create<TH1D,double>({"missTheta","#theta_{miss}(e',#gamma',p')",100,0,1},{"MissTheta"});
   
   //semi-exclusivity
   histo.Create<TH1D,double>({"MissMassPprime","Mmiss {e,p'}[GeV]",100,.3,5.},{"MissMassPprime"});
   
   histo.Create<TH1D,ROOT::RVecD>({"allP","momentum of all particles",100,0,100},{"pmag"});
-  histo.Create<TH1D,ROOT::RVecD>({"eleP","momentum of electrons",100,0,100},{"elsP"});
+  // histo.Create<TH1D,ROOT::RVecD>({"eleP","momentum of electrons",100,0,100},{"elsP"});
     
   //check recoil proton azimuthal distribution
-  histo.Create<TH1D,double>({"scatele_phi","Azimuthal Angle of Recoil Proton",250,-TMath::Pi(),TMath::Pi()},{"phi[pprime]"});
+  histo.Create<TH1D,double>({"scatele_phi","Azimuthal Angle of Scattered Electron",250,-TMath::Pi(),TMath::Pi()},{"phi[scat_ele]"});
   histo.Create<TH1D,double>({"pprime_phi","Azimuthal Angle of Recoil Proton",250,-TMath::Pi(),TMath::Pi()},{"phi[pprime]"});
   
   //for brufit need
-  //theta phi pol t eepEgamma
+  //CM_Phi Heli_theta Heli_phi GammaPolCirc=sqrt(1-epsilon)*Pol t GammaE
   histo.Create<TH1D,double>({"GammaPol","Polarisation of Virtual Photon",100,0,1},{"GammaPol"});
   histo.Create<TH1D,double>({"GammaE","Energy of Virtual Photon",100,0,18},{"GammaE"});
   histo.Create<TH1D,double>({"Heli_CosTheta","#theta decay angle",100,-TMath::Pi(),TMath::Pi()},{"Heli_CosTheta"});
   histo.Create<TH1D,double>({"Heli_Phi","#phi decay angle",100,-TMath::Pi()-1,TMath::Pi()+1},{"Heli_Phi"});
  
+  //Polarisation and kinematic limits for cicular
+  histo.Create<TH2D,double,double>({"y_W","W{ele missmass} vs y",100,0,1,100,0,200},{"y","W"});
+  histo.Create<TH2D,double,double>({"y_Escatele","E_{e'} vs y",100,0,1,100,0,18},{"y","pmag[scat_ele]"});
+  histo.Create<TH2D,double,double>({"y_CircPol","Circular Polarisation vs y",100,0,1,100,0,1},{"y","GammaPolCirc"});
+  histo.Create<TH2D,double,double>({"W_CircPol","Circular Polarisation vs W{ele missmiass}",100,0,200,100,0,1},{"W","GammaPolCirc"});
+  
   
   gBenchmark->Start("snapshot");
-  hepmc.BookLazySnapshot("HepMCDDVCS.root");
+  hepmc.BookLazySnapshot(outfile);
   gBenchmark->Stop("snapshot");
   gBenchmark->Print("snapshot");
 
@@ -173,7 +195,7 @@ void ProcessHepMCDDVCS(){
   //Draw histograms
   ///////////////////////////////////////////////////////////
   
-  TCanvas *c00 = new TCanvas("c00","Kinematics",800,400);
+  TCanvas *c00 = new TCanvas("c00","Kinematics");
   c00->Divide(4,2);
   c00->cd(1);
   histo.DrawSame("Q2",gPad);
@@ -191,8 +213,23 @@ void ProcessHepMCDDVCS(){
   histo.DrawSame("tptop",gPad);
   c00->cd(8);
   histo.DrawSame("tpbot",gPad);
+  c00->Print("temp00.pdf");
   
-  TCanvas *c01 = new TCanvas("c01","Exclusivity Plots",800,400);
+  TCanvas *c001 = new TCanvas("c001","Kinematics Reduced");
+  c001->Divide(2,2);
+  c001->cd(1)->SetLogy();
+  histo.DrawSame("Q2",gPad);
+  c001->cd(2);
+  histo.DrawSame("W",gPad);
+  c001->cd(3);
+  histo.DrawSame("MesonMass",gPad);
+  c001->cd(4);
+  histo.DrawSame("tbot",gPad);
+  c001->Print("temp001.pdf");
+  
+  //histo.DrawSame("ttop",gPad);
+  
+  TCanvas *c01 = new TCanvas("c01","Exclusivity Plots");
   c01->Divide(3,2);
   c01->cd(1);
   histo.DrawSame("MissMass",gPad);
@@ -206,17 +243,19 @@ void ProcessHepMCDDVCS(){
   histo.DrawSame("missTheta",gPad);
   //c01->cd(6);
   //histo.DrawSame("MissMass",gPad);
-  
-    TCanvas *c02 = new TCanvas("c02","");
+  c01->Print("temp01.pdf");
+
+  TCanvas *c02 = new TCanvas("c02","2D t Distributions");
   c02->Divide(2,2);
   c02->cd(1);
-  histo.DrawSame("tbot_mesonmass",gPad);
+  histo.Draw2D("tbot_mesonmass",MC(),"colz",gPad);
   c02->cd(2);
-  histo.DrawSame("tpbot_mesonmass",gPad);
+  histo.Draw2D("tpbot_mesonmass",MC(),"colz",gPad);
   c02->cd(3);
-  histo.DrawSame("tbot_W",gPad);
+  histo.Draw2D("tbot_W",MC(),"colz",gPad);
   c02->cd(4);
-  histo.DrawSame("tpbot_W",gPad);
+  histo.Draw2D("tpbot_W",MC(),"colz",gPad);
+  c02->Print("temp02.pdf");
 
   TCanvas *c03 = new TCanvas("c03","CM and PR Frame Angles");
   c03->Divide(2,2);
@@ -228,6 +267,7 @@ void ProcessHepMCDDVCS(){
   histo.DrawSame("cthPR",gPad);
   c03->cd(4);
   histo.DrawSame("phPR",gPad);
+  c03->Print("temp03.pdf");
   
   TCanvas *c04 = new TCanvas("c04","Helicity and Polarisation");
   c04->Divide(2,2);
@@ -239,16 +279,38 @@ void ProcessHepMCDDVCS(){
   histo.DrawSame("GammaPol",gPad);
   c04->cd(4);
   histo.DrawSame("GammaE",gPad);
-  
-  // histo.DrawSame("pprime_phi");
-  // histo.DrawSame("MissMassPprime");
-  // histo.DrawSame("W_mesonmass");
-  
+  c04->Print("temp04.pdf");
+
+  TCanvas *c05 = new TCanvas("c05","DIS Kinematics");
+  c05->Divide(2,2);
+  c05->cd(1);
+  histo.DrawSame("Q2",gPad);
+  c05->cd(2);
+  histo.DrawSame("nu",gPad);
+  c05->cd(3);
+  histo.DrawSame("xbj",gPad);
+  c05->cd(4);
+  histo.DrawSame("y",gPad);
+  c05->Print("temp05.pdf");
+
+  TCanvas *c06 = new TCanvas("c06","Kin Lim CircPol Correlations");
+  c06->Divide(2,2);
+  c06->cd(1);
+  histo.Draw2D("y_W",MC(),"colz",gPad);
+  c06->cd(2);
+  histo.Draw2D("y_Escatele",MC(),"colz",gPad);
+  c06->cd(3);
+  histo.Draw2D("y_CircPol",MC(),"colz",gPad);
+  c06->cd(4);
+  histo.Draw2D("W_CircPol",MC(),"colz",gPad);
+  c06->Print("temp06.pdf");
+
+  //gSystem->Exec("pdfunite temp*.pdf elspectro_histos.pdf");
   gBenchmark->Stop("processing");
   gBenchmark->Print("processing");
 
   //save all histograms to file
-  histo.File("HepMCDDVCS_hists.root");
+  //histo.File("HepMCDDVCS_hists.root");
 
   gBenchmark->Stop("df");
   gBenchmark->Print("df");

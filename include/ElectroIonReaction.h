@@ -193,6 +193,8 @@ namespace rad{
       // auto phot =  beams::InitialFourVector(react[names::ElectroEleIdx()][0],px,py,pz,m);
       // SubtractFourVector(phot,react[names::ScatEleIdx()],px,py,pz,m);
       // return phot;
+      /* cout << names::VirtGammaIdx() << " " << react[names::VirtGammaIdx()] << " " << names::ScatEleIdx() << " " << react[names::ScatEleIdx()] << endl;  */
+      /* cout << FourVector(react[names::VirtGammaIdx()],px,py,pz,m) << " " << pz << endl; */
       return FourVector(react[names::VirtGammaIdx()],px,py,pz,m);
       
     }

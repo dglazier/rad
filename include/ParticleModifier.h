@@ -92,7 +92,7 @@ namespace rad{
       void ChangeRecMomentumOfTo(const std::string& particle, const std::string& new_mag) {
         // Assemble the arguments for the 'rad::epic::ModifyMomentum' C++ function.
         // These are strings that RDataFrame's JIT compiler will resolve to actual values/RVecs.
-        std::vector<std::string> vars = {particle, new_mag, "rec_px", "rec_py", "rec_pz"};
+        std::vector<std::string> vars = {particle, new_mag, Rec()+"px", Rec()+"py", Rec()+"pz"};
 
         // Use a utility function to
         // construct the full string representation of the function call.
@@ -117,8 +117,17 @@ namespace rad{
         _modifications.push_back(func_call_str);
   
       }
-    
-    private:
+      
+      void ModifyMomentum(const string oldpart, const string newpart){
+	std::vector<std::string> vars = {oldpart, newpart, MC()+"px", MC()+"py", MC()+"pz", MC()+"m"};
+	
+	auto func_call_str = rad::utils::createFunctionCallStringFromVec("rad::config::ModifyMomentumParts", vars);
+	
+	_modifications.push_back(func_call_str);
+
+      }
+      
+      private:
       // Pointer to the ConfigReaction object, which encapsulates the RDataFrame chain.
       // It is guaranteed to be valid and non-null after ParticleModifier construction (if explicit constructor is used).
       // Not 'mutable' as 'Apply' is not a const method, and 'Filter' modifies the chain.
@@ -173,6 +182,17 @@ namespace rad{
     bool Fix4VectorMass(int index, double mass,ROOT::RVec<Tm> &m ){
       m[index]=mass;
       return true;//always return true 
+    }
+    
+    template <typename Tp, typename Tm>
+    bool ModifyMomentumParts(const int oldpart, const int newpart, RVec<Tp> &px, RVec<Tp> &py, RVec<Tp> &pz, RVec<Tm> &m){
+      
+      px[oldpart] = px[newpart];
+      py[oldpart] = py[newpart];
+      pz[oldpart] = pz[newpart];
+      m[oldpart] = m[newpart];
+      
+      return true;
     }
     
   }
