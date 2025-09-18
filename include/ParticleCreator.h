@@ -39,6 +39,12 @@ namespace rad{
       void Miss(const string& name,const std::vector<std::string>& parts) const{
 	DefineParticle(name,parts,Form("rad::reactkine::ParticleCreateByMiss(%s,%s",BeamIndices().data(),VectorToString(parts).data()));
       }
+      //////////////////////////////////////////////////////////////////
+      void QuasiRealNucleon(const string& name,const PxPyPzMVector& initial,const std::vector<std::string>& parts) const{
+	//initial = beam 4-vector
+	//parts=spectator nucleons/ions
+	DefineParticle(name,parts,Form("rad::config::ParticleCreateQuasiReal({%lf,%lf,%lf,%lf},%s",initial.X(),initial.Y(),initial.Z(),initial.M(),VectorToString(parts).data()));
+      }
       //
       
       //////////////////////////////////////////////////////////////////
@@ -122,6 +128,26 @@ namespace rad{
       //sum the 4-vectors
       auto p4 = FourVector(ipos,px,py,pz,m);
       SubtractFourVector(p4,ineg,px,py,pz,m);
+
+      //make particle id = last entry
+      auto idx = px.size();
+
+      //add new components
+      px.push_back(p4.X());
+      py.push_back(p4.Y());
+      pz.push_back(p4.Z());
+      m.push_back(p4.M());
+      return idx;
+    }
+    
+    ///\brief create a new particle which can be used in initial collision
+    ///return the index to be used to access the components
+    ///this also allows it to be used with Define which requires a return
+    template<typename Tp, typename Tm>
+    int  ParticleCreateQuasiReal(const PxPyPzMVector initial,const RVecI &ispect, RVec<Tp> &px, RVec<Tp> &py, RVec<Tp> &pz, RVec<Tm> &m,const RVecI& iafter){
+      //sum the 4-vectors
+      auto p4 = initial;
+      SubtractFourVector(p4,ispect,px,py,pz,m);
 
       //make particle id = last entry
       auto idx = px.size();
