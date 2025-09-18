@@ -42,7 +42,7 @@ jobs:
       - name: Prepare site for deployment
         run: |
           mkdir -p _site/reference
-          cp docs/index.html _site/
+          #cp docs/index.html _site/
           mv doxygen-html/* _site/reference/
 
       - name: Upload artifact
