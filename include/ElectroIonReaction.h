@@ -169,7 +169,8 @@ namespace rad{
 
       PxPyPzMVector P4BeamIon()const {return _p4ion_beam;}
       PxPyPzMVector P4BeamEle()const {return _p4el_beam;}
-      
+
+    
     protected:
       PxPyPzMVector _p4el_beam;
       PxPyPzMVector _p4ion_beam;

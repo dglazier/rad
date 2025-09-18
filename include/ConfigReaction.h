@@ -574,6 +574,8 @@ namespace rad{
 	
 	setCurrFrame(frame);
       }
+
+      void setUseBeamsFromMC(bool use=true) {_useBeamsFromMC=use; }
       
     protected:
 
