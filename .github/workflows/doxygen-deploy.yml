@@ -41,7 +41,7 @@ jobs:
 
       - name: Prepare site for deployment
         run: |
-	        # Create the final deployment directory
+	      # Create the final deployment directory
           mkdir -p _site
           # Copy your new custom landing page to be the site's root index.html
           cp docs/index.html _site/index.html
