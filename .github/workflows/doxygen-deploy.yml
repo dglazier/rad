@@ -41,9 +41,11 @@ jobs:
 
       - name: Prepare site for deployment
         run: |
-          mkdir -p _site/reference
-          cp docs/index.html _site/
-          mv doxygen-html/* _site/reference/
+	  # Create the final deployment directory
+          mkdir -p _site
+          # Copy your new custom landing page to be the site's root index.html
+          cp docs/index.html _site/index.html
+          # Move the generated doxygen files into the 'reference' subdirectory
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
