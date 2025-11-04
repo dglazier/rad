@@ -12,6 +12,7 @@
 #include "RVecHelpers.h"
 #include "BasicKinematics.h"
 #include "Beams.h"
+#include "CommonDefines.h"
 
 namespace rad{
 
@@ -22,7 +23,7 @@ namespace rad{
 using rad::electroion::BeamIndices;
 
 //Following include needs previous line.
-#include "ParticleCreator.h"
+//#include "ParticleCreator.h"
 
 namespace rad{
   namespace config{
@@ -87,6 +88,9 @@ namespace rad{
       void setScatElectronIndex(const int idx){
 	setParticleIndex(names::ScatEle().data(),idx,11);
       }
+      void setScatElectronCandidates(const Indices_t& idx){
+	setParticleCandidates(names::ScatEle().data(),idx);
+      }
       template<typename Lambda>
       void setScatElectronIndex(Lambda&& func,const ROOT::RDF::ColumnNames_t & columns = {}){
 	setParticleIndex(names::ScatEle().data(),func,columns,11);
@@ -101,6 +105,13 @@ namespace rad{
       void setScatElectron(Lambda&& func,const ROOT::RDF::ColumnNames_t & columns = {} ){
 	 setParticleIndex(names::ScatEle().data(),func, columns, 11);
       }
+      /**
+       * Allow variable index for scattered electron
+       */
+       template<typename Lambda>
+      void setScatElectronCandidates(Lambda&& func,const ROOT::RDF::ColumnNames_t & columns = {} ){
+	 setParticleCandidates(names::ScatEle().data(),func, columns, 11);
+       }
       /**
        * Allow variable index for beam electron
        */
@@ -133,7 +144,7 @@ namespace rad{
 	//note copying p4 so return will never change
 	auto p4=_p4el_beam;
 	Define(rad::names::P4BeamEle(),[p4](){return p4;},{});
-	Particles().Beam(rad::names::BeamEle().data(),rad::names::P4BeamEle());
+	//	Particles().Beam(rad::names::BeamEle().data(),rad::names::P4BeamEle());
       }
       void DefineBeamIon(){
 	if( !_useBeamsFromMC ) return;
@@ -141,13 +152,13 @@ namespace rad{
 	auto p4=_p4ion_beam;
 	//note copying p4 so return will never change
 	Define(rad::names::P4BeamIon(),[p4](){return p4;},{});
- 	Particles().Beam(rad::names::BeamIon().data(),rad::names::P4BeamIon());
+	// 	Particles().Beam(rad::names::BeamIon().data(),rad::names::P4BeamIon());
 
       }
       void DefineVirtualPhoton(){
 	//add to particles lists, i.e. components of _p4el_beam to rec_px etc
 	//note copying p4 so return will never change
-	Particles().Diff(rad::names::BeamGamma().data(),{rad::names::BeamEle()},{rad::names::ScatEle()});
+	//Particles().Diff(rad::names::BeamGamma().data(),{rad::names::BeamEle()},{rad::names::ScatEle()});
       }
       void FixBeamElectronMomentum(double x,double y,double z){
 	setBeamElectron(x,y,z);
@@ -165,7 +176,7 @@ namespace rad{
        * Set myself as reaction to be sure 
        * and avoid having to define copy constuctor 
        */
-      const ParticleCreator& Particles() {_particles.SetReaction(this);return _particles;};
+      //const ParticleCreator& Particles() {_particles.SetReaction(this);return _particles;};
 
       PxPyPzMVector P4BeamIon()const {return _p4ion_beam;}
       PxPyPzMVector P4BeamEle()const {return _p4el_beam;}
@@ -178,7 +189,7 @@ namespace rad{
       /**
        *
        */
-      ParticleCreator _particles{*this};
+      //ParticleCreator _particles{*this};
 
       
     };//ElectroIonReaction
@@ -189,7 +200,7 @@ namespace rad{
      * virtual photon 4-vector
      */
     template<typename Tp, typename Tm>
-    PxPyPzMVector PhotoFourVector(const config::RVecIndexMap& react, const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
+    PxPyPzMVector PhotoFourVector(const RVecIndexMap& react, const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
       
       // auto phot =  beams::InitialFourVector(react[names::ElectroEleIdx()][0],px,py,pz,m);
       // SubtractFourVector(phot,react[names::ScatEleIdx()],px,py,pz,m);
