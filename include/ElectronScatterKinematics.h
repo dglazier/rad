@@ -68,8 +68,10 @@ namespace rad{
       auto denom = prbeam.Vect().R() * prscat.Vect().R();
       auto theta = acos(num/denom);
       auto energy = prgamstar.E();
-      
+
+      //auto phot = PhotoFourVector(react,px,py,pz,m);
       auto Q2 = -prgamstar.M2();
+      //cout << "Testing Q2 in PRF: Q2phot: " << -phot.M2() <<" Q2prgamstar: " << Q2 << endl;
       auto nu = prbeam.E() - prscat.E();
       auto y = nu / prbeam.E();
       auto xbj = Q2 / (2*pbeam.M()*nu);
@@ -94,16 +96,15 @@ namespace rad{
       //set each for pol calc
       auto ElScatTh = prvec[0];
       auto GammaE = prvec[1];
-      auto Q2 = prvec[2];
+      //auto Q2 = prvec[2];
+      auto Q2 = -phot.M2();
       
       auto pol = 1./(1.+2.*(1.+GammaE*GammaE/Q2)*TMath::Tan(ElScatTh/2.)*TMath::Tan(ElScatTh/2.));
       
-      //cout to diagnose
-      /* cout << "pi-ElScatTheta_lab: " << ElScatTh_lab << " ElScatTheta_protrest: " << ElScatTh << endl; */
-      /* cout << "GammaE_lab " << GammaE_lab << " GammaE_protrest " << GammaE << endl; */
-      /* cout << "Q2_lab: " << Q2_lab << " Q2_portrest: " << Q2 << endl; */
-      /* cout << "pol: " << pol << endl; */
-      /* cout << endl; */
+      //diagnostic for hepmc but dont leave turned on for detector
+      //if(std::isnan(pol))
+      //cout << "theta: " << ElScatTh << " pol: " << pol <<  " gammaE: " << GammaE << " Q2: " << Q2 << endl;
+      
       return pol;
     }
 
