@@ -40,6 +40,7 @@ namespace rad{
       DefineForAllTypes("theta", Form("rad::ThreeVectorTheta(components_p3)"));
       DefineForAllTypes("eta", Form("rad::ThreeVectorEta(components_p3)"));
       DefineForAllTypes("pmag", Form("rad::ThreeVectorMag(components_p3)"));
+      // DefineForAllTypes("pmag", Form("rad::ThreeVectorMag"),{},names::P3Components());
 
       // setMyBaseFrame();
      }
