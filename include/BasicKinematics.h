@@ -1,6 +1,7 @@
 #pragma once
 #include "Indicing.h"
 #include "Constants.h"
+#include "CommonDefines.h"
 
 #include <Math/Vector4D.h>
 #include <Math/Vector3D.h>
@@ -18,30 +19,14 @@ namespace rad{
     ///       combining momentum components into 4-vectors
     using ROOT::Math::PxPyPzMVector ;
     using ROOT::Math::XYZVector ;
+    using ROOT::RVecD;
     using ROOT::RVecF;
     using ROOT::RVecI;
     using ROOT::RVec;
     using ROOT::Math::VectorUtil::boost;
-
-  ///\brief functor returning 4-vector of fixed components
-  // class FixedP4 {
-    
-  // public:
-  //   // FixedP4()=default;
-  //   FixedP4(double x, double y, double z, double m):
-  //     _p4{x,y,z,m}{};
-    
-  //   const PxPyPzMVector& operator()() const{
-  //     return _p4;
-  //   }
-    
-  // private:
-  //   const PxPyPzMVector _p4;
-    
-  // };
   
  
-   ///\brief return 4-vector of particle idx
+  ///\brief return 4-vector of particle idx
     template<typename Tp, typename Tm>
     PxPyPzMVector FourVector(const uint idx,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m){
       return PxPyPzMVector(px[idx], py[idx], pz[idx], m[idx]);
@@ -77,43 +62,47 @@ namespace rad{
     }
     ///\brief return mass of combined 4-vectors, adding particles with indices ipos and subtracting ineg
     template<typename Tp, typename Tm>
-    double FourVectorMassCalc(const RVecI &ipos, const RVecI &ineg,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m)
+    // double FourVectorMassCalc(const RVecI &ipos, const RVecI &ineg,const RVec<Tp> &px, const RVec<Tp> &py, const RVec<Tp> &pz, const RVec<Tm> &m)
+    // double FourVectorMassCalc(const RVecI &ipos, const RVecI &ineg,const Tp &px, const Tp &py, const Tp &pz, const Tm &m)
+    ResultType_t FourVectorMassCalc(const RVecIndices &indices, const Tp &px, const Tp &py, const Tp &pz, const Tm &m)
     {
-      /*
+      auto ipos = indices[0];
+      auto ineg = indices[1];
+     /*
 	//Optional we could add in check like this for indices
       if(indice::InvalidIndices(ipos)) return constant::InvalidEntry();
       if(indice::InvalidIndices(ineg)) return constant::InvalidEntry();
+      Else it will calculate with undefined behaviour
       */
-      
+  
       PxPyPzMVector psum(0,0,0,0);
       SumFourVector(psum,ipos,px,py,pz,m);
       SubtractFourVector(psum,ineg,px,py,pz,m);
       return psum.M();
     }
+
+  
     ///\brief return magnitude of momentum
     template<typename T>
-      RVec<double> ThreeVectorMag(const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
+    //  RVec<double> ThreeVectorMag(const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
+    RVecResultType ThreeVectorMag(const T &x, const T &y, const T &z){
       return sqrt(x * x + y * y + z * z);
     }
     ///\brief return eta of momentum
     template<typename T>
-      RVec<double> ThreeVectorTheta(const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
-      // RVec<T> ThreeVectorTheta(const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
+    RVecResultType ThreeVectorTheta(const T &x, const T &y, const T &z){
       auto mag = ThreeVectorMag(x,y,z);
       auto costh = z/mag;
       return acos(costh);
     }
     ///\brief return eta of momentum
     template<typename T>
-      RVec<double> ThreeVectorPhi(const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
-      //RVec<T> ThreeVectorPhi(const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
-      //std::cout<<" ThreeVectorPhi "<<x.size()<<std::endl;
+    RVecResultType ThreeVectorPhi(const T &x, const T &y, const T &z){
       return atan2(y,x); //will use vectorised version
     }
-   ///\brief return eta of momentum
+  ///\brief return eta of momentum
     template<typename T>
-      RVec<double> ThreeVectorEta(const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
-      //RVec<T> ThreeVectorEta(const RVec<T> &x, const RVec<T> &y, const RVec<T> &z){
+    RVecResultType ThreeVectorEta(const T &x, const T &y, const T &z){
       auto theta = ThreeVectorTheta(x,y,z);
       return -log(tan(0.5 * theta));//will use vectorised version
     }
