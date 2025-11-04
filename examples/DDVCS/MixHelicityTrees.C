@@ -176,29 +176,31 @@ void DFMerge(const std::string plus_file, const std::string minus_file, const st
   gBenchmark->Print("Shuffle");
 }
 
-void MixHelicityTrees(){
+void MixHelicityTrees(std::string filebase="/w/work5/home/garyp/eic/Farm/data/EpIC_DDVCS_ee_18x275/rootfiles/18x275_ddvcs_edecay",std::string basename="HepMC_ddvcs_ee_18x275"){
   
   // Enable implicit multi-threading
-  ROOT::EnableImplicitMT(32);
+  ROOT::EnableImplicitMT(8);
   gROOT->SetBatch(kTRUE);
   gBenchmark->Start("Total");
   
-  std::string plus_file = "/w/work5/home/garyp/eic/Farm/data/EpIC_ep_DDVCS_18x275/18x275_ddvcs_1M_events_plus.root";
-  std::string minus_file = "/w/work5/home/garyp/eic/Farm/data/EpIC_ep_DDVCS_18x275/18x275_ddvcs_1M_events_minus.root";
+  //later fix this to be filebase->get hplus hminus then
+  std::string plus_file = filebase+"_hplus.root";
+  std::string minus_file = filebase+"_hminus.root";
   
-  std::string plus_flat_file = "/w/work5/home/garyp/eic/Farm/data/EpIC_ep_DDVCS_18x275/18x275_ddvcs_1M_events_plus_flat.root";
-  std::string minus_flat_file = "/w/work5/home/garyp/eic/Farm/data/EpIC_ep_DDVCS_18x275/18x275_ddvcs_1M_events_minus_flat.root";
+  std::string plus_flat_file = filebase+"_hplus_flat.root";
+  std::string minus_flat_file = filebase+"_hminus_flat.root";
   
   //this uses DDVCS_GenHeli.C to generate flat phase space files from original files
   //commented because i dont want to redo this every time right now
   //because i have generated the flat phase space then simulated those events 
   //DDVCS_GenHeli(plus_file,plus_flat_file);
   //DDVS_GenHeli(minus_file,minus_flat_file);
-  
-  std::string plus_outfile = "HepMC_ddvcs_plus.root";
-  std::string minus_outfile = "HepMC_ddvcs_minus.root";
-  std::string plus_flat_outfile = "HepMC_ddvcs_plus_flat.root";
-  std::string minus_flat_outfile = "HepMC_ddvcs_minus_flat.root";
+
+  std::string outdir = "/w/work5/home/garyp/rad_trees/";
+  std::string plus_outfile = outdir+basename+"_plus.root";
+  std::string minus_outfile = outdir+basename+"_minus.root";
+  std::string plus_flat_outfile = outdir+basename+"_plus_flat.root";
+  std::string minus_flat_outfile = outdir+basename+"_minus_flat.root";
   
   if(!checkFileExists(plus_outfile))
     ProcessHepMCDDVCS(plus_file, plus_outfile);
@@ -213,8 +215,8 @@ void MixHelicityTrees(){
     ProcessHepMCDDVCS(minus_flat_file, minus_flat_outfile);
   
   
-  std::string mixed_outfile = "HepMC_ddvcs_mixed.root";
-  std::string mixed_flat_outfile = "HepMC_ddvcs_mixed_flat.root";
+  std::string mixed_outfile = outdir+basename+"_mixed.root";
+  std::string mixed_flat_outfile = outdir+basename+"_mixed_flat.root";
   
   std::string treename="rad_tree";
   
