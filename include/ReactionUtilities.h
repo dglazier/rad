@@ -39,6 +39,18 @@ namespace rad{
 	toString+='}';
 	return toString;
       }
+     //////////////////////////////////////////////////////////////////
+      std::string ColumnsToStringNoBraces(const ROOT::RDF::ColumnNames_t &cols) {
+	if(cols.empty()==true) return "";
+      
+	string toString ="";
+	for(const auto& p:cols){
+	  toString=(toString + p + ",");
+	}
+	toString.pop_back(); //remove last ,
+       
+	return toString;
+      }
     
 
       using rad::names::data_type::Rec;
@@ -62,6 +74,7 @@ namespace rad{
 	// },{Rec()+var,Truth()+var});
 	rdf->Define(string("res_")+var,Form("(%s-%s)/%s",(Truth()+var).data(),(Rec()+var).data(),(Truth()+var).data() ));
       }
+      
      template<typename T> //use template so can #include this in ConfigReaction
      ColType DeduceColumnVectorType(T* const radf,const string& name){
 
@@ -76,6 +89,11 @@ namespace rad{
 	if(col_type.Contains("Int_t")||col_type.Contains("int")) return ColType::Int;
 	return ColType::Undef;
       }
+      // std::string CreateDeducedFunctionString(config::ConfigReaction& cr,const std::string func,){
+      // auto obj_types =cr.TypeColObjTypeString("mc_","components_p4");
+      // auto function_expr = "rad::FourVectorMassCalc<" + obj_types + ">";
+
+      // }
       //This should perhaps be more general and moved to REactionUtils or somewehre
       template<typename T> //use template so can #include this in ConfigReaction
       void RedefineFundamentalAliases(T* const radf){
