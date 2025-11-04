@@ -1,5 +1,7 @@
-//need to use reconstructed variables for all particles
-//rather than set index by number, need to use lambda method like is done for positron.
+//This macro generates the "flat" helicity distributions
+//for a given input file, and outputs a new hepmc rootfile
+//the "flat" hepmc rootfile can then be fully analysed with
+//the regular rad macros and workflow
 
 #include "HepMCElectro.h"
 #include "ParticleCreator.h"
