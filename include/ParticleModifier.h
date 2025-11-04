@@ -127,6 +127,11 @@ namespace rad{
 
       }
       
+    protected:
+      void addModification(const std::string& mod){
+	_modifications.push_back(mod);
+      }
+
       private:
       // Pointer to the ConfigReaction object, which encapsulates the RDataFrame chain.
       // It is guaranteed to be valid and non-null after ParticleModifier construction (if explicit constructor is used).
@@ -137,7 +142,7 @@ namespace rad{
       // Each string corresponds to a single momentum modification operation to be applied.
       std::vector<std::string> _modifications;
     };
-
+    
    
     /**
      * @brief Changes the magnitude of a 3-vector momentum at a specified index within RVecs.
