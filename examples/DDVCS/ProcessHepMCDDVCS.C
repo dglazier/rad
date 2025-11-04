@@ -14,9 +14,9 @@
 #include <TBenchmark.h>
 #include <TCanvas.h>
 
-void ProcessHepMCDDVCS(const std::string infile="/w/work5/home/garyp/eic/Farm/data/EpIC_DDVCS_ee_18x275/18x275_ddvcs_edecay_hplus.root", const std::string outfile="tempout.root"){
+void ProcessHepMCDDVCS(const std::string infile="/w/work5/home/garyp/eic/Farm/data/EpIC_DDVCS_ee_18x275/rootfiles/18x275_ddvcs_edecay_hplus.root", const std::string outfile="tempout.root"){
   // Enable implicit multi-threading
-  ROOT::EnableImplicitMT(4);
+  //ROOT::EnableImplicitMT(4);
  
   using namespace rad::names::data_type; //for MC()
   
@@ -302,8 +302,12 @@ void ProcessHepMCDDVCS(const std::string infile="/w/work5/home/garyp/eic/Farm/da
   histo.Draw2D("W_CircPol",MC(),"colz",gPad);
   c06->Print("temp06.pdf");
 
+  TString pdfoutfile = outfile;
+  pdfoutfile = gSystem->BaseName(pdfoutfile);
+  pdfoutfile.ReplaceAll(".root",".pdf");
   
-  gSystem->Exec("pdfunite temp*.pdf epic_ddvcs_histos.pdf");
+  gSystem->Exec(Form("pdfunite temp*.pdf %s",pdfoutfile.Data()));
+  gSystem->Exec("rm temp*.pdf");
   gBenchmark->Stop("processing");
   gBenchmark->Print("processing");
 
