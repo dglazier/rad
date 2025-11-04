@@ -5,15 +5,21 @@
 
 namespace rad{
   namespace names{
-
+ 
     /**
      * Names used to identify reaction components
      */
+    constexpr const std::string_view  ReactionCombos()  {return "reaction_combos__dnwtag"; }//note DoNotWriteTag()
     constexpr const std::string_view  ReactionMap()  {return "reaction_map"; }
     constexpr const std::string_view  Mesons()  {return "meson"; }
     constexpr const std::string_view  Baryons() {return "baryon";}
-
-    ///Comments not using string_view as need to return a string
+    /**
+     * Names for common groups of columns 
+     */
+    const std::string  P4Components() {return "components_p4";}
+    const std::string  P3Components() {return "components_p3";}
+    
+   ///Comments not using string_view as need to return a string
     // returning static const seems to be slower, so stick with
     // returning string which should actually be slower 
     //constexpr const std::string_view  ScatEle() {return "scat_ele";}
