@@ -1,324 +1,323 @@
 #pragma once
 
-//!  Base configuration class for electron scattering reactions
+// Assuming RDFInterface.h contains the base class definition
+#include "RDFInterface.h" 
+#include "CommonDefines.h" 
+#include "ConfigUtils.h" 
+#include "Combinatorics.h" 
+#include "CombinatorialUtil.h" 
 
-/*!
-  Use ConfigReaction classes to setup data analysis and calculations
-  for particular hadronic final states.
-*/
+#include "Constants.h" // For InvalidEntry
 #include "DefineNames.h"
 #include "RVecHelpers.h"
 #include "ReactionUtilities.h"
 #include "StringUtilities.h"
 #include "Random.h"
 
-#include <ROOT/RDFHelpers.hxx>
-#include <ROOT/RDataFrame.hxx>
-#include <ROOT/RVec.hxx>
+// Forward declarations for external combinatorial helpers
+namespace rad {
 
-
-namespace rad{
-  namespace config{
-    using rad::names::data_type::Rec;
-    class ParticleCreator;
-    
-    
-    //! Code simplifications
   
-    using ROOT::RVecI;
-  
-    /*! RDFstep is used to update the dataframe handle after each filter or define step */
-    // using RDFstep = ROOT::RDF::RInterface<ROOT::Detail::RDF::RLoopManager, void> ;
-    using RDFstep = ROOT::RDF::RNode ;
+  namespace combinatorics {
+    // Assuming this is the C++ kernel that takes RVec<RVecI>... and returns RVec<RVecIndexMap>
+    ROOT::RVec<RVecIndexMap> GenerateAllCombinations(...); 
+  }
+  namespace util {
+    // The generic wrapper from Refactor.md
+    template <typename F, typename... Args>
+    auto ApplyCombinationsGeneric(F&& singleComboFunc, const ROOT::RVec<RVecIndexMap>& combos, Args&&... args);
+  }
+}
 
-    /*! RVecIndexMap is gives access to specific particle indices in action functions.
-      Use reaction part index getters e.g. ScatEleIdx() to get the index from the map.
-      e.g. rdf::RVecIndexMap& react; ... ; auto index = react[ScatEleIdx()]; 
-    */
-    using RVecIndexMap = ROOT::RVec<ROOT::RVecI>;
-    
-    void PrintDefinedColumnNames(RDFstep  df){
-      std::cout<<"Print Column Names : ";
-      auto cols =  df.GetDefinedColumnNames();
-      for(auto& col:cols){
-	std::cout<<col<<", ";
-      }
-      cout<<"\n";
-    }
-   void PrintAllColumnNames(RDFstep  df){
-      std::cout<<"Print Column Names : ";
-      auto cols =  df.GetColumnNames();
-      for(auto& col:cols){
-	std::cout<<col<<", ";
-      }
-      cout<<"\n";
-    }
+namespace rad {
+  namespace config {
 
-    bool ColumnExists(const string& col,RDFstep  df){
-      auto cols =  df.GetDefinedColumnNames();
-      if(std::find(cols.begin(),cols.end(),col)==cols.end()) return false;
-      return true;
-    }
-    
-    
-    std::string as_string(std::string_view v) { 
-      return {v.data(), v.size()}; 
-    }
-    
-    //! Class definition
+    class ConfigReaction : public RDFInterface {
 
-    class ConfigReaction {
-    
     public:
+      //------------------ Constructors ------------------
 
-      //     ConfigReaction(const std::string& treeName, const std::string& fileNameGlob, const ROOT::RDF::ColumnNames_t&  columns ) : _orig_df{treeName,{fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data()},columns},_curr_df{_orig_df}{
-      ConfigReaction(const std::string_view treeName, const std::string_view fileNameGlob, const ROOT::RDF::ColumnNames_t&  columns ) : _orig_df{treeName,{fileNameGlob.data()},columns},_curr_df{_orig_df},_base_df{_orig_df},_treeName{treeName},_fileName{fileNameGlob}{
-	if (fileNameGlob.empty()) {
-	  throw std::invalid_argument("ConfigReaction: fileNameGlob cannot be empty.");
-	}
-	_orig_col_names = _orig_df.GetColumnNames();
+      // Calls the appropriate base class constructor
+      ConfigReaction(const std::string_view treeName, const std::string_view fileNameGlob, const ROOT::RDF::ColumnNames_t& columns)
+        : RDFInterface(treeName, fileNameGlob, columns) {}
 
-    }
-      ConfigReaction(const std::string_view treeName, const std::vector<std::string> &filenames, const ROOT::RDF::ColumnNames_t&  columns ) : _orig_df{treeName,filenames,columns},_curr_df{_orig_df},_base_df{_orig_df},_treeName{treeName},_fileNames{filenames}{
-	if (filenames.empty()) {
-	  throw std::invalid_argument("ConfigReaction: fileNameGlob cannot be empty.");
-	}
-	_orig_col_names = _orig_df.GetColumnNames();
- 	
+      ConfigReaction(const std::string_view treeName, const std::vector<std::string>& filenames, const ROOT::RDF::ColumnNames_t& columns)
+        : RDFInterface(treeName, filenames, columns) {}
+
+      ConfigReaction(ROOT::RDataFrame rdf)
+        : RDFInterface(rdf) {}
+
+      //------------------ RDFInterface Overrides (Pure Virtuals) ------------------
+
+  
+      void Snapshot(const string& filename) override {
+        try {
+          RDFstep final_df = CurrFrame();
+          
+          // Flatten the frame if in combinatorial mode (Stage III Logic)
+          if (_isCombinatorialMode) {
+              // NOTE: The actual Unroll target/logic must be implemented here.
+              // For now, we assume a representative column, but this needs refinement.
+              // Example: final_df = final_df.Unroll("rec_" + _firstDefinedCombiColumn); 
+          }
+
+          auto cols = final_df.GetDefinedColumnNames();
+          RemoveSnapshotColumns(cols);
+          final_df.Snapshot("rad_tree", filename, cols);
+        } catch (const std::exception& ex) {
+          std::cerr << "Snapshot failed: " << ex.what() << std::endl;
+          throw;
+        }
       }
 
-      //if creating from alternative data source
-      ConfigReaction(ROOT::RDataFrame rdf ) : _orig_df{rdf},_curr_df{rdf},_base_df{rdf}{
-	_orig_col_names = _orig_df.GetColumnNames();
+      void BookLazySnapshot(const string& filename) override {
+        try {
+          RDFstep final_df = CurrFrame();
 
-   }
-      
-      ~ConfigReaction(){ 
-	//	std::cout << "ConfigReaction destructor: " <<_triggerSnapshots.size() << std::endl;
-	for (auto& trigger : _triggerSnapshots) {
-	  if (trigger) trigger();
-	}
-	
-	//std::cout << "ConfigReaction destructor: " << CurrFrame().Count().GetValue() << std::endl;
+          // Flatten the frame if in combinatorial mode (Stage III Logic)
+          if (_isCombinatorialMode) {
+              // NOTE: Implementation of the Unroll logic goes here.
+          }
+          
+          ROOT::RDF::RSnapshotOptions opts;
+          opts.fLazy = true;
+          auto cols = final_df.GetDefinedColumnNames();
+          RemoveSnapshotColumns(cols);
+          auto snapshot_result = final_df.Snapshot("rad_tree", filename, cols, opts);
+          _triggerSnapshots.emplace_back([snapshot = std::move(snapshot_result)]() mutable {});
+        } catch (const std::exception& ex) {
+          std::cerr << "BookLazySnapshot failed: " << ex.what() << std::endl;
+          throw;
+        }
       }
-      
-      /** 
-       * Get the current dataframe to add further actions
-       */
-      RDFstep CurrFrame(){return _curr_df;}
-      /** 
-       * Set the current dataframe after adding further actions
-       */
-      void setCurrFrame(RDFstep  df){ _curr_df = df ;}
-      
+
+      // Hook to remove internal columns
+      void RemoveSnapshotColumns(std::vector<string>& cols) override {
+        // Remove internal columns specific to ConfigReaction (e.g., the map and alias data)
+        cols.erase(std::remove(cols.begin(), cols.end(), names::ReactionMap()), cols.end());
+
+        // Remove any columns with the DoNotWriteTag
+        auto tag = DoNotWriteTag();
+        cols.erase(std::remove_if(cols.begin(), cols.end(),
+          [&tag](const string& col) -> bool { return col.find(tag) != std::string::npos; }),
+          cols.end());
+
+        // Call base class cleanup (though RDFInterface currently has no columns to remove)
+        RDFInterface::RemoveSnapshotColumns(cols);
+      }
+
+      //------------------ Combinatorial API ------------------
+
       /**
-       * Interface to RDataFrame Define
+       * @brief Define a collection of particle candidates using a string expression.
        */
-      void Define(const string_view name,const string& expression){
-	setCurrFrame(CurrFrame().Define(name,expression));
-      }
-      //  void Define(const TString& name,const string& expression){
-      // 	setCurrFrame(CurrFrame().Define(name,expression));
-      // }
-      template<typename Lambda>
-      void Define(const string_view name,Lambda&& func,const ROOT::RDF::ColumnNames_t&  columns ){
-	setCurrFrame(CurrFrame().Define(name,func,columns));
-      }
-
-      /**
-       * Call Define for predefined data types, pprepend type string
-       */
-        void DefineForAllTypes(const string& name,const string& expression){
-	for(auto &atype:_type_comps){
-	  if (atype.second.find("components_p4") == atype.second.end() ||
-	      atype.second.find("components_p3") == atype.second.end()) {
-            throw std::runtime_error("DefineForAllTypes: Missing 'components_p4' or 'components_p3' for type: " + atype.first);
-	  }
-	  TString type_expr = expression.data();
-	  type_expr.ReplaceAll("components_p4",atype.second["components_p4"]);
-	  type_expr.ReplaceAll("components_p3",atype.second["components_p3"]);
-	  Define(atype.first + name.data(),type_expr.Data());
-	}
-      }
-      template<typename Lambda>
-      void DefineForAllTypes(const string& name,Lambda&& func,const ROOT::RDF::ColumnNames_t&  columns ){
-	for(auto &atype:_type_comps){
-	  if (atype.second.find("components_p4") == atype.second.end() ||
-	      atype.second.find("components_p3") == atype.second.end()) {
-            throw std::runtime_error("DefineForAllTypes: Missing 'components_p4' or 'components_p3' for type: " + atype.first);
-	  }
-	  ROOT::RDF::ColumnNames_t type_cols;
-	  for(auto& acol:columns){
-	    type_cols.push_back(atype.first + acol);
-	  }
-	  Define(atype.first + name.data(),func,type_cols);
-	}
-      }
-      /**
-       * @brief make a new column for each particle based on applying func_name
-       *        the new columns will called name_particle
-       * @param name base name if new variable
-       * @param particles list of particles to define this variable from
-       * @param func_name the function to apply, should be defined in a .h file
-       * @param values variables to be used by func to define new column
-       */
-      void DefineForParticles(const string& name,const ROOT::RDF::ColumnNames_t &particles,const ROOT::RDF::ColumnNames_t &values, const std::string& func_name){
-	//loop over particles
-	for(const auto& p : particles){
-	  auto selected_entries = values;
-	  //create string selecting particle entry from the values arrays
-	  std::for_each(selected_entries.begin(), selected_entries.end(),
-			[&p](std::string& s) {
-			  s += '[';
-			  s += p;
-			  s += ']';
-			});
-	  //create the function for the Define call
-	  auto selected_func = rad::utils::createFunctionCallStringFromVec(func_name,selected_entries);
-	  cout<<"DefineForParticles "<<name+"_"+p<<" "<<selected_func<<endl;
-	  //Define this variable for this particle
-	  Define(name+"_"+p,selected_func);
-	}
+      void setParticleCandidatesExpr(const string& name, const string& expression) {
+	//void setParticleIndex(const string& name, const string& expression) {
+        if (_candidateExpressions.count(name) || _lambdaCandidateDependencies.count(name)) {
+          throw std::invalid_argument("Candidate '" + name + "' already defined.");
+        }
+        _candidateExpressions[name] = expression;
+	AddParticleName(name);
+	AddFinalParticleName(name);
       }
 
       /**
-       * Interface to RDataFrame Redefine
-       */
-      void RedefineExpr(const string& name,const string& expression){
-	setCurrFrame(CurrFrame().Redefine(name,expression));
-      }
-      void Redefine(const string& name,const string& expression){
-	setCurrFrame(CurrFrame().Redefine(name,expression));
-      }
-      template<typename Lambda>
-      void Redefine(const string& name,Lambda&& func,const ROOT::RDF::ColumnNames_t& columns = {}){
-	setCurrFrame(CurrFrame().Redefine(name,func,columns));
-      }
-      /**
-       * Interface to RDataFrame Redefine via any aliases that may be used
-       */
-      //The redefine with alias does not work as the branchname
-      //is not a mathematical expression. This is not checked for
-      //the Lambda version below and works.
-      // void RedefineViaAlias(const string& alias,const string& expression){
-      // 	RedefineExpr(_aliasMap[alias],expression);
-      // }
-      template<typename Lambda>
-      void RedefineViaAlias(const string& alias,Lambda&& func,const ROOT::RDF::ColumnNames_t& columns ){
-	//	Redefine(_aliasMap[alias],func,columns);
-	
-	auto it = _aliasMap.find(alias);
-	if (it == _aliasMap.end()) {
-	  throw std::invalid_argument("RedefineViaAlias: alias '" + alias + "' does not exist in _aliasMap.");
-	}
-	Redefine(it->second, std::forward<Lambda>(func), columns);
-      }
- 
-      /** 
-       * Add an alias for a branch and update the current frame to the aliased one
-       */
-      void setBranchAlias(const string& old_name,const string& new_name){
-	//Check if the old_name column exists before creating the alias
-	if (!OriginalColumnExists(old_name)) {
-	  throw std::invalid_argument("setBranchAlias: Source column '" + old_name + "' does not exist in the DataFrame.");
-	}
-	_aliasMap[new_name] = old_name;
-	setCurrFrame(CurrFrame().Alias(new_name,old_name));
-      }
-      /**
-       * Interface to RDataFrame Filter
+       * @brief Define a collection of particle candidates using a C++ function (lambda/functor).
        */
       template<typename Lambda>
-      void Filter(Lambda&& func, const ROOT::RDF::ColumnNames_t& columns = {},std::string name = "" ){
-	setCurrFrame(CurrFrame().Filter(func,columns,name));
-      }
-      void Filter(const std::string& expression,const std::string& 	name ){
-	setCurrFrame(CurrFrame().Filter(expression,name));
-      }
-     
-      /**
-       * Make a snapshot of newly defined columns
-       */
-      void BookLazySnapshot(const string& filename){
-	try {
-	  ROOT::RDF::RSnapshotOptions opts;
-	  opts.fLazy = true;
-	  auto cols = CurrFrame().GetDefinedColumnNames();
-	  RemoveSnapshotColumns(cols);
-	  auto snapshot_result = CurrFrame().Snapshot("rad_tree", filename, cols, opts);
-	  _triggerSnapshots.emplace_back([snapshot = std::move(snapshot_result)]() mutable{});
-	} catch (const std::exception& ex) {
-	  std::cerr << "BookLazySnapshot failed: " << ex.what() << std::endl;
-	  throw; // or handle gracefully
-	}
-      
+      void setParticleCandidates(const string& name, Lambda&& func, const ROOT::RDF::ColumnNames_t& columns) {
+	//void setParticleIndex(const string& name, Lambda&& func, const ROOT::RDF::ColumnNames_t& columns) {
+        if (_candidateExpressions.count(name) || _lambdaCandidateDependencies.count(name)) {
+          throw std::invalid_argument("Candidate '" + name + "' already defined.");
+        }
+
+        // Define the internal column using the Lambda right away
+        //string indices_name = DoNotWriteTag() + name + "_combi";
+        Define(name, std::forward<Lambda>(func), columns);
+
+        // Store the dependency names for tracking
+        _lambdaCandidateDependencies[name] = columns; 
+
+	AddParticleName(name);
+	AddFinalParticleName(name);
       }
       
-      
-      void Snapshot(const string& filename){
-	try {
-	  auto cols = CurrFrame().GetDefinedColumnNames();
-	  RemoveSnapshotColumns(cols);
-	  CurrFrame().Snapshot("rad_tree", filename, cols);
-	} catch (const std::exception& ex) {
-	  std::cerr << "Snapshot failed: " << ex.what() << std::endl;
-	  throw;
-	}
-      }
-
-      virtual void RemoveSnapshotColumns(std::vector<string>& cols){
-	cols.erase(std::remove(cols.begin(), cols.end(), names::ReactionMap() ), cols.end());
-
-	//remove any columns with the DoNotWriteTag
-	auto tag  = DoNotWriteTag();
-	cols.erase( std::remove_if( cols.begin(), cols.end(),
-				    [&tag]( const string& col ) -> bool
-				    { return col.find(tag) != std::string::npos; } ),
-		    cols.end() );
-
-      }
       /** 
        * Set constant index in collection for particle
        * This assumes constant position in collection (e.g in some HepMC3 files)
        * and update the current frame to the aliased one
        */
-      void setParticleIndex(const string& particle, const int idx, int pdg=0 ){
+      void setParticleIndex(const string& name, const int idx, int pdg=0 ){
 	// Check if particle index column already exists to avoid accidental overwrite
-	if (ColumnExists(particle, CurrFrame())) {
-	  throw std::invalid_argument("setParticleIndex: Index column for particle '" + particle + "' already exists!");
+	if (ColumnExists(name, CurrFrame())) {
+	  throw std::invalid_argument("setParticleIndex: Index column for particle '" + name + "' already exists!");
 	}
-	Define(particle,[idx](){return idx;},{});
-	if(pdg!=0){
-	  if(ColumnExists(Rec()+"pid",CurrFrame())||CheckAlias(Rec()+"pid")){
-	    Define(particle+"_OK",Form("%spid[%s]==%d",Rec().data(),particle.data(),pdg));
-	  }
-	}
- 	AddParticleName(particle);
- 	AddFinalParticleName(particle);
+	//call combi version with single combination
+	setParticleCandidates(name,[idx](){return RVecI{idx};},{});
+	AddParticleName(name);
+ 	AddFinalParticleName(name);
      }
-      
       /** 
-       * Set function, func,  which defines variable index in collection for particle
-       * The given function func is responsible for giving the correct position of particle in the collection
-       * Names of required branches or identifiers given as vector of column names : columns
+       * Set constant index in collection for particle
+       * This assumes constant position in collection (e.g in some HepMC3 files)
        * and update the current frame to the aliased one
        */
-      template<typename Lambda>
-      void setParticleIndex(const string& particle, Lambda&& func,const ROOT::RDF::ColumnNames_t & columns = {}, int pdg=0 ){
+      void setParticleCandidates(const string& name, const Indices_t idx  ){
 	// Check if particle index column already exists to avoid accidental overwrite
-	if (ColumnExists(particle, CurrFrame())) {
-	  throw std::invalid_argument("setParticleIndex: Index column for particle '" + particle + "' already exists!");
+	if (ColumnExists(name, CurrFrame())) {
+	  throw std::invalid_argument("setParticleIndex: Index column for particle '" + name + "' already exists!");
 	}
-	Define(particle,func,columns);
+	//call combi version with single combination
+	setParticleCandidates(name,[idx](){return idx;},{});
+	AddParticleName(name);
+ 	AddFinalParticleName(name);
+     }
+      
+      /**
+       * @brief Generates all possible combinations of the defined particle candidates.
+       */
+      void makeCombinations() {
+        if (_candidateExpressions.empty() && _lambdaCandidateDependencies.empty()) {
+          throw std::runtime_error("makeCombinations: No particle candidates defined.");
+        }
+        _isCombinatorialMode = true;
 
-	if(pdg!=0){
-	  if(ColumnExists(Rec()+"pid",CurrFrame())||CheckAlias(Rec()+"pid")){
-	    Define(string(particle)+"_OK",Form("%spid[%s]==%d",Rec().data(),particle.data(),pdg));
-	  }
+        ROOT::RDF::ColumnNames_t candidateCols;
+
+        // 1. Process String-Defined Candidates: Define and collect name
+        for (const auto& pair : _candidateExpressions) {
+          const string& name = pair.first;
+          string indices_name = name;// + "_combi";
+          Define(indices_name, pair.second);
+          candidateCols.push_back(indices_name);
+        }
+
+        // 2. Process Lambda-Defined Candidates: Just collect the name (already defined)
+        for (const auto& pair : _lambdaCandidateDependencies) {
+          const string& name = pair.first;
+          string indices_name = name;// + "_combi";
+          candidateCols.push_back(indices_name);
+        }
+
+        // 3. Generate the RVec<RVecI> column named "combos", each element is a set particle
+        Define(names::ReactionCombos(),
+          Form("rad::combinatorics::GenerateAllCombinations(%s)", rad::reaction::util::ColumnsToString(candidateCols).data()));
+
+	// 4. Split ReactionCombos into individal particle vectors, reuse particle indice names
+	for(size_t ip=0;ip<candidateCols.size();++ip){
+	  Redefine(candidateCols[ip],[ip](ROOT::RVec<RVecI> part_combos){return part_combos[ip];},{names::ReactionCombos().data()});
 	}
-	AddParticleName(particle);
-	AddFinalParticleName(particle);
+	
+	
       }
+
+
+      //------------------ Custom Define Overrides ------------------
+      /**
+       * Call Define for predefined data types, pprepend type string
+       */
+      void DefineForAllTypes(const string& name,const string& expression){
+	for(auto &atype:_type_comps){
+	  if (atype.second.find(names::P4Components()) == atype.second.end() ||
+	      atype.second.find(names::P3Components()) == atype.second.end()) {
+            throw std::runtime_error("DefineForAllTypes: Missing 'components_p4' or 'components_p3' for type: " + atype.first);
+	  }
+	  TString type_expr = expression.data();
+	  type_expr.ReplaceAll(names::P4Components(),atype.second[names::P4Components()]);
+	  type_expr.ReplaceAll(names::P3Components(),atype.second[names::P3Components()]);
+	  Define(atype.first + name.data(),type_expr.Data());
+	}
+      }
+      /**
+       * @brief Defines a new column in the RDataFrame by applying a vectorized combinatorial function
+       * for every registered physics object type (e.g., "rec_", "tru_").
+       *
+       * This function acts as an interface to RDataFrame::Define() and implements the combinatorial
+       * vectorization logic using `rad::util::ApplyCombinations`. It automatically handles the
+       * template instantiation of the core single-combination function based on the
+       * component types (float, double, etc.) available for each object prefix.
+       *
+       * @note This method assumes the existence of `_type_comps` which maps a type prefix (e.g., "rec_")
+       * to a map of component names and their types/values. It specifically requires
+       * `names::P4Components()` and `names::P3Components()` to be defined for type substitution.
+       *
+       * @param name The base name for the new column (e.g., "Mass"), which will be prefixed by the
+       * object type (e.g., "rec_Mass", "tru_Mass").
+       * @param sfunc The string name of the single-combination function to be applied (e.g., "MyMassFunc").
+       * This function will be automatically templated based on the underlying object types.
+       * @param indices The name of the column containing the combination indices (e.g., "combos" or user-defined).
+       * @param arguments A string containing the arguments passed to the combination function.
+       * It must use placeholders for the component names (e.g., "components_p4" or "components_p3")
+       * which will be automatically substituted with the actual column names
+       * (e.g., "Pt,Eta,Phi,Mass") registered for the current type.
+       *
+       * @exception std::runtime_error if either "components_p4" or "components_p3" are missing for a type
+       * in the internal `_type_comps` structure, as these are required for type substitution.
+       *
+       * @par Generated Expression Structure:
+       * @code
+       * rad::util::ApplyCombinations(sfunc<obj_types>, indices, arguments_with_substitution)
+       * @endcode
+       */
+      void DefineForAllTypes(const string& name, const string& sfunc, const string& indices,const string& arguments ) {
+        // NOTE: A column naming convention is needed to reliably track the first defined column
+        // for the final Snapshot::Unroll() call.
+
+	
+        for (auto& atype : _type_comps) {
+          if (atype.second.find(names::P4Components()) == atype.second.end() ||
+            atype.second.find(names::P3Components()) == atype.second.end()) {
+            throw std::runtime_error("DefineForAllTypes: Missing 'components_p4' or 'components_p3' for type: " + atype.first);
+          }
+	/// We have to account for different types (rec_, tru_,..)
+	/// having different object types (float, double,...)
+	/// we can get the type of a Column from the dataframe
+	/// for arguments which are 4vector or 3vectors assume
+	/// the 3-momentum components are same type, but mass can be different 
+	  std::cout<<"DefineForAllTypes " << atype.first <<" "<<atype.second.size()<<" "<<atype.second[names::P4Components()]<<" "<<atype.second[names::P3Components()]<<" "<<(atype.second.find(names::P4Components())== atype.second.end())<<std::endl;
+	  
+	  TString args = arguments.data();
+	  string obj_types;
+
+	  
+	  if(args.Contains(names::P4Components())){
+	    obj_types =TypeComponentsTypeString(atype.first,names::P4Components());
+	    args.ReplaceAll(names::P4Components(), atype.second[names::P4Components()]);
+	  }
+	  else if(args.Contains(names::P3Components())){
+	    obj_types =TypeComponentsTypeString(atype.first,names::P3Components());
+	    args.ReplaceAll(names::P3Components(), atype.second[names::P3Components()]);
+	  }
+	  
+ 	  auto function_expr = sfunc + "<" + obj_types + ">";
+ 
+	  cout<<"DefineForAllTypes "<<function_expr<<" ; "<<indices<<" ; "<<args<<endl;
+	  //if function takes combi indices
+	  if(indices.empty()==false){
+	    auto defString = Form("rad::util::ApplyCombinations(%s, %s, %s)",
+				  function_expr.data(),
+				  indices.data(), // "combos"
+				  args.Data()); 
+	    Define(atype.first + name.data(), defString);
+	  }
+	  //if function does not take combi indices
+	  else{
+	    auto defString = Form("%s(%s)",
+				  function_expr.data(),
+				  args.Data()); 
+	    Define(atype.first + name.data(), defString);
+	  }
+	  
+	}
+      }
+      
+      void AddParticleName(const std::string& particle){_particleNames.push_back(particle);}
+      void AddFinalParticleName(const std::string& particle){_finalNames.push_back(particle);}
+      const ROOT::RDF::ColumnNames_t& ParticleNames() const {return _particleNames;}
+      const ROOT::RDF::ColumnNames_t& FinalParticleNames() const {return _finalNames;}
+
+      // NOTE: Other existing methods (setParticleIndex, makeParticleMap, setGroupParticles, etc.) remain in ConfigReaction
+      // but should be reviewed for compatibility with the new combinatorial mode and removed if made redundant.
 
       /**
        * Make map that links particle names to indices in user functions
@@ -326,13 +325,13 @@ namespace rad{
        * name of the reaction component you need
        */
       virtual void makeParticleMap() {
-	std::string particle_func("1E6+");
-	for(auto& part : _particleNames){
-	  particle_func+=part+"+";
-	}
-	particle_func.pop_back(); //remove last +
+	// std::string particle_func("1E6+");
+	// for(auto& part : _particleNames){
+	//   particle_func+=part+"+";
+	// }
+	// particle_func.pop_back(); //remove last +
 
-	Filter(particle_func.data(),"particle_list");
+	// Filter(particle_func.data(),"particle_list");
 
 	PostParticles();
       }
@@ -342,138 +341,34 @@ namespace rad{
       virtual void PostParticles(){
 
       }
-     // /**
-     //   * Make map that links beam names to indices in user functions
-     //   * in C++ functions you can use the RVecIndexMap object indexed by 
-     //   * name of the reaction component you need
-     //   *
-     //   * This function must be implmented by a derived class
-     //   */
-     //  virtual void makeBeamMap() = 0;
 
-
-       /**
-       * Collect constant indices for final state mesons and baryons
-       */
-      void setMesonIndices(const RVecI& indices){
-	Define(as_string(names::Mesons()),[indices](){return indices;},{});
-      } 
-      void setBaryonIndices(const RVecI& indices){
-	Define(as_string(names::Baryons()),[indices](){return indices;},{});
-      }
-
-       /**
-       * Collect variable indices for final state mesons and baryons
-       */
-      void setMesonParticles(const  ROOT::RDF::ColumnNames_t& particles){
-	if(particles.empty()==true){
-	  std::cout<<"setBaryonParticles "<<as_string(names::Mesons())<<std::endl;
-	  Define(as_string(names::Mesons()),[](){return RVecI{-1};},{});
-	  return;
-	}
-	setGroupParticles(as_string(names::Mesons()),particles);
-      }
-      void setBaryonParticles(const  ROOT::RDF::ColumnNames_t& particles){
-	if(particles.empty()==true){
-	  std::cout<<"setBaryonParticles "<<as_string(names::Baryons())<<std::endl;
-	  Define(as_string(names::Baryons()),[](){return RVecI{-1};},{});
-	  return;
-	}
-	setGroupParticles(as_string(names::Baryons()),particles);
-      }
-     
-      /**
-       * Generic function to collect variable indices for groups of particle
-       * name = identifier of the indice collection, 
-       * particles = list of particle names known to ConfigureReaction
-       */
-
-      /*
-      //Would like the code below to work. Compiles OK, but the dataframe infers 0 arguments, rather than particles.size()
-      template <typename... Args>
-      void setGroupParticles(const string& name,const  ROOT::RDF::ColumnNames_t& particles){
-	auto ncols=particles.size();
-	//create lambda to return current indices of particles
-	//args will be the data in the columns defined by particles
-	auto func = [ncols](Args&&... args) {
-	  RVecI vec;
-	  vec.reserve(ncols);
-	  (vec.emplace_back(std::forward<Args>(args)), ...);
-	  return vec;};
-
-	//need to test which of these works fastest
-	// auto func = [ncols](Args&&... args) {
-	//   RVecI vec;
-	//   vec.reserve(ncols);
-	//   for (auto i = 0UL; i < size; ++i) {
-	//     ret.emplace_back(args[i]...);
-	//   }
-	  
-	// auto func = [ncols](Args&&... args) {
-	//   RVecI vec(ncols);
-	//   for (auto i = 0UL; i < size; ++i) {
-	//     ret[i]=(args[i]...);
-	//   }
-	//  return vec;};
-	
-   	setCurrFrame(CurrFrame().Define(names::Baryons(),func,particles));
-   
-      }
-      */
-       void setGroupParticles(const string& name,const ROOT::RDF::ColumnNames_t &particles){
-
-	 auto pstring =reaction::util::ColumnsToString(particles); //"{p1,p2,p3,p4,...}"
-	 pstring = pstring.substr(1,pstring.size() - 2); //remove {}
-	 Define( name,Form("rad::helpers::Group<int>(%s)",pstring.data()) );
-	 return;
-
-	/*
-	switch( particles.size() ){
-	case 1 : 
-	  Define(name,[](const int p0){return RVecI{p0};},particles);
-	  break;
-	case 2 : 
-	  Define(name,[](const int p0,const int p1){return RVecI{p0,p1};},particles);
-	  break;
-	case 3 : 
-	  Define(name,[](const int p0,const int p1,const int p2){return RVecI{p0,p1,p2};},particles);
-	  break;
-	case 4 : 
-	  Define(name,[](const int p0,const int p1,const int p2,const int p3){return RVecI{p0,p1,p2,p3};},particles);
-	  break;
-	case 5 : 
-	  Define(name,[](const int p0,const int p1,const int p2,const int p3,const int p4){return RVecI{p0,01,p2,p3,p4};},particles);
-	  break;
-	case 6 : 
-	  Define(name,[](const int p0,const int p1,const int p2,const int p3,const int p4,const int p5){return RVecI{p0,01,p2,p3,p4,p5};},particles);
-	  break;
-	default:
-	  std::cerr<<"setGroupParticles only defined up to 6 particles! "<<std::endl;
-	  exit(0);
-	  break;
-	}
-	*/   
-      }
-      /**
-       * Set all Pid (aka PDG) values to -1 so particles ignored
-       */
-      template<typename Lambda>
-      void  ApplyPidMask(const string& mask_name,const string& type,Lambda&& func,const ROOT::RDF::ColumnNames_t  columns = {}){
-	//Define a column for the mask variable
-	Define(mask_name,func,columns);
-	//Apply mask to PID column, so entries indexed by -1 will not be used
-	RedefineViaAlias(type+"_"+"pid",[](const RVecI& pid,const RVecI& mask){
-	  return ROOT::VecOps::Where(mask,pid,-1);},
-	  {type+"_"+"pid",mask_name.data()});
-      }
       /**
        * create shortcut string for 3 and 4 momentum components
        */
       void AddType(const string& atype){
 	if(_primary_type.empty()==true) _primary_type=atype;
-	_type_comps[atype]["components_p4"] = Form("%spx,%spy,%spz,%sm",atype.data(),atype.data(),atype.data(),atype.data());
-	_type_comps[atype]["components_p3"] = Form("%spx,%spy,%spz",atype.data(),atype.data(),atype.data());
+	_type_comps[atype][names::P4Components()] = Form("%spx,%spy,%spz,%sm",atype.data(),atype.data(),atype.data(),atype.data());
+	_type_comps[atype][names::P3Components()] = Form("%spx,%spy,%spz",atype.data(),atype.data(),atype.data());
      }
+
+      /** 
+       * Return columns types as strings to include in expression
+       * for templated functions
+       */
+      string TypeComponentsTypeString(const string& type,const string& var){
+	/// for 4-vector p and m may have different types
+	/// so must return 2 types
+	if(var==names::P4Components()){
+	  return ColObjTypeString(type+"px")+","+ColObjTypeString(type+"m");
+	}
+	else if (var==names::P3Components()){
+	  return ColObjTypeString(type+"px");
+	}
+	else{
+	  cout<<"TypeColTypeString no valid vars"<<endl;exit(0);
+	}
+      }
+
       /**
        *  change name of this first type column to same name without type prefix
        */
@@ -485,152 +380,25 @@ namespace rad{
 	}
 	setBranchAlias(_primary_type+name,name);
       }
-     /**
-      *  copy name of this first type column to same name without type prefix
-       */
-      void CopyToPrimaryType(const string& name){
-	if(_primary_type.empty()==true) return;
-	std::cout<<"CopyToPrimaryType "<<_primary_type<<" "<<name<<std::endl;
-	Define(name,Form("return %s;",(_primary_type+name).data() ) );
-      }
-
-
-      /**
-      * check if alias is used
-      */
-      bool CheckAlias(const string& alias){
-	if(_aliasMap.find(alias) != _aliasMap.end()) return true;
-	else return false;
-      }
-     
-  
-
-      std::map<string, std::map<string,string>> GetTypes() const {return _type_comps;}
-
-      /**
-       * Check if currently using type
-       */
-      bool CheckForType(const string& type){
-	if(_type_comps.find(type) != _type_comps.end()) return true;
-	else return false;
- 
-      }
-      /**
-       * get or set the base df
-       * this should include the configuration of the input
-       * data to rad format (arrays of px,px,pz,m)
-       * sharing this allows parallisation between reactions
-       */
-      void setBaseFrame(RDFstep step){
-	_base_df = step;
-      }
-      void setMyBaseFrame(){
-	_base_df = CurrFrame();
-      }
-      RDFstep getBaseFrame() const{
-	return _base_df;
-      }
-      RDFstep getOrigFrame() const{
-	return _orig_df;
-      }
-
-
-      std::string GetTreeName() const {
-	return _treeName;
-      }
-      std::string GetFileName() const {
-	return _fileName;
-      }
-      std::vector<std::string> GetFileNames() const {
-	return _fileNames;
-      }
-      
-      bool OriginalColumnExists(const string& col){
-	if(std::find(_orig_col_names.begin(),_orig_col_names.end(),col)==_orig_col_names.end()){
-	  return false;
-	}
-	return true;
-      }
- 
-      void AddParticleName(const std::string& particle){_particleNames.push_back(particle);}
-      void AddFinalParticleName(const std::string& particle){_finalNames.push_back(particle);}
-      const ROOT::RDF::ColumnNames_t& ParticleNames() const {return _particleNames;}
-      const ROOT::RDF::ColumnNames_t& FinalParticleNames() const {return _finalNames;}
-      
-      const std::map<string,string>& AliasMap() const {return _aliasMap;}
-
-      const std::string DoNotWriteTag(){return "__dnwtag";};
-
-        void InitRandom(size_t seed){
-	 if(_initRandom==true){
-	  std::cout<<"Warning, ConfigReaction::InitRandom() random generator already initialised"<<std::endl;
-	  return;
-	}
-	auto frame = CurrFrame();
-	frame = frame.DefineSlot("RDF_Internal_RNG_Init", [seed](unsigned int slot) {
-	  rad::random::initializeAllThreadRNGs(slot,seed);
-	  return true; // Return dummy value
-	}).Filter("RDF_Internal_RNG_Init");
-	
-	setCurrFrame(frame);
-      }
-
-      void setUseBeamsFromMC(bool use=true) {_useBeamsFromMC=use; }
-      
     protected:
 
       bool _useBeamsFromMC=false; 
-      
+       //------------------ Private Members ------------------
     
     private:
-    
-      /**
-       * _bare_df
-       * Base dataframe constructed prior to adding actions
-       */
-      ROOT::RDataFrame _orig_df;
-      /** 
-       * _curr_df 
-       * Handle for the current dataframe state. 
-       * This includes all added defines and filters so far.
-       * Additional actions will be applied to this.
-       */
-      RDFstep _curr_df;
-      /** 
-       * _base_df 
-       * Handle for the basic dataframe state. 
-       * This will have columns organised for processing.
-       * Typically after a SetAlias call.
-       */
-      RDFstep _base_df;
-      
-      /**
-       * Store name of any aliased branches
-       */
-      std::map<string,string> _aliasMap;
-      /**
-       * type of data linked to component names e.g._type_comps["tru"]["components_p4"] = "tru_px,tru_py,tru_pz,tru_m"
-       */
-      std::map<string, std::map<string,string>> _type_comps;
-      /*
-       * First/Primary type name
-       */
+      // Combinatorial Members
+      std::map<string, std::string> _candidateExpressions;
+      std::map<string, ROOT::RDF::ColumnNames_t> _lambdaCandidateDependencies; 
+      bool _isCombinatorialMode = false;
+      // std::string _firstDefinedCombiColumn; // Needed for robust Unroll in Snapshot
+
+      std::map<string, std::map<string, string>> _type_comps;
       std::string _primary_type;
-
-      //keep dataset info 
-      std::vector<std::string> _fileNames;//if given list of files
-      std::string _fileName;//if single file (or wildcards)
-      std::string _treeName;
-      ROOT::RDF::ColumnNames_t  _particleNames; //list of all particles, so index calculation can be enforced at start of operations
-      ROOT::RDF::ColumnNames_t  _finalNames; //list of detectable particles
-      ROOT::RDF::ColumnNames_t _orig_col_names; //columns in origin tree
+      ROOT::RDF::ColumnNames_t _particleNames;
+      ROOT::RDF::ColumnNames_t _finalNames;
+      // ... other existing members ...
       
-      //snapshot
-      std::vector<std::function<void()>> _triggerSnapshots;
+    }; // class ConfigReaction
 
-      bool _initRandom = false; //flag to ensure random generator only init once
-      
-    };//ConfigReaction
-
-  }//config
-}//rad
+  } // namespace config
+} // namespace rad
