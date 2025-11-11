@@ -20,13 +20,15 @@
 namespace rad{
   namespace config{
     using rad::names::data_type::Rec;
+    using rad::names::data_type::MC;
     class ParticleCreator;
     
     
     //! Code simplifications
-  
+    
     using ROOT::RVecI;
-  
+    using ROOT::RVec;
+    
     /*! RDFstep is used to update the dataframe handle after each filter or define step */
     // using RDFstep = ROOT::RDF::RInterface<ROOT::Detail::RDF::RLoopManager, void> ;
     using RDFstep = ROOT::RDF::RNode ;
@@ -72,21 +74,23 @@ namespace rad{
     public:
 
       //     ConfigReaction(const std::string& treeName, const std::string& fileNameGlob, const ROOT::RDF::ColumnNames_t&  columns ) : _orig_df{treeName,{fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data(),fileNameGlob.data()},columns},_curr_df{_orig_df}{
-      ConfigReaction(const std::string_view treeName, const std::string_view fileNameGlob, const ROOT::RDF::ColumnNames_t&  columns ) : _orig_df{treeName,{fileNameGlob.data()},columns},_curr_df{_orig_df},_base_df{_orig_df},_treeName{treeName},_fileName{fileNameGlob}{
+    
+    ConfigReaction(const std::string_view treeName, const std::string_view fileNameGlob, const ROOT::RDF::ColumnNames_t&  columns ) : _orig_df{treeName,{fileNameGlob.data()},columns},_curr_df{_orig_df},_base_df{_orig_df},_treeName{treeName},_fileName{fileNameGlob}{
 	if (fileNameGlob.empty()) {
 	  throw std::invalid_argument("ConfigReaction: fileNameGlob cannot be empty.");
 	}
 	_orig_col_names = _orig_df.GetColumnNames();
-
-    }
-      ConfigReaction(const std::string_view treeName, const std::vector<std::string> &filenames, const ROOT::RDF::ColumnNames_t&  columns ) : _orig_df{treeName,filenames,columns},_curr_df{_orig_df},_base_df{_orig_df},_treeName{treeName},_fileNames{filenames}{
+	
+      }
+    
+    ConfigReaction(const std::string_view treeName, const std::vector<std::string> &filenames, const ROOT::RDF::ColumnNames_t&  columns ) : _orig_df{treeName,filenames,columns},_curr_df{_orig_df},_base_df{_orig_df},_treeName{treeName},_fileNames{filenames}{
 	if (filenames.empty()) {
 	  throw std::invalid_argument("ConfigReaction: fileNameGlob cannot be empty.");
 	}
 	_orig_col_names = _orig_df.GetColumnNames();
  	
       }
-
+      
       //if creating from alternative data source
       ConfigReaction(ROOT::RDataFrame rdf ) : _orig_df{rdf},_curr_df{rdf},_base_df{rdf}{
 	_orig_col_names = _orig_df.GetColumnNames();
@@ -235,7 +239,8 @@ namespace rad{
       void Filter(const std::string& expression,const std::string& 	name ){
 	setCurrFrame(CurrFrame().Filter(expression,name));
       }
-     
+      
+      
       /**
        * Make a snapshot of newly defined columns
        */
@@ -265,18 +270,20 @@ namespace rad{
 	  throw;
 	}
       }
-
+      
       virtual void RemoveSnapshotColumns(std::vector<string>& cols){
 	cols.erase(std::remove(cols.begin(), cols.end(), names::ReactionMap() ), cols.end());
-
+        
 	//remove any columns with the DoNotWriteTag
 	auto tag  = DoNotWriteTag();
 	cols.erase( std::remove_if( cols.begin(), cols.end(),
 				    [&tag]( const string& col ) -> bool
 				    { return col.find(tag) != std::string::npos; } ),
 		    cols.end() );
-
+	
       }
+      
+      
       /** 
        * Set constant index in collection for particle
        * This assumes constant position in collection (e.g in some HepMC3 files)

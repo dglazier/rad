@@ -214,6 +214,20 @@ namespace rad{
 	return TypeResult(type).at(_getIndexFromName[name])->at(index);
       }
       
+      //Draw 2D Histograms (default option colz)
+      void Draw2D(const std::string& name, const std::string& type, const TString opt="colz", const TVirtualPad* pad = nullptr){
+	if(!pad)
+	  new TCanvas();	
+	if(GetResult(type,name,0).get()==nullptr){
+	  return;
+	}else{
+	  auto h=GetResult(type,name,0);
+	  h->DrawCopy(opt);
+	}
+	
+      }
+      
+      
       /** 
        * Draw all histograms of type name  on a single canvas
        * optional pad argument if drawing on existing tcanvas/pad

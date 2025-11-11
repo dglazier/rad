@@ -16,7 +16,8 @@ namespace rad{
     constexpr double M_K() { return 0.49367700;}
     constexpr double M_K0() { return 0.49761100;}
     constexpr double M_Jpsi() { return 3.0969000;}
-
+    constexpr double M_Lambda() { return 1.1115683;}
+    constexpr double alpha() { return 1.0/137.0;}
     /**
      *    InvalidEntry
      */
