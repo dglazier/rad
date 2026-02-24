@@ -174,7 +174,8 @@ namespace rad {
     template <typename Lambda>
     void DefineKernel(const std::string& name, Lambda&& func);
 
-    // =================================================================================
+    void DefineTruthFlag();
+  // =================================================================================
     // Physics Shortcuts
     // =================================================================================
 
@@ -224,7 +225,7 @@ namespace rad {
     };
     ROOT::RVec<GroupOverride> _groupOverrides;
 
-       void ApplyGroupOverrides();
+        void ApplyGroupOverrides();
   };
 
   // =================================================================================
@@ -239,7 +240,6 @@ namespace rad {
     if (_isInitialized) return; 
     _isInitialized = true;
 
-    cout<< "KinematicsProcessor::Init() "<<_prefix<<endl;
     _reaction->ValidateType(_prefix);
     // Clear the registry to ensure no stale/duplicate entries from config phase
     _registered_vars.clear();
@@ -254,11 +254,10 @@ namespace rad {
     // IMPORTANT: This internally calls this->DefineNewComponentVecs() !
     DefineKinematicsProcessor(*_reaction, *this, _prefix);
 
-    // Note: Do NOT call DefineNewComponentVecs() here, or it runs twice.
-    cout<< "KinematicsProcessor::Init() calcs "<< _calculations.size()<<endl;
-     for(auto& calc : _calculations) {
-         calc.Define(this); 
-     }
+    
+    for(auto& calc : _calculations) {
+      calc.Define(this); 
+    }
   }
 
   inline void KinematicsProcessor::ApplyGroupOverrides() {
@@ -373,13 +372,11 @@ namespace rad {
     return result;
   }
 
-  // --- Snapshot Support ---
+ // --- Snapshot Support ---
   inline void KinematicsProcessor::DefineNewComponentVecs() {
 
-    // 1. Get particle names
        auto particle_names = _creator.GetParticleNames();
        
-       // 2. Define Components mapping
        const ROOT::RVec<std::pair<std::string, int>> components = {
          {"_px", 0}, {"_py", 1}, {"_pz", 2}, {"_m", 3}
        };
@@ -388,24 +385,22 @@ namespace rad {
 
        for (const auto& pName : particle_names) {
            size_t idx = _creator.GetReactionIndex(pName);
-           std::string full_pName = FullName(pName);
 
            for (const auto& comp : components) {
-               std::string suffix = comp.first;
+               std::string compSuffix = comp.first; // e.g. "_px"
                auto compIdx = comp.second;
         
-               // IMPORTANT: Register these so AnalysisManager::CollectStreamColumns 
-               // knows they exist and adds them to the Snapshot list.
-               _registered_vars.push_back(pName+suffix); 
+               // 1. Register base name: "Y_px"
+               _registered_vars.push_back(pName + compSuffix); 
 
-               // Direct Component Copy
-               _reaction->Define(full_pName + suffix, 
+               // 2. Construct Column Name: "rec_Y_px_0"
+               // Logic: Prefix + Particle + CompSuffix + StreamSuffix
+               std::string colName = _prefix + pName + compSuffix + _suffix;
+
+               _reaction->Define(colName, 
                  [idx,compIdx](const CombiOutputVec_t& res) {
                    ROOT::RVec<double> out(res.size());
                    for(size_t i=0; i<res.size(); ++i) {
-                     // res[i] = List of Components (RVec<RVec<double>>)
-                     // res[i][compIdx] = List of Particles (RVec<double>)
-                     // res[i][compIdx][idx] = Value (double)
                      out[i] = res[i][compIdx][idx];
                    }
                    return out;
@@ -415,9 +410,86 @@ namespace rad {
            }
        }
   }
+  // // --- Snapshot Support ---
+  // inline void KinematicsProcessor::DefineNewComponentVecs() {
+
+  //   // 1. Get particle names
+  //      auto particle_names = _creator.GetParticleNames();
+       
+  //      // 2. Define Components mapping
+  //      const ROOT::RVec<std::pair<std::string, int>> components = {
+  //        {"_px", 0}, {"_py", 1}, {"_pz", 2}, {"_m", 3}
+  //      };
+       
+  //      // Correctly use the Suffixed result name (e.g. rec_Components_loose)
+  //      std::string resultColName = _prefix + consts::KineComponents() + _suffix;
+
+  //      for (const auto& pName : particle_names) {
+  //          size_t idx = _creator.GetReactionIndex(pName);
+  //          // Correctly construct suffixed output name (e.g. rec_ele_px_loose)
+  //          std::string full_pName = FullName(pName);
+
+  //          for (const auto& comp : components) {
+  //              std::string suffix = comp.first;
+  //              auto compIdx = comp.second;
+        
+  //              // IMPORTANT: Register these so AnalysisManager::CollectStreamColumns 
+  //              // knows they exist and adds them to the Snapshot list.
+  //              // We only register the Base Name + Suffix (e.g., "ele_px")
+  //              // The Manager adds the prefix later.
+  //              _registered_vars.push_back(pName+suffix); 
+
+  //              // Direct Component Copy
+  //              _reaction->Define(full_pName + suffix, 
+  //                [idx,compIdx](const CombiOutputVec_t& res) {
+  //                  ROOT::RVec<double> out(res.size());
+  //                  for(size_t i=0; i<res.size(); ++i) {
+  //                    // res[i] = List of Components (RVec<RVec<double>>)
+  //                    // res[i][compIdx] = List of Particles (RVec<double>)
+  //                    // res[i][compIdx][idx] = Value (double)
+  //                    out[i] = res[i][compIdx][idx];
+  //                  }
+  //                  return out;
+  //                }, 
+  //                {resultColName}
+  //                );
+  //          }
+  //      }
+  // }
   
   // --- Definitions ---
+  
+  /**
+     * @brief Generates a stream-specific Truth Match vector.
+     * @details 
+     * If truth matching is set up, this creates a boolean vector (e.g. "rec_isTruth_loose")
+     * corresponding exactly to the combinations in this stream ("rec_Indices_loose").
+     */
+    // void DefineTruthFlag() {
+    //     // 1. Only generate for Reconstruction streams (skip "tru_" streams)
+    //     // Heuristic: Check if prefix starts with "rec"
+    //   if(_prefix.find(Rec()) == std::string::npos) return;
 
+    //     // 2. Construct names
+    //     std::string baseName = consts::TruthMatchedCombi(); // "isTruth"
+    //     std::string outputCol = FullName(baseName);         // "rec_isTruth_loose"
+    //     std::string indicesCol = Creator().GetMapName();    // "rec_Indices_loose"
+
+    //     // 3. Define the column via the Reaction's Truth Registry
+    //     // This function (in ConfigReaction) handles looking up the Truth IDs
+    //     // and matching them against the provided indicesCol.
+    //     // It returns true if successful (i.e., truth matching is configured).
+        
+    //     bool success = _reaction->DefineTruthMatch(outputCol, indicesCol);
+        
+    //     if(success) {
+    //         // 4. Register for Snapshotting
+    //         // AnalysisManager will see "isTruth", convert it to "rec_isTruth_loose",
+    //         // and save it to the tree.
+    //         _registered_vars.push_back(baseName);
+    //     }
+    // } 
+  
   inline void KinematicsProcessor::Define(const std::string& name, const std::string& func) {
       std::string colName = FullName(name); 
       _reaction->Define(colName, util::createFunctionCallStringFromVec("rad::util::ApplyKinematics", 
@@ -427,35 +499,18 @@ namespace rad {
   
   template <typename Lambda>
   inline void KinematicsProcessor::DefineKernel(const std::string& name, Lambda&& func) {
-    
+   
       ROOT::RDF::ColumnNames_t cols = { Creator().GetMapName(), _prefix + consts::KineComponents() + _suffix };
       auto apply_func = [func](const RVecIndexMap& map, const ROOT::RVec<ROOT::RVec<RVecResultType>>& comps){
         return rad::util::ApplyKinematics(func, map, comps);
       };
-      cout<<"KinematicsProcessor::DefineKernel " << FullName(name)<<endl; // Commented out for cleanliness
       _reaction->Define(FullName(name), apply_func, cols);
       
       // calculated variables should be registered!
       _registered_vars.push_back(name);
   }
 
-  // inline void KinematicsProcessor::Define(const std::string& name, const std::string& func, const ROOT::RVec<ParticleNames_t>& particles) {
-  //   //    cout <<"KinematicsProcessor::Define "<<endl;
-  //   std::string kine_parts = "{";
-  //   for(const auto& pnames : particles){
-  //     ParticleNames_t suffixed_names;
-  //     for(const auto& p : pnames) suffixed_names.push_back(p + _suffix);
-  //     kine_parts += util::combineVectorToString(util::prependToAll(suffixed_names, consts::data_type::Kine()));
-  //     kine_parts += ",";
-  //   }
-  //   kine_parts.pop_back(); kine_parts += "}";
-  //   cout <<"KinematicsProcessor::Define "<< util::createFunctionCallStringFromVec("rad::util::ApplyKinematics", 
-  // 										  {func, kine_parts, (_prefix + consts::KineComponents() + _suffix)})<<endl;
-  //   _reaction->Define(FullName(name), util::createFunctionCallStringFromVec("rad::util::ApplyKinematics", 
-  //                                      {func, kine_parts, (_prefix + consts::KineComponents() + _suffix)}));
-  //   _registered_vars.push_back(name);
-  // }
-
+ 
   // --- Shortcuts ---
   inline void KinematicsProcessor::Mass(const std::string& name, const ParticleNames_t& particles_pos, const ParticleNames_t particles_neg) {
     RegisterCalc(name, rad::FourVectorMassCalc<rad::RVecResultType, rad::RVecResultType>, {particles_pos, particles_neg});
@@ -472,7 +527,6 @@ namespace rad {
     //a single entry each time.
     //rad::ThreeVectorTheta has an overwite which only uses the
     //first entry of the first entry in the given RVecIndices list
-    cout<<"KinematicsProcessor::ParticleTheta "<<particles<<endl;
     for(const auto& p: particles){
       RegisterCalc(p+"_theta", rad::ThreeVectorTheta, {{p}});
     }
@@ -508,8 +562,7 @@ namespace rad {
   // =================================================================================
   
   inline void KineCalculation::Define(KinematicsProcessor* processor) {
-     cout<<"KineCalculation::Define "<<_name<<" "<<endl; // Commented out
-      if (_kern_type == KernelType::Map) {
+    if (_kern_type == KernelType::Map) {
           processor->DefineKernel(_name, _mapFunc);
       } 
       else if (_kern_type == KernelType::Index) {

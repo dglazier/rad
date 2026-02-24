@@ -97,8 +97,18 @@ namespace io {
         
         ROOT::RVec<unsigned long> _slotCounts;      
 
-        using Value_t = std::variant<double, float, int, unsigned int, short, bool, long long>;
-        using Buffer_t = ROOT::RVec<Value_t>;
+        // This variant MUST contain every type used in the switch statements below.
+      using Value_t = std::variant<
+            Double_t,   // double
+            Float_t,    // float
+            Int_t,      // int
+            UInt_t,     // unsigned int
+            Short_t,    // short
+            Bool_t,     // bool
+            Long64_t,   // long long
+            ULong64_t   // unsigned long long
+	  >;
+      using Buffer_t = ROOT::RVec<Value_t>;
 
         ROOT::RVec<std::shared_ptr<ROOT::TBufferMergerFile>> _files; 
         ROOT::RVec<std::shared_ptr<TTree>> _trees;
@@ -192,7 +202,7 @@ namespace io {
         }
     }
 
-    inline void SnapshotCombi::InitTask(TTreeReader*, unsigned int slot) {
+ inline void SnapshotCombi::InitTask(TTreeReader*, unsigned int slot) {
         TDirectory::TContext c; 
 
         if (slot >= _files.size()) return;
@@ -209,42 +219,28 @@ namespace io {
             _trees[slot]->SetAutoSave(0); 
 
             auto& buffer = *_buffers[slot]; 
+
+            // Helper to reduce boilerplate and ensure type safety
+            auto create_branch = [&](size_t i, auto defaultVal) {
+                using T = decltype(defaultVal);
+                buffer[i] = defaultVal; // Initialize variant
+                _trees[slot]->Branch(_colNames[i].c_str(), &std::get<T>(buffer[i]));
+            };
+
             for(size_t i=0; i<_colNames.size(); ++i) {
-                const char* name = _colNames[i].c_str();
-                
-                // [FIX] Force variant to hold the correct type BEFORE getting address
                 switch(_colTypes[i]) {
-                    case ColType::Double: 
-                        buffer[i] = double(0); 
-                        _trees[slot]->Branch(name, &std::get<double>(buffer[i])); 
-                        break;
-                    case ColType::Float:  
-                        buffer[i] = float(0); 
-                        _trees[slot]->Branch(name, &std::get<float>(buffer[i])); 
-                        break;
-                    case ColType::Int:    
-                        buffer[i] = int(0); 
-                        _trees[slot]->Branch(name, &std::get<int>(buffer[i])); 
-                        break;
-                    case ColType::UInt:   
-                        buffer[i] = (unsigned int)(0); 
-                        _trees[slot]->Branch(name, &std::get<unsigned int>(buffer[i])); 
-                        break;
-                    case ColType::Short:  
-                        buffer[i] = (short)(0); 
-                        _trees[slot]->Branch(name, &std::get<short>(buffer[i])); 
-                        break;
-                    case ColType::Bool:   
-                        buffer[i] = false; 
-                        _trees[slot]->Branch(name, &std::get<bool>(buffer[i])); 
-                        break;
-                    case ColType::Long:   
-                        buffer[i] = (long long)(0); 
-                        _trees[slot]->Branch(name, &std::get<long long>(buffer[i])); 
-                        break;
-                    default:              
-                        buffer[i] = double(0);
-                        _trees[slot]->Branch(name, &std::get<double>(buffer[i]));
+                    case ColType::Double: create_branch(i, Double_t(0));  break;
+                    case ColType::Float:  create_branch(i, Float_t(0));   break;
+                    case ColType::Int:    create_branch(i, Int_t(0));     break;
+                    case ColType::UInt:   create_branch(i, UInt_t(0));    break;
+                    case ColType::Short:  create_branch(i, Short_t(0));   break;
+                    case ColType::Bool:   create_branch(i, Bool_t(0));    break;
+                    
+                    // Map both Long and Long64 to standard 64-bit integer
+                    case ColType::Long:   create_branch(i, Long64_t(0));  break; 
+                    case ColType::Long64: create_branch(i, Long64_t(0));  break;
+                    
+                    default:              create_branch(i, Double_t(0));  break;
                 }
             }
         }
@@ -256,12 +252,11 @@ namespace io {
             auto all_args = std::forward_as_tuple(args...);
             constexpr size_t NData = sizeof...(Args) - 1; 
             const auto& mask = std::get<NData>(all_args);
-
-            if (!mask.empty()) {
+	    if (!mask.empty()) {
                 for (auto idx : mask) {
                     fill_buffers(slot, idx, all_args, std::make_index_sequence<NData>{});
                     _trees[slot]->Fill();
-                    _slotCounts[slot]++; 
+                    _slotCounts[slot]++;
                 }
             }
         }
@@ -279,15 +274,19 @@ namespace io {
         auto val = get_flat_val(input, idx);
         auto& buffer = *_buffers[slot];
 
-        switch(_colTypes[I]) {
-            case ColType::Double: std::get<double>(buffer[I]) = val; break;
-            case ColType::Float:  std::get<float>(buffer[I])  = val; break;
-            case ColType::Int:    std::get<int>(buffer[I])    = val; break;
-            case ColType::UInt:   std::get<unsigned int>(buffer[I]) = val; break;
-            case ColType::Short:  std::get<short>(buffer[I])  = val; break;
-            case ColType::Bool:   std::get<bool>(buffer[I])   = val; break;
-            case ColType::Long:   std::get<long long>(buffer[I]) = val; break;
-            default:              std::get<double>(buffer[I]) = val; break;
+      switch(_colTypes[I]) {
+            case ColType::Double: std::get<Double_t>(buffer[I]) = static_cast<Double_t>(val); break;
+            case ColType::Float:  std::get<Float_t>(buffer[I])  = static_cast<Float_t>(val);  break;
+            case ColType::Int:    std::get<Int_t>(buffer[I])    = static_cast<Int_t>(val);    break;
+            case ColType::UInt:   std::get<UInt_t>(buffer[I])   = static_cast<UInt_t>(val);   break;
+            case ColType::Short:  std::get<Short_t>(buffer[I])  = static_cast<Short_t>(val);  break;
+            case ColType::Bool:   std::get<Bool_t>(buffer[I])   = static_cast<Bool_t>(val);   break;
+            
+            // Map both Long and Long64 to Long64_t
+            case ColType::Long:   std::get<Long64_t>(buffer[I]) = static_cast<Long64_t>(val); break;
+            case ColType::Long64: std::get<Long64_t>(buffer[I]) = static_cast<Long64_t>(val); break;
+            
+            default:              std::get<Double_t>(buffer[I]) = static_cast<Double_t>(val); break;
         }
     }
 
@@ -299,17 +298,18 @@ namespace io {
     
     template <typename T>
     inline auto SnapshotCombi::get_flat_val(const ROOT::VecOps::RVec<T>& input, int idx) {
+      // cout<<"SnapshotCombi::get_flat_val " <<  idx<<" "<<input<<endl;
         // CASE A: Broadcast (Scalar-in-Vector)
         // If the vector has size 1 (e.g. Truth variable), broadcast it to all Rec combinations.
         if (input.size() == 1) {
             return input[0];
         }
 
-        // CASE B: Combinatorial Data
-        // If the vector is larger, it must match the combinatorial indexing.
-        // Safety Check:
+        //CASE B: Combinatorial Data
+        //If the vector is larger, it must match the combinatorial indexing.
+        //Safety Check:
         if (idx >= (int)input.size()) {
-             throw std::runtime_error("[SnapshotCombi] Index Mismatch! "
+           throw std::runtime_error("[SnapshotCombi] Index Mismatch! "
                  "Combinatorial mask index " + std::to_string(idx) + 
                  " exceeds column size " + std::to_string(input.size()) + 
                  ". Check if a scalar column was not broadcast correctly.");
