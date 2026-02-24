@@ -5,6 +5,7 @@
 #include "Indicing.h"
 #include "ElectronScatterKinematics.h"
 #include "gammaN_2_Spin0Spin0SpinHalf.h"
+#include "TCSKinematics.h"
 #include <TBenchmark.h>
 
 /**
@@ -83,17 +84,19 @@ void ProcessHepMCTCSCombi(){
   kine.PhiCM();       
   
   kine.Mass("GMass", {"gprime"});
+  kine.Mass2("Qp2", {"gprime"});
   kine.Mass2("MissMass2", 
 	     {consts::BeamIon(), consts::BeamEle()}, 
 	     {"gprime", consts::ScatEle(), "pprime"});
   
-  
-  // Custom Calc (t_prime)
   kine.RegisterCalc("t_top", rad::physics::TTop);
   kine.RegisterCalc("t_bot", rad::physics::TBot);
   kine.RegisterCalc("tp_top", rad::physics::TPrimeTop);
   kine.RegisterCalc("tp_bot", rad::physics::TPrimeBot);
-
+  
+  kine.RegisterCalc("deltaT_top", rad::physics::DeltaTTop);
+  kine.RegisterCalc("deltaT_bot", rad::physics::DeltaTBot);
+  
   // =================================================================================
   // 5. LINKED PROCESSOR (Cloned Hypothesis)
   // =================================================================================
