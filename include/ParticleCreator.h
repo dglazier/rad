@@ -313,9 +313,9 @@ namespace rad {
     inline int ParticleCreator::GetIndexSafe(const std::string& name) const {
       auto it = _nameIndex.find(name);
       if (it == _nameIndex.end()) {
-    std::cerr << "\n[ParticleCreator FATAL] Missing Particle Index: " << name << "\n";
-    std::cerr << "  Processor: " << _prefix << " (Suffix: '" << _suffix << "')\n";
-    throw std::runtime_error("Particle '" + name + "' missing in map. Check inputs.");
+	std::cerr << "\n[ParticleCreator FATAL] Missing Particle Index: " << name << "\n";
+	std::cerr << "  Processor: " << _prefix << " (Suffix: '" << _suffix << "')\n";
+	throw std::runtime_error("Particle '" + name + "' missing in map. Check inputs.");
       }
       return it->second;
     }

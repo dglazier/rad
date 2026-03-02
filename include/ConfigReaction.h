@@ -321,7 +321,7 @@ namespace rad {
           if(colList.size() >= 2 && colList.front() == '{' && colList.back() == '}') colList = colList.substr(1, colList.size() - 2);
 
           if (_symmetryGroups.empty()) {
-              Define(comboColName, Form("rad::combinatorics::GenerateAllCombinations(%s)", colList.c_str()));
+              Define(comboColName, Form("rad::combinatorics::GenerateAllCombinations({%s})", colList.c_str()));
           } else {
               ROOT::RVec<std::string> groupStrs;
               for(const auto& group : _symmetryGroups) {
