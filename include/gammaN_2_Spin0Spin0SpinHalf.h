@@ -68,6 +68,7 @@ namespace rad {
       DecayAngles_t result;
       result.cosTheta = TMath::Cos(cmMes.Theta());
       result.phi = cmMes.Phi();
+      result.theta = cmMes.Theta();
       return result;
     }
 
@@ -118,6 +119,7 @@ namespace rad {
       DecayAngles_t result;
       result.cosTheta = TMath::Cos(proj.Theta());
       result.phi      = proj.Phi();
+      result.theta = proj.Theta();
       return result;
     }
 
