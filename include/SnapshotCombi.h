@@ -252,8 +252,9 @@ namespace io {
             auto all_args = std::forward_as_tuple(args...);
             constexpr size_t NData = sizeof...(Args) - 1; 
             const auto& mask = std::get<NData>(all_args);
+	    
 	    if (!mask.empty()) {
-                for (auto idx : mask) {
+                for (const auto idx : mask) {
                     fill_buffers(slot, idx, all_args, std::make_index_sequence<NData>{});
                     _trees[slot]->Fill();
                     _slotCounts[slot]++;

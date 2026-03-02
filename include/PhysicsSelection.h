@@ -188,7 +188,7 @@ namespace rad {
         
         _cutNames.clear();
         _finalMask = _proc.GetPrefix() + "Analysis_Mask" + _proc.GetSuffix();
- std::cout << "[PhysicsSelection] Initializing Cuts for Stream: " 
+	std::cout << "[PhysicsSelection] Initializing Cuts for Stream: " 
                   << _proc.GetPrefix() << "..." << _proc.GetSuffix() 
                   << " (" << _config.size() << " cuts configured)" << std::endl;
 
@@ -238,7 +238,7 @@ namespace rad {
         if (_cutNames.empty()) {
             // CASE: NO CUTS.
             // We cannot use "1" because it creates a scalar boolean. 
-            // We need a VECTOR of 1s (all true) with the same length as the combinations.
+            // We need a VECTOR of increasing ints with the same length as the combinations.
             // We use the first particle's Px column to determine the size.
             
             auto particle_names = _proc.Creator().GetParticleNames();
@@ -248,10 +248,10 @@ namespace rad {
 	      // _proc.Reaction()->Define(_finalMask, "1"); 
             } else {
                 std::string refCol = _proc.FullName(particle_names[0] + "_px");
-                _proc.Reaction()->Define(_finalMask, [](const ROOT::RVecD& v){
-                    // Return vector of same size, all true (1)
-                    return ROOT::RVecI(v.size(), 1); 
-                }, {refCol});
+		_proc.Reaction()->Define(_finalMask, [](const ROOT::RVecD& v){
+		  // Return vector of same size, all true (1)
+		  return rad::util::EnumerateIndicesFrom(0, v.size()); 
+		}, {refCol});
             }
         } 
         else {
@@ -268,15 +268,16 @@ namespace rad {
           _proc.Reaction()->Define(boolMaskName, ss.str());
 	   // B. Convert Boolean -> Indices
 	   // Nonzero({1, 0, 1}) -> {0, 2}
-	   _proc.Reaction()->Define(_finalMask, 
-				    [](const Indices_t& bools) {
-				      return ROOT::VecOps::Nonzero(bools);
-				    }, 
-				    {boolMaskName}
-				    );
+	  _proc.Reaction()->Define(_finalMask, 
+				   [](const Indices_t& bools) {
+				     cout<<"PhysicsSelection "<<bools<<ROOT::VecOps::Nonzero(bools)<<endl;
+				     return ROOT::VecOps::Nonzero(bools);
+				   }, 
+				   {boolMaskName}
+				   );
         }
     }
-
+  
     inline std::string PhysicsSelection::GetMaskColumn() const {
         return _finalMask;
     }

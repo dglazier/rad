@@ -201,14 +201,20 @@ namespace rad {
 
         /** @brief Helper to set the internal index for the Beam Ion (Always 0). */
         void SetBeamIonIndex(const int idx, const std::string& type = "");
-
+      
+       /** @brief Helper to set the internal index for the Beam electron via JIT function expression */
+      void SetBeamElectronExpr(const std::string& type, const std::string& expression);
+      
+       /** @brief Helper to set the internal index for the Beam Ion via JIT function expression */
+      void SetBeamIonExpr(const std::string& type, const std::string& expression);
+      
     protected:
       
       PxPyPzMVector _p4el_beam;   ///< Internal storage for Electron Beam P4
       PxPyPzMVector _p4ion_beam;  ///< Internal storage for Ion Beam P4
         
  
-      bool _useBeamsFromMC = true; ///< Flag to determine if beams should be read from MC
+      bool _useBeamsFromMC = false; ///< Flag to determine if beams should be read from MC
         
      private:
 
@@ -285,7 +291,8 @@ namespace rad {
     inline void ElectroIonReaction::SetMCBeamIndices(int eleIdx, int ionIdx) {
         _mcBeamEleIdx = eleIdx;
         _mcBeamIonIdx = ionIdx;
-    }
+	_useBeamsFromMC = true;
+   }
 
     inline void ElectroIonReaction::SetBeamElectronColumns(const std::string& px, const std::string& py, 
                                                            const std::string& pz, const std::string& m, 
@@ -382,14 +389,24 @@ namespace rad {
     inline PxPyPzMVector ElectroIonReaction::P4BeamIon() const { return _p4ion_beam; }
     inline PxPyPzMVector ElectroIonReaction::P4BeamEle() const { return _p4el_beam; }
 
-    inline void ElectroIonReaction::SetBeamElectronIndex(const int idx, const std::string& type) {
-        SetParticleIndex(consts::BeamEle().data(), type.empty() ? GetDefaultType() : type, idx);
-    }
+  
+  // --- Beam Electron via function---
+  inline void ElectroIonReaction::SetBeamElectronExpr(const std::string& type, const std::string& expression){
+    SetParticleCandidatesExpr(consts::BeamEle(),type,expression);
+  }
+  // --- Beam Ion via function---
+  inline void ElectroIonReaction::SetBeamIonExpr(const std::string& type, const std::string& expression){
+    SetParticleCandidatesExpr(consts::BeamIon(),type,expression);
+  }
 
-    inline void ElectroIonReaction::SetBeamIonIndex(const int idx, const std::string& type) {
-        SetParticleIndex(consts::BeamIon().data(), type.empty() ? GetDefaultType() : type, idx);
-    }
+  inline void ElectroIonReaction::SetBeamElectronIndex(const int idx, const std::string& type) {
+    SetParticleIndex(consts::BeamEle().data(), type.empty() ? GetDefaultType() : type, idx);
+  }
 
+  inline void ElectroIonReaction::SetBeamIonIndex(const int idx, const std::string& type) {
+    SetParticleIndex(consts::BeamIon().data(), type.empty() ? GetDefaultType() : type, idx);
+  }
+  
     // --- Physics Helpers ---
 
     namespace electroion {

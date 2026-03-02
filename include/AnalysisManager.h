@@ -78,13 +78,14 @@ namespace rad {
      */
     void AddStream(const std::string& dataSource, const std::string& label = "");
 
+   
     /**
      * @brief Shortcut to add standard default streams (label="").
      * @details SetTypes("rec", "tru") creates streams named "rec" and "tru".
      * @param types Variadic list of stream prefixes (e.g. Rec(), Truth()).
      */
-    template<typename... Args>
-    void SetTypes(const std::string& name,Args... types);
+    //  template<typename... Args>
+    //  void SetTypes(const std::string& name,Args... types);
 
     /** @return Reference to the underlying Reaction object. */
     ReactionClass& Reaction();
@@ -241,12 +242,12 @@ namespace rad {
       if(_primaryStream.empty()) _primaryStream = key;
   }
 
-  template <typename R, typename P>
-  template<typename... Args>
-  inline void AnalysisManager<R,P>::SetTypes(const std::string& name,Args... types) {
-      // Just add basic streams with empty labels
-      (AddStream(types, name), ...);
-  }
+  // template <typename R, typename P>
+  // template<typename... Args>
+  // inline void AnalysisManager<R,P>::SetTypes(const std::string& name,Args... types) {
+  //     // Just add basic streams with empty labels
+  //     (AddStream(types, name), ...);
+  // }
 
   template <typename R, typename P>
   inline R& AnalysisManager<R,P>::Reaction() { return _reaction; }
@@ -410,7 +411,6 @@ namespace rad {
 
           std::cout << "[AnalysisManager] Snapshotting stream '" << stream.fullName 
                     << "' to " << finalPath << " (with Mask: " << mask << ")" << std::endl;
-          
           _reaction.BookSnapshotCombi(finalPath, "tree", cols, mask);
       }
   }
