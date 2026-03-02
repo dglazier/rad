@@ -331,7 +331,6 @@ namespace rad {
           
     const auto Ncombis = indices[0].size(); 
     CombiOutputVec_t result(Ncombis, RVec<RVecResultType>(Ncomponents, RVecResultType(Nparticles)));
-
     ROOT::RVecD temp_px(Nparticles, consts::InvalidEntry<double>());
     ROOT::RVecD temp_py(Nparticles, consts::InvalidEntry<double>());
     ROOT::RVecD temp_pz(Nparticles, consts::InvalidEntry<double>());
@@ -368,7 +367,12 @@ namespace rad {
       result[icombi][OrderZ()] = temp_pz;
       result[icombi][OrderM()] = temp_m;
     }
-
+    // auto particle_names = _creator.GetParticleNames();
+    // for(const auto& pname:particle_names){
+    //   cout<<" "<<pname<<" "<<_creator.GetReactionIndex(pname);
+    // }
+    // cout<<endl;
+    // cout<<"KinematicPRoessor "<<endl<<result<<endl;
     return result;
   }
 

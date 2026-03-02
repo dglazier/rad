@@ -78,6 +78,7 @@ namespace rad {
      */
     void AddStream(const std::string& dataSource, const std::string& label = "");
 
+   
     /**
      * @brief Shortcut to add standard default streams (label="").
      * @details SetTypes("rec", "tru") creates streams named "rec" and "tru".
@@ -410,7 +411,6 @@ namespace rad {
 
           std::cout << "[AnalysisManager] Snapshotting stream '" << stream.fullName 
                     << "' to " << finalPath << " (with Mask: " << mask << ")" << std::endl;
-          
           _reaction.BookSnapshotCombi(finalPath, "tree", cols, mask);
       }
   }
