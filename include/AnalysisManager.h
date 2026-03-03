@@ -59,7 +59,19 @@ namespace rad {
      * @param fileGlob Input file path/pattern.
      */
     AnalysisManager(const std::string& name, const std::string& treeName, const std::string& fileGlob);
-
+    
+    
+    /**
+     * @brief Constructor (multiple input files).
+     * @param name Name of the analysis (used for output filenames).
+     * @param treeName Input TTree name.
+     * @param files Vector of input file paths.
+     */
+    AnalysisManager(const std::string& name,
+		    const std::string& treeName,
+		    const std::vector<std::string>& files);
+    
+    
     /** @brief Sets and creates the output directory. */
     void SetOutputDir(const std::string& dir);
 
@@ -212,8 +224,17 @@ namespace rad {
   // ===========================================================================
 
   template <typename R, typename P>
-  inline AnalysisManager<R,P>::AnalysisManager(const std::string& name, const std::string& treeName, const std::string& fileGlob) 
-      : _reaction(treeName, fileGlob), _name(name) {}
+    inline AnalysisManager<R,P>::AnalysisManager(const std::string& name,
+						 const std::string& treeName,
+						 const std::string& fileGlob) 
+    : _reaction(treeName, fileGlob), _name(name) {}
+  
+  
+  template <typename R, typename P>
+    inline AnalysisManager<R,P>::AnalysisManager(const std::string& name,
+						 const std::string& treeName,
+						 const std::vector<std::string>& files)
+    : _reaction(treeName, files), _name(name) {}
 
   template <typename R, typename P>
   inline void AnalysisManager<R,P>::SetOutputDir(const std::string& dir) {
