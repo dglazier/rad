@@ -270,7 +270,6 @@ namespace rad {
 	   // Nonzero({1, 0, 1}) -> {0, 2}
 	  _proc.Reaction()->Define(_finalMask, 
 				   [](const Indices_t& bools) {
-				     cout<<"PhysicsSelection "<<bools<<ROOT::VecOps::Nonzero(bools)<<endl;
 				     return ROOT::VecOps::Nonzero(bools);
 				   }, 
 				   {boolMaskName}
