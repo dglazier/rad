@@ -77,7 +77,8 @@ namespace rad {
 	  // define a default "Always True" signal flag so snapshots don't break.
 	  std::cout<<"[ConfigReaction] DefineTrueMatchCombi " <<col<<" does not exist all set TruthMatchedCombi()=1 for all."<< std::endl;
 	  Define(consts::TruthMatchedCombi(), "1"); 
-        }
+	  
+	}
       }
       
       // --- Symmetry Interface ---
@@ -217,7 +218,7 @@ namespace rad {
             const std::string& name = match.first; 
             int role = match.second;
             
-            std::string flagName = name + "_is_true";// + DoNotWriteTag();
+	    std::string flagName = name + "_is_true";// + DoNotWriteTag();
             std::string colName = type + name; // e.g. "rec_ele"
             
             // Check: pIndices[i] is the candidate index for the i-th combination.
@@ -238,15 +239,17 @@ namespace rad {
               
                 }, 
                 {colName, matchIdCol});
-
+	    
+	    
             if (!logic.empty()) logic += " && ";
             logic += flagName;
         }
 
         if(logic.empty()) logic = "1";
 	Define(consts::TruthMatchedCombi(), logic);
+	Define(type + consts::TruthMatchedCombi(), consts::TruthMatchedCombi());
     }
-
+    
     // ... [Rest of implementation remains unchanged] ...
     inline void ConfigReaction::SetParticleCandidatesExpr(const std::string& name, const std::string& type, const std::string& expression) {
       ValidateType(type);

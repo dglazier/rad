@@ -67,10 +67,23 @@ namespace rad {
      * @param treeName Input TTree name.
      * @param files Vector of input file paths.
      */
-    AnalysisManager(const std::string& name,
-		    const std::string& treeName,
-		    const std::vector<std::string>& files);
+    AnalysisManager(const std::string& name, const std::string& treeName, const ROOT::RVec<std::string>& files);
     
+    
+    /**
+     * @brief Constructor (frome existing reaction).
+     * @param name Name of the analysis (used for output filenames).
+     * @param baseReaction Identifier of the base Reaction 
+     */
+    AnalysisManager(const std::string& name, const ReactionClass& baseReaction);
+    
+    
+    /**
+     * @brief Constructor clone method.
+     * @param newName Name of the new cloned analysis (used for output filenames).
+     * @param baseReaction Identifier of the base Reaction 
+     */
+    AnalysisManager Clone(const std::string& newName, bool copyStreams = false) const;
     
     /** @brief Sets and creates the output directory. */
     void SetOutputDir(const std::string& dir);
@@ -158,7 +171,7 @@ namespace rad {
      * - Example:  output/Y4260_rec_loose_Hist.root
      * @param suffix Suffix for the histogram file (default "Hist.root").
      */
-    void Run(const std::string& suffix = "Hist.root");
+    void Run(const std::string& suffix = "_Hist.root");
 
     /**
      * @brief Print comprehensive diagnostics for the entire analysis setup.
@@ -194,13 +207,18 @@ namespace rad {
                 fullName +=  lbl;
                 outputSuffix = "_" + lbl;
             }
+	    else{
+	      fullName.pop_back();
+	      //if no labels we dont want "rec_" + "_Tree.root"
+	      //i.e. rec__Tree.root, rec__Hist.root
+	    }
             
             // Ensure input prefix ends in "_" (e.g. "rec" -> "rec_")
             std::string inputPrefix = src;
             if(inputPrefix.back() != '_') inputPrefix += "_";
 
             kine = std::make_unique<ProcessorClass>(reaction, inputPrefix, outputSuffix);
-            sel  = std::make_unique<PhysicsSelection>(*kine);
+	    sel  = std::make_unique<PhysicsSelection>(*kine);
             hist = std::make_unique<histo::Histogrammer>(*kine, sel.get());
         }
     };
@@ -233,17 +251,39 @@ namespace rad {
   template <typename R, typename P>
     inline AnalysisManager<R,P>::AnalysisManager(const std::string& name,
 						 const std::string& treeName,
-						 const std::vector<std::string>& files)
+						 const ROOT::RVec<std::string>& files)
     : _reaction(treeName, files), _name(name) {}
 
   template <typename R, typename P>
-  inline void AnalysisManager<R,P>::SetOutputDir(const std::string& dir) {
-      _outputDir = dir;
-      if (!_outputDir.empty() && !std::filesystem::exists(_outputDir)) {
-          std::filesystem::create_directories(_outputDir);
-      }
+    inline void AnalysisManager<R,P>::SetOutputDir(const std::string& dir) {
+    _outputDir = dir;
+    if (!_outputDir.empty() && !std::filesystem::exists(_outputDir)) {
+      std::filesystem::create_directories(_outputDir);
+    }
   }
-
+  
+  template <typename R, typename P>
+    AnalysisManager<R,P>::AnalysisManager(const std::string& name,
+  					  const R& baseReaction)
+    : _reaction(baseReaction), _name(name)
+  {}//if this works we probably want to have safety on being base i.e. nothing setup yet, and clearing triggers etc
+  
+  // --- Clone Management ---
+  
+  template <typename R, typename P>
+    AnalysisManager<R,P> AnalysisManager<R,P>::Clone(const std::string& newName,
+  						     bool copyStreams) const
+    {
+      AnalysisManager<R,P> out(newName, _reaction);
+      
+      if (copyStreams)
+        for (auto& [key, s] : _streams)
+      	  out.AddStream(s.source, s.label);
+      out.SetOutputDir(_outputDir);
+      return out;
+    }
+  
+  
   // --- Stream Management ---
 
   template <typename R, typename P>
@@ -341,12 +381,17 @@ namespace rad {
   inline void AnalysisManager<R,P>::Init() {
       if(_initialized) return;
       if(_primaryStream.empty()) throw std::runtime_error("[AnalysisManager] No streams defined! Call SetTypes() or AddStream().");
-
+      
+      /* // PASS 0: Ensure truth variable goes through prefix/suffix machinery */
+      /* for(auto& [key, stream] : _streams) { */
+      /* 	stream.kine->RegisterExternalVar(consts::TruthMatchedCombi()); */
+      /* } */
+      
       // PASS 1: Initialize Kinematics (Create Variables)
       for(auto& [key, stream] : _streams) {
-          stream.kine->Init();
-       }
-
+	stream.kine->Init();
+      }
+      
       // PASS 2: Compile Selections (Create Masks)
       for(auto& [key, stream] : _streams) {
           if(stream.sel) stream.sel->Init();
@@ -403,7 +448,14 @@ namespace rad {
 
 	  // Always add the Event Counter
           cols.push_back("rdfentry_");
-
+	  
+	  //Add the isTruth flag for rec streams
+	  if(stream.source.find(Rec()) == 0){
+	    cols.push_back(consts::TruthMatchedCombi());
+	    cols.push_back(Rec()+consts::TruthMatchedCombi());
+	    //cols.push_back(Rec()+consts::TruthMatchedCombi()+"_"+stream.label);
+	  }
+	  
           auto streamCols = CollectStreamColumns(*stream.kine);
           cols.insert(cols.end(), streamCols.begin(), streamCols.end());
 

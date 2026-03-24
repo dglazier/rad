@@ -24,12 +24,13 @@ namespace rad {
      * @brief Configuration storage for deferred definition.
      * @details Stores cut parameters so they can be compiled later.
      */
-    struct CutDef {
+  struct CutDef {
         enum Type { 
             Range, Min, Max,           // Standard Comparison
             Equal, NotEqual,           // Exact Match (IDs)
-            AbsRange, AbsMin, AbsMax   // Magnitude Checks
-        };
+            AbsRange, AbsMin, AbsMax,   // Magnitude Checks
+	    Bool
+	};
         std::string name;        ///< Name of the cut (e.g. "MassCut")
         std::string varBaseName; ///< Unresolved variable name (e.g. "MassJ")
         double min;
@@ -91,6 +92,7 @@ namespace rad {
          * @param val Value to match.
          */
         void AddCutEqual(const std::string& name, const std::string& var, double val);
+	void AddCutBool(const std::string& name, const std::string& var);
 
         /** * @brief Define an inequality cut: var != val. 
          * @param name Unique name for this cut.
@@ -118,8 +120,13 @@ namespace rad {
          * @param max Maximum absolute value.
          */
         void AddCutAbsMax(const std::string& name, const std::string& var, double max);
-
+	
+	// =====================================================================
+        // 
         // =====================================================================
+	void AddTruthMatchedCut(const std::string& name = "truth_match_cut");
+        
+	// =====================================================================
         // Execution
         // =====================================================================
 
@@ -169,6 +176,10 @@ namespace rad {
     inline void PhysicsSelection::AddCutEqual(const std::string& name, const std::string& var, double val) {
         _config.push_back({name, var, val, 0.0, CutDef::Equal});
     }
+    
+    inline void PhysicsSelection::AddCutBool(const std::string& name, const std::string& var) {
+      _config.push_back({name, var, 0.0, 0.0, CutDef::Bool});
+    }
 
     inline void PhysicsSelection::AddCutNotEqual(const std::string& name, const std::string& var, double val) {
         _config.push_back({name, var, val, 0.0, CutDef::NotEqual});
@@ -181,7 +192,43 @@ namespace rad {
     inline void PhysicsSelection::AddCutAbsMax(const std::string& name, const std::string& var, double max) {
         _config.push_back({name, var, 0.0, max, CutDef::AbsMax});
     }
-
+    
+    /* inline void PhysicsSelection::AddTruthMatchedCut(const std::string& name) { */
+      
+    /*   // The canonical truth column base name (usually "isTruth") */
+    /*   std::string truthVar = rad::consts::TruthMatchedCombi(); */
+      
+    /*   // The stream-prefixed version (e.g. rec_isTruth) */
+    /*   std::string prefixedTruth = _proc.GetPrefix() + truthVar; */
+      
+    /*   // The fully-suffixed version that FullName() would normally generate */
+    /*   std::string fullTruth = _proc.FullName(truthVar); */
+      
+    /*   // Try to find the fully suffixed version */
+    /*   if (_proc.Reaction()->ColumnExists(fullTruth)) { */
+    /*     AddCutEqual(name, truthVar, 1.0); */
+    /*     return; */
+    /*   } */
+      
+    /*   // Try prefixed-only version */
+    /*   if (_proc.Reaction()->ColumnExists(prefixedTruth)) { */
+    /*     // Alias it into the FullName() location for consistency */
+    /*     _proc.Reaction()->Define(fullTruth, prefixedTruth); */
+    /*     AddCutEqual(name, truthVar, 1.0); */
+    /*     return; */
+    /*   } */
+      
+    /*   // Try unprefixed version */
+    /*   if (_proc.Reaction()->ColumnExists(truthVar)) { */
+    /*     _proc.Reaction()->Define(fullTruth, truthVar); */
+    /*     AddCutEqual(name, truthVar, 1.0); */
+    /*     return; */
+    /*   } */
+      
+    /*   throw std::runtime_error("AddTruthMatchedCut: cannot find truth match column '" + truthVar + "' for stream " + _proc.GetPrefix() + "..."); */
+    /* } */
+    
+    
     // --- Compilation (The Actual Work) ---
 
     inline void PhysicsSelection::Init() {
@@ -194,44 +241,47 @@ namespace rad {
 
         // 1. Define individual cut columns
         for(const auto& def : _config) {
-            std::string col = _proc.CheckedFullName(def.varBaseName);
-            std::string cutName = _proc.GetPrefix() + def.name + _proc.GetSuffix();
-            // DIAGNOSTIC: Print what we are defining
-            std::cout << "  -> Defining Cut: " << cutName << " on Variable: " << col << std::endl;
+	  std::string col = _proc.FullName(def.varBaseName);
+	  std::string cutName = _proc.GetPrefix() + def.name + _proc.GetSuffix();
+	  // DIAGNOSTIC: Print what we are defining
+	  std::cout << "  -> Defining Cut: " << cutName << " on Variable: " << col << std::endl;
 
-            double min = def.min;
-            double max = def.max;
+	  double min = def.min;
+	  double max = def.max;
 
-            switch(def.type) {
-                // Standard
-                case CutDef::Range: 
-                    _proc.Reaction()->Define(cutName, [min, max](const RVecResultType& val){ return val > min && val < max; }, {col});
-                    break;
-                case CutDef::Min:   
-                    _proc.Reaction()->Define(cutName, [min](const RVecResultType& val){ return val > min; }, {col});
-                    break;
-                case CutDef::Max:   
-                    _proc.Reaction()->Define(cutName, [max](const RVecResultType& val){ return val < max; }, {col});
-                    break;
+	  switch(def.type) {
+	    // Standard
+	  case CutDef::Range: 
+	    _proc.Reaction()->Define(cutName, [min, max](const RVecResultType& val){ return val > min && val < max; }, {col});
+	    break;
+	  case CutDef::Min:   
+	    _proc.Reaction()->Define(cutName, [min](const RVecResultType& val){ return val > min; }, {col});
+	    break;
+	  case CutDef::Max:   
+	    _proc.Reaction()->Define(cutName, [max](const RVecResultType& val){ return val < max; }, {col});
+	    break;
                 
-                // Equality
-                case CutDef::Equal:    
-                    _proc.Reaction()->Define(cutName, [min](const RVecResultType& val){ return ROOT::VecOps::abs(val - min) < 1e-9; }, {col});
-                    break;
-                case CutDef::NotEqual: 
-                    _proc.Reaction()->Define(cutName, [min](const RVecResultType& val){ return ROOT::VecOps::abs(val - min) > 1e-9; }, {col});
-                    break;
+	    // Equality
+	  case CutDef::Equal:    
+	    _proc.Reaction()->Define(cutName, [min](const RVecResultType& val){ return ROOT::VecOps::abs(val - min) < 1e-9; }, {col});
+	    break;
+	  case CutDef::Bool: 
+	    _proc.Reaction()->Define(cutName, [](const Indices_t& val){ return val; }, {col});
+	    break;
+	  case CutDef::NotEqual: 
+	    _proc.Reaction()->Define(cutName, [min](const RVecResultType& val){ return ROOT::VecOps::abs(val - min) > 1e-9; }, {col});
+	    break;
 
-                // Absolute
-                case CutDef::AbsRange: 
-                    _proc.Reaction()->Define(cutName, [min, max](const RVecResultType& val){ const RVecResultType& a=ROOT::VecOps::abs(val); return a > min && a < max; }, {col});
-                    break;
-                case CutDef::AbsMax:   
-                    _proc.Reaction()->Define(cutName, [max](const RVecResultType& val){ return ROOT::VecOps::abs(val) < max; }, {col});
-                    break;
-                default: break;
-            }
-            _cutNames.push_back(cutName);
+	    // Absolute
+	  case CutDef::AbsRange: 
+	    _proc.Reaction()->Define(cutName, [min, max](const RVecResultType& val){ const RVecResultType& a=ROOT::VecOps::abs(val); return a > min && a < max; }, {col});
+	    break;
+	  case CutDef::AbsMax:   
+	    _proc.Reaction()->Define(cutName, [max](const RVecResultType& val){ return ROOT::VecOps::abs(val) < max; }, {col});
+	    break;
+	  default: break;
+	  }
+	  _cutNames.push_back(cutName);
         }
 
         // 2. Define Master Mask (AND logic)
@@ -270,6 +320,7 @@ namespace rad {
 	   // Nonzero({1, 0, 1}) -> {0, 2}
 	  _proc.Reaction()->Define(_finalMask, 
 				   [](const Indices_t& bools) {
+				     //cout<<"PhysicsSelection "<<bools<<ROOT::VecOps::Nonzero(bools)<<endl;
 				     return ROOT::VecOps::Nonzero(bools);
 				   }, 
 				   {boolMaskName}
