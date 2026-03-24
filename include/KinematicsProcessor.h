@@ -140,6 +140,7 @@ namespace rad {
     
     /** @brief Construct a full column name: prefix + base + suffix. */
     std::string FullName(const std::string& baseName) const;
+    std::string CheckedFullName(const std::string& baseName) const;
 
     /** * @brief Get list of all variables defined via RegisterCalc/Mass/Pt etc.
      * @details This is used by `AnalysisManager::Snapshot` to auto-detect columns.
@@ -182,6 +183,7 @@ namespace rad {
     void Mass(const std::string& name, const ParticleNames_t& particles_pos, const ParticleNames_t particles_neg={});
     void Mass2(const std::string& name, const ParticleNames_t& particles_pos, const ParticleNames_t particles_neg={});
     void Pt(const std::string& name, const ParticleNames_t& particles_pos, const ParticleNames_t particles_neg={});
+    void Energy(const std::string& name, const ParticleNames_t& particles_pos, const ParticleNames_t particles_neg={});
 
     void ParticleTheta(const ParticleNames_t& particles);
     void ParticlePhi(const ParticleNames_t& particles);
@@ -313,7 +315,20 @@ namespace rad {
   inline std::string KinematicsProcessor::GetPrefix() const { return _prefix; }
   
   inline std::string KinematicsProcessor::FullName(const std::string& baseName) const { 
-      return _prefix + baseName + _suffix; 
+    return _prefix + baseName + _suffix; 
+  }
+  inline std::string KinematicsProcessor::CheckedFullName(const std::string& baseName) const {
+    auto fullName = _prefix + baseName + _suffix;
+    if(_reaction->ColumnExists(fullName)==false){
+      fullName = _prefix + baseName;
+         if(_reaction->ColumnExists(fullName)==false){
+	   fullName = baseName;
+	 }
+	 if(_reaction->ColumnExists(fullName)==false){
+	   throw std::runtime_error("KinematicsProcessor::FullName, Column '" + fullName + "' does not exist with any known perfic or suffix.");
+	 }
+    }
+    return fullName; 
   }
 
   // --- Core Operator ---
@@ -525,6 +540,9 @@ namespace rad {
   inline void KinematicsProcessor::Pt(const std::string& name, const ParticleNames_t& particles_pos, const ParticleNames_t particles_neg) {
     RegisterCalc(name, rad::FourVectorPtCalc<rad::RVecResultType, rad::RVecResultType>, {particles_pos, particles_neg});
   }
+  inline void KinematicsProcessor::Energy(const std::string& name, const ParticleNames_t& particles_pos, const ParticleNames_t particles_neg) {
+    RegisterCalc(name, rad::FourVectorECalc<rad::RVecResultType, rad::RVecResultType>, {particles_pos, particles_neg});
+  }
   inline void KinematicsProcessor::ParticleTheta(const ParticleNames_t& particles) {
     //here we actually perform a loop over combies
     //so we need to call a dunction which returns
@@ -545,12 +563,12 @@ namespace rad {
       RegisterCalc(p+"_pmag", rad::ThreeVectorMag, {{p}});
     }
   }
-  inline void KinematicsProcessor::ParticleEta(const ParticleNames_t& particles) {
+ inline void KinematicsProcessor::ParticleEta(const ParticleNames_t& particles) {
     for(const auto& p: particles){
       RegisterCalc(p+"_eta", rad::ThreeVectorPhi, {{p}});
     }
-  }
-
+ }
+ 
   inline void KinematicsProcessor::PrintReactionMap() const {
     std::cout << "\n=== KinematicsProcessor [" << _prefix << "] " << _suffix << " Reaction Map ===" << std::endl;
     std::cout << std::left << std::setw(20) << "Particle Name" << "Index" << std::endl;

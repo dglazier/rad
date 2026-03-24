@@ -32,6 +32,16 @@ namespace rad {
          */
         void ScaleMomentum(const std::string& name, double scale);
 
+       /**
+         * @brief Smear the momentum of a particle by a fixed width.
+         */
+        void SmearMomentum(const std::string& name, double width);
+
+       /**
+         * @brief Smears the energy of a particle by a fixed width, and assumes sqrt response.
+         */
+        void SmearCalMomentum(const std::string& name, double width);
+
         /**
          * @brief Forces the mass of a particle to a fixed value (modifies energy).
          */
@@ -43,7 +53,12 @@ namespace rad {
          */
         void SetMomentumFrom(const std::string& name, const std::string& colName);
 
-        // --- Initialization & Execution ---
+       /**
+         * @brief Add user defined modifier inheriting from ModifierBase 
+         */
+      void AddModifier(const std::string& name,std::shared_ptr<ModifierBase> mod) ;
+
+      // --- Initialization & Execution ---
 
         /**
          * @brief Resolves particle names to fixed array indices.
@@ -96,19 +111,33 @@ namespace rad {
     // 	cout<< "ParticleModifier::ParticleModifier copy "<<endl;
     // }
 
+    inline void ParticleModifier::AddModifier(const std::string& name,std::shared_ptr<ModifierBase> mod) {
+         _modi_configs.push_back({name, std::move(mod)});
+    }
+
     inline void ParticleModifier::ScaleMomentum(const std::string& name, double scale) {
-        auto mod = std::make_unique<ModScaleMomentum>(scale);
-        _modi_configs.push_back({name, std::move(mod)});
+        auto mod = std::make_shared<ModScaleMomentum>(scale);
+	AddModifier(name,mod);
+    }
+
+    inline void ParticleModifier::SmearMomentum(const std::string& name, double width) {
+        auto mod = std::make_shared<ModSmearMomentum>(width);
+	AddModifier(name,mod);
+    }
+
+    inline void ParticleModifier::SmearCalMomentum(const std::string& name, double width) {
+        auto mod = std::make_shared<ModCalSmearMomentum>(width);
+	AddModifier(name,mod);
     }
 
     inline void ParticleModifier::FixMass(const std::string& name, double mass) {
-        auto mod = std::make_unique<ModFixMass>(mass);
-        _modi_configs.push_back({name, std::move(mod)});
+        auto mod = std::make_shared<ModFixMass>(mass);
+	AddModifier(name,mod);
     }
 
     inline void ParticleModifier::SetMomentumFrom(const std::string& name, const std::string& colName) {
         Indice_t row = RegisterAuxDouble(colName);
-        auto mod = std::make_unique<ModSetMomFromAux>(row);
+        auto mod = std::make_shared<ModSetMomFromAux>(row);
         _modi_configs.push_back({name, std::move(mod)});
     }
 

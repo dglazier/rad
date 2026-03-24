@@ -97,11 +97,29 @@ namespace rad {
     inline auto FilterIndices(const T val) {
       return [val](const ROOT::RVec<T>& vec) -> ROOT::RVecI {
 	// Nonzero returns the indices where the condition is true (vec[i] == val)
+	cout << vec << " matching to " << val << endl;
 	return ROOT::VecOps::Nonzero(vec == val);
       };
     }
 
-
+/**
+     * @brief Creates a strategy to filter candidate indices by value AND a required flag.
+     * * **Usage:** `FilterIndicesWithFlag(11, 1)` -> Returns list of indices where `vec[i] == 11` AND `flags[i] == 1`.
+     * This is useful for finding specific particles that were detected in a specific subdetector.
+     * * @tparam T Type of value to compare (e.g., int for PDG).
+     * @tparam F Type of flag to compare (e.g., int for detector flag).
+     * @param val The value to match (e.g., 11 for electron).
+     * @param flagVal The required flag value (defaults to 1).
+     * @return A lambda with signature: `(const RVec<T>& vec, const RVec<F>& flags) -> RVecI`
+     */
+    template <typename T, typename F = int>
+    inline auto FilterIndicesWithFlag(const T val, const F flagVal = 1) {
+      return [val, flagVal](const ROOT::RVec<T>& vec, const ROOT::RVec<F>& flags) -> ROOT::RVecI {
+        // Element-wise logical AND across both vectors. 
+        // Nonzero returns the indices where both conditions are true.
+        return ROOT::VecOps::Nonzero(vec == val && flags == flagVal);
+      };
+    }
     // =========================================================================
     //  Index Utilities (Helper Functions)
     // =========================================================================
