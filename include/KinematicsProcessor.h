@@ -140,6 +140,7 @@ namespace rad {
     
     /** @brief Construct a full column name: prefix + base + suffix. */
     std::string FullName(const std::string& baseName) const;
+    std::string CheckedFullName(const std::string& baseName) const;
 
     /** * @brief Get list of all variables defined via RegisterCalc/Mass/Pt etc.
      * @details This is used by `AnalysisManager::Snapshot` to auto-detect columns.
@@ -313,7 +314,20 @@ namespace rad {
   inline std::string KinematicsProcessor::GetPrefix() const { return _prefix; }
   
   inline std::string KinematicsProcessor::FullName(const std::string& baseName) const { 
-      return _prefix + baseName + _suffix; 
+    return _prefix + baseName + _suffix; 
+  }
+  inline std::string KinematicsProcessor::CheckedFullName(const std::string& baseName) const {
+    auto fullName = _prefix + baseName + _suffix;
+    if(_reaction->ColumnExists(fullName)==false){
+      fullName = _prefix + baseName;
+         if(_reaction->ColumnExists(fullName)==false){
+	   fullName = baseName;
+	 }
+	 if(_reaction->ColumnExists(fullName)==false){
+	   throw std::runtime_error("KinematicsProcessor::FullName, Column '" + fullName + "' does not exist with any known perfic or suffix.");
+	 }
+    }
+    return fullName; 
   }
 
   // --- Core Operator ---

@@ -194,7 +194,7 @@ namespace rad {
 
         // 1. Define individual cut columns
         for(const auto& def : _config) {
-            std::string col = _proc.FullName(def.varBaseName);
+            std::string col = _proc.CheckedFullName(def.varBaseName);
             std::string cutName = _proc.GetPrefix() + def.name + _proc.GetSuffix();
             // DIAGNOSTIC: Print what we are defining
             std::cout << "  -> Defining Cut: " << cutName << " on Variable: " << col << std::endl;
@@ -270,7 +270,6 @@ namespace rad {
 	   // Nonzero({1, 0, 1}) -> {0, 2}
 	  _proc.Reaction()->Define(_finalMask, 
 				   [](const Indices_t& bools) {
-				     cout<<"PhysicsSelection "<<bools<<ROOT::VecOps::Nonzero(bools)<<endl;
 				     return ROOT::VecOps::Nonzero(bools);
 				   }, 
 				   {boolMaskName}

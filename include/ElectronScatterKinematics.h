@@ -23,6 +23,7 @@ namespace rad {
      * @brief Result structure for decay angles.
      */
     struct DecayAngles_t {
+      double theta = 0;  ///< Scattering angle in the proton rest frame (radians).
       double cosTheta = 0.; ///< Cosine of the decay angle (polar angle).
       double phi = 0.;      ///< Azimuthal angle.
     };
@@ -323,9 +324,9 @@ namespace rad {
       XYZVector angles(prMes.Vect().Dot(xV), prMes.Vect().Dot(yV), prMes.Vect().Dot(zV));
 
       DecayAngles_t result;
+      result.theta = (angles.Theta());
       result.cosTheta = TMath::Cos(angles.Theta());
       result.phi = angles.Phi();
-
       return result;
     }
 
@@ -339,6 +340,17 @@ namespace rad {
 					       const RVecResultType& pz, const RVecResultType& m) 
     {
       return ElectroProtonRestDecay(react, px, py, pz, m).cosTheta;
+    }
+    /**
+     * @brief Calculates the decay angle (Theta) in the Proton Rest frame.
+     * @param react, px, py, pz, m The inputs.
+     * @return ResultType_t polar decay angle.
+     */
+    inline ResultType_t ElS_ThetaProtonRest(const RVecIndexMap& react, 
+					       const RVecResultType& px, const RVecResultType& py, 
+					       const RVecResultType& pz, const RVecResultType& m) 
+    {
+      return ElectroProtonRestDecay(react, px, py, pz, m).theta;
     }
 
     /**
