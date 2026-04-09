@@ -565,7 +565,7 @@ namespace rad {
   }
  inline void KinematicsProcessor::ParticleEta(const ParticleNames_t& particles) {
     for(const auto& p: particles){
-      RegisterCalc(p+"_eta", rad::ThreeVectorPhi, {{p}});
+      RegisterCalc(p+"_eta", rad::ThreeVectorEta, {{p}});
     }
  }
  

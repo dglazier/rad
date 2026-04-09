@@ -97,7 +97,6 @@ namespace rad {
     inline auto FilterIndices(const T val) {
       return [val](const ROOT::RVec<T>& vec) -> ROOT::RVecI {
 	// Nonzero returns the indices where the condition is true (vec[i] == val)
-	cout << vec << " matching to " << val << endl;
 	return ROOT::VecOps::Nonzero(vec == val);
       };
     }
