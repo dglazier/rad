@@ -58,7 +58,7 @@
 #include <memory>
 
 namespace rad {
-namespace histo {
+  namespace histo {
 
     /**
      * @struct HistoDef
@@ -67,12 +67,25 @@ namespace histo {
      * during the Init phase (after Kinematics are defined).
      */
     struct HistoDef {
-        std::string name;
-        std::string title;
-        int nbins;
-        double min;
-        double max;
-        std::string varBaseName;
+      std::string name;
+      std::string title;
+      int nbins;
+      double min;
+      double max;
+      std::string varBaseName;
+    };
+
+    struct HistoDef2D {
+      std::string name;
+      std::string title;
+      int nbinsX;
+      double xmin;
+      double xmax;
+      int nbinsY;
+      double ymin;
+      double ymax;
+      std::string XvarBaseName;
+      std::string YvarBaseName;
     };
 
     /**
@@ -80,11 +93,11 @@ namespace histo {
      * @brief Configuration for a single splitting axis (category).
      */
     struct SplitDef {
-        std::string name;    ///< Human-readable name (e.g., "Sector")
-        std::string baseCol; ///< Column name in Processor (e.g., "loc_sector")
-        int nbins;
-        double min;
-        double max;
+      std::string name;    ///< Human-readable name (e.g., "Sector")
+      std::string baseCol; ///< Column name in Processor (e.g., "loc_sector")
+      int nbins;
+      double min;
+      double max;
     };
 
     /**
@@ -93,79 +106,92 @@ namespace histo {
      */
     class Histogrammer {
     public:
-        /**
-         * @brief Constructor binding to a specific Processor stream.
-         * @param proc The processor (Rec, Sim, etc.) used to resolve variable names.
-         * @param sel Optional pointer to PhysicsSelection. If provided, histograms will 
-         * automatically filter using the selection's compiled mask.
-         */
-        Histogrammer(KinematicsProcessor& proc, PhysicsSelection* sel = nullptr);
+      /**
+       * @brief Constructor binding to a specific Processor stream.
+       * @param proc The processor (Rec, Sim, etc.) used to resolve variable names.
+       * @param sel Optional pointer to PhysicsSelection. If provided, histograms will 
+       * automatically filter using the selection's compiled mask.
+       */
+      Histogrammer(KinematicsProcessor& proc, PhysicsSelection* sel = nullptr);
 
-        /**
-         * @brief Defines a split axis (category) for subsequent histograms.
-         * @details All histograms created after calling this will have this extra dimension.
-         * This allows you to easily categorize all plots by Sector, Helicity, etc.
-         * @param name Axis title (e.g. "Sector").
-         * @param baseCol Variable name in RDF (e.g. "loc_sector"). Resolved via Processor.
-         * @param nbins Number of bins.
-         * @param min Axis min.
-         * @param max Axis max.
-         */
-        void AddSplit(const std::string& name, const std::string& baseCol, int nbins, double min, double max);
+      /**
+       * @brief Defines a split axis (category) for subsequent histograms.
+       * @details All histograms created after calling this will have this extra dimension.
+       * This allows you to easily categorize all plots by Sector, Helicity, etc.
+       * @param name Axis title (e.g. "Sector").
+       * @param baseCol Variable name in RDF (e.g. "loc_sector"). Resolved via Processor.
+       * @param nbins Number of bins.
+       * @param min Axis min.
+       * @param max Axis max.
+       */
+      void AddSplit(const std::string& name, const std::string& baseCol, int nbins, double min, double max);
 
-        /**
-         * @brief queues a multidimensional histogram (THnSparse) for booking.
-         * @details
-         * Stores the configuration. Actual RDF Booking happens in Init().
-         * @param name Output histogram base name.
-         * @param title Histogram title.
-         * @param nbins Number of bins for the main variable.
-         * @param min Minimum value for the main variable.
-         * @param max Maximum value for the main variable.
-         * @param varBaseName The RDF column name (e.g. "mm2"). Resolved via Processor.
-         */
-        void Create(const std::string& name, const std::string& title, 
-                    int nbins, double min, double max, 
-                    const std::string& varBaseName);
+      /**
+       * @brief queues a multidimensional histogram (THnSparse) for booking.
+       * @details
+       * Stores the configuration. Actual RDF Booking happens in Init().
+       * @param name Output histogram base name.
+       * @param title Histogram title.
+       * @param nbins Number of bins for the main variable.
+       * @param min Minimum value for the main variable.
+       * @param max Maximum value for the main variable.
+       * @param varBaseName The RDF column name (e.g. "mm2"). Resolved via Processor.
+       */
+      void Create(const std::string& name, const std::string& title, 
+		  int nbins, double min, double max, 
+		  const std::string& varBaseName);
 
-        /**
-         * @brief Compiles definitions and Books actions in RDataFrame.
-         * @details MUST be called after PhysicsSelection::Compile().
-         */
-        void Init();
 
-        /**
-         * @brief Writes all histograms to a ROOT file.
-         * @details
-         * Performs "Unfolding": Recursively projects the N-D histograms into 1D TH1Ds 
-         * for every bin combination of the split axes.
-         * @param filename Output filename.
-         * @param option ROOT File option ("RECREATE" or "UPDATE").
-         */
-        void File(const std::string& filename, const std::string& option = "RECREATE");
+      void Create2D(const std::string& name, const std::string& title,
+		    int nbinsX, double xmin, double xmax,
+		    int nbinsY, double ymin, double ymax,
+		    const std::string& XvarBaseName,
+		    const std::string& YvarBaseName);
+	
+      /**
+       * @brief Compiles definitions and Books actions in RDataFrame.
+       * @details MUST be called after PhysicsSelection::Compile().
+       */
+      void Init();
+
+      /**
+       * @brief Writes all histograms to a ROOT file.
+       * @details
+       * Performs "Unfolding": Recursively projects the N-D histograms into 1D TH1Ds 
+       * for every bin combination of the split axes.
+       * @param filename Output filename.
+       * @param option ROOT File option ("RECREATE" or "UPDATE").
+       */
+      void File(const std::string& filename, const std::string& option = "RECREATE");
 
     private:
-        KinematicsProcessor& _proc;
-        ConfigReaction& _rad; // Underlying RDF Manager
-        PhysicsSelection* _sel = nullptr; // Store pointer to get mask later
-        std::string _maskCol;
-        bool _initialized = false;
+      KinematicsProcessor& _proc;
+      ConfigReaction& _rad; // Underlying RDF Manager
+      PhysicsSelection* _sel = nullptr; // Store pointer to get mask later
+      std::string _maskCol;
+      bool _initialized = false;
         
-        ROOT::RVec<SplitDef> _splits;
-        ROOT::RVec<HistoDef> _defs; // Queue for lazy init
-        
-        // Store RResultPtrs to ensure RDF executes the actions
-        ROOT::RVec<ROOT::RDF::RResultPtr<THnSparseD>> _results;
+      ROOT::RVec<SplitDef> _splits;
+      ROOT::RVec<HistoDef> _defs; // Queue for lazy init
+      ROOT::RVec<HistoDef2D> _defs2D; // Queue for lazy init
+      
+      // Store RResultPtrs to ensure RDF executes the actions
+      ROOT::RVec<ROOT::RDF::RResultPtr<THnSparseD>> _results;
 
-        /**
-         * @brief Internal helper to actually book the histogram in RDF.
-         */
-        void BookInternal(const HistoDef& def);
+      /**
+       * @brief Internal helper to actually book the histogram in RDF.
+       */
+      void BookInternal(const HistoDef& def);
 
-        /**
-         * @brief Recursive helper to project N-D histogram to 1D slices.
-         */
-        void UnfoldAndWrite(THnSparseD* hn, TDirectory* dir, std::string current_suffix = "", int axis_depth = 1);
+      /**
+       * @brief Internal helper to actually book the 2D histogram in RDF.
+       */
+      void BookInternal2D(const HistoDef2D& def);
+
+      /**
+       * @brief Recursive helper to project N-D histogram to 1D slices.
+       */
+      void UnfoldAndWrite(THnSparseD* hn, TDirectory* dir, std::string current_suffix = "", int axis_depth = 1);
     };
 
     // =================================================================================
@@ -173,159 +199,232 @@ namespace histo {
     // =================================================================================
 
     inline Histogrammer::Histogrammer(KinematicsProcessor& proc, PhysicsSelection* sel) 
-        : _proc(proc), _rad(*proc.Reaction()), _maskCol("") 
-    {
+      : _proc(proc), _rad(*proc.Reaction()), _maskCol("") 
+      {
         if (sel) {
-            // We just store the POINTER to selection, we don't ask for mask yet
-            // The mask column might not exist until PhysicsSelection::Compile() runs
-            _sel = sel;
+	  // We just store the POINTER to selection, we don't ask for mask yet
+	  // The mask column might not exist until PhysicsSelection::Compile() runs
+	  _sel = sel;
         }
-    }
+      }
 
     inline void Histogrammer::AddSplit(const std::string& name, const std::string& baseCol, int nbins, double min, double max) {
-        _splits.push_back({name, baseCol, nbins, min, max});
+      _splits.push_back({name, baseCol, nbins, min, max});
     }
 
-    inline void Histogrammer::Create(const std::string& name, const std::string& title, 
-                int nbins, double min, double max, 
-                const std::string& varBaseName) 
+    inline void Histogrammer::Create(const std::string& name, const std::string& title, int nbins, double min, double max, const std::string& varBaseName) 
     {
-        // Lazy: Just store the request. Init() will execute it.
-        _defs.push_back({name, title, nbins, min, max, varBaseName});
+      // Lazy: Just store the request. Init() will execute it.
+      _defs.push_back({name, title, nbins, min, max, varBaseName});
     }
-
+    
+    inline void Histogrammer::Create2D(const std::string& name, const std::string& title, int nbinsX, double xmin, double xmax, int nbinsY, double ymin, double ymax, const std::string& XvarBaseName, const std::string& YvarBaseName)
+    {
+      _defs2D.push_back({name, title,
+	    nbinsX, xmin, xmax,
+	    nbinsY, ymin, ymax,
+	    XvarBaseName, YvarBaseName});
+    }
+    
     inline void Histogrammer::Init() {
-        if(_initialized) return;
-
-        // 1. Resolve Mask (Now it guarantees to exist if compiled)
-        if(_sel) _maskCol = _sel->GetMaskColumn();
-
-        // 2. Book Histograms
-        for(const auto& def : _defs) {
-            BookInternal(def);
-        }
-        _initialized = true;
+      if (_initialized) return;
+      
+      if (_sel) 
+        _maskCol = _sel->GetMaskColumn();
+      
+      // 1D histos
+      for (const auto& def : _defs)
+        BookInternal(def);
+      
+      // 2D histos
+      for (const auto& def2 : _defs2D)
+        BookInternal2D(def2);
+      
+      _initialized = true;
     }
-
+    
     inline void Histogrammer::BookInternal(const HistoDef& def) {
-        // 1. Resolve Column Names using Processor (Safe because Kine::Init ran)
-        std::string fullVarName = _proc.FullName(def.varBaseName);
-        ROOT::RVec<std::string> cols;
-        cols.push_back(fullVarName);
+      // 1. Resolve Column Names using Processor (Safe because Kine::Init ran)
+      std::string fullVarName = _proc.FullName(def.varBaseName);
+      ROOT::RVec<std::string> cols;
+      cols.push_back(fullVarName);
 
-        // 2. Setup Dimensions (1 Main Var + N Splits)
-        int n_dims = 1 + _splits.size();
-        ROOT::RVec<int> bins_vec(n_dims);
-        ROOT::RVec<double> xmin(n_dims), xmax(n_dims);
+      // 2. Setup Dimensions (1 Main Var + N Splits)
+      int n_dims = 1 + _splits.size();
+      ROOT::RVec<int> bins_vec(n_dims);
+      ROOT::RVec<double> xmin(n_dims), xmax(n_dims);
         
-        // Axis 0: The Main Variable
-        bins_vec[0] = def.nbins; xmin[0] = def.min; xmax[0] = def.max;
+      // Axis 0: The Main Variable
+      bins_vec[0] = def.nbins; xmin[0] = def.min; xmax[0] = def.max;
         
-        // Axis 1..N: The Splits
-        for(size_t i=0; i<_splits.size(); ++i) {
-            std::string fullSplitCol = _proc.FullName(_splits[i].baseCol);
-            cols.push_back(fullSplitCol);
+      // Axis 1..N: The Splits
+      for(size_t i=0; i<_splits.size(); ++i) {
+	std::string fullSplitCol = _proc.FullName(_splits[i].baseCol);
+	cols.push_back(fullSplitCol);
             
-            bins_vec[i+1] = _splits[i].nbins;
-            xmin[i+1] = _splits[i].min;
-            xmax[i+1] = _splits[i].max;
-        }
+	bins_vec[i+1] = _splits[i].nbins;
+	xmin[i+1] = _splits[i].min;
+	xmax[i+1] = _splits[i].max;
+      }
 
-        // 3. Construct the THnSparse Prototype
-        std::string hNameFull = _proc.GetPrefix() + def.name + _proc.GetSuffix();
-        auto hist = std::make_shared<THnSparseD>(hNameFull.c_str(), def.title.c_str(), 
-                                                 n_dims, bins_vec.data(), xmin.data(), xmax.data());
+      // 3. Construct the THnSparse Prototype
+      std::string hNameFull = _proc.GetPrefix() + def.name + _proc.GetSuffix();
+      auto hist = std::make_shared<THnSparseD>(hNameFull.c_str(), def.title.c_str(), n_dims, bins_vec.data(), xmin.data(), xmax.data());
         
-        // Label Axes
-        hist->GetAxis(0)->SetName(def.name.c_str());
-        for(size_t i=0; i<_splits.size(); ++i) {
-            hist->GetAxis(i+1)->SetName(_splits[i].name.c_str());
-        }
+      // Label Axes
+      hist->GetAxis(0)->SetName(def.name.c_str());
+      for(size_t i=0; i<_splits.size(); ++i) {
+	hist->GetAxis(i+1)->SetName(_splits[i].name.c_str());
+      }
 
-        // 4. Book the Action (Masked vs Unmasked)
-        // This assumes THnCombi is defined elsewhere.
-        if(!_maskCol.empty()) {
-            cols.push_back(_maskCol); 
-            // Use <true> for Masked execution. No data types needed in template.
-            THnCombi<true> action(hist);
-            _results.push_back(_rad.CurrFrame().Book(std::move(action), utils::as_stdvector(cols)));
-        } 
-        else {
-            // Use <false> for Standard execution.
-            THnCombi<false> action(hist);
-            _results.push_back(_rad.CurrFrame().Book(std::move(action), utils::as_stdvector(cols)));
-        }
+      // 4. Book the Action (Masked vs Unmasked)
+      // This assumes THnCombi is defined elsewhere.
+      if(!_maskCol.empty()) {
+	cols.push_back(_maskCol); 
+	// Use <true> for Masked execution. No data types needed in template.
+	THnCombi<true> action(hist);
+	_results.push_back(_rad.CurrFrame().Book(std::move(action), utils::as_stdvector(cols)));
+      } 
+      else {
+	// Use <false> for Standard execution.
+	THnCombi<false> action(hist);
+	_results.push_back(_rad.CurrFrame().Book(std::move(action), utils::as_stdvector(cols)));
+      }
     }
+    
+    inline void Histogrammer::BookInternal2D(const HistoDef2D& def)
+    {
+      // Resolve variable names
+      std::string xName = _proc.FullName(def.XvarBaseName);
+      std::string yName = _proc.FullName(def.YvarBaseName);
 
-  inline void  Histogrammer::File(const std::string& filename, const std::string& option) {
-            auto file = std::unique_ptr<TFile>(TFile::Open(filename.c_str(), option.c_str())); 
-            
-            if (!file || file->IsZombie()) {
-                std::cerr << "Histogrammer Error: Could not open file " << filename << std::endl;
-                return;
-            }
+      ROOT::RVec<std::string> cols = {xName, yName};
 
-            // Trigger the Event Loop here if it hasn't run yet!
-            for(auto& resultPtr : _results) {
-                // Accessing the result triggers the RDataFrame loop
-                auto hist_raw = resultPtr->Clone();
-                auto hn = dynamic_cast<THnSparseD*>(hist_raw);
+      // Dimensions: X,Y + Splits
+      int n_dims = 2 + _splits.size();
+      ROOT::RVec<int> bins_vec(n_dims);
+      ROOT::RVec<double> xmin(n_dims), xmax(n_dims);
+
+      // Main X axis
+      bins_vec[0] = def.nbinsX; xmin[0] = def.xmin; xmax[0] = def.xmax;
+
+      // Main Y axis
+      bins_vec[1] = def.nbinsY; xmin[1] = def.ymin; xmax[1] = def.ymax;
+
+      // Add split axes
+      for (size_t i = 0; i < _splits.size(); ++i) {
+        auto& s = _splits[i];
+        std::string col = _proc.FullName(s.baseCol);
+        cols.push_back(col);
+
+        bins_vec[i + 2] = s.nbins;
+        xmin[i + 2] = s.min;
+        xmax[i + 2] = s.max;
+      }
+
+      // Construct THnSparse
+      std::string fullName = _proc.GetPrefix() + def.name + _proc.GetSuffix();
+      auto hist = std::make_shared<THnSparseD>(
+					       fullName.c_str(), def.title.c_str(),
+					       n_dims, bins_vec.data(), xmin.data(), xmax.data());
+
+      hist->GetAxis(0)->SetName(def.XvarBaseName.c_str());
+      hist->GetAxis(1)->SetName(def.YvarBaseName.c_str());
+
+      for (size_t i = 0; i < _splits.size(); ++i)
+        hist->GetAxis(i + 2)->SetName(_splits[i].name.c_str());
+
+      // Masked?
+      if (!_maskCol.empty()) {
+        cols.push_back(_maskCol);
+        THnCombi<true> action(hist);
+        _results.push_back(_rad.CurrFrame().Book(std::move(action),
+						 utils::as_stdvector(cols)));
+      } else {
+        THnCombi<false> action(hist);
+        _results.push_back(_rad.CurrFrame().Book(std::move(action),
+						 utils::as_stdvector(cols)));
+      }
+    }
+    
+    
+    inline void  Histogrammer::File(const std::string& filename, const std::string& option) {
+      auto file = std::unique_ptr<TFile>(TFile::Open(filename.c_str(), option.c_str())); 
             
-            if (hn) {
-                // Create a directory for this variable (e.g. "rec_Mass_miss/")
-                TDirectory* subdir = file->mkdir(hn->GetName());
-                if (!subdir) subdir = file->GetDirectory(hn->GetName());
-                subdir->cd();
+      if (!file || file->IsZombie()) {
+	std::cerr << "Histogrammer Error: Could not open file " << filename << std::endl;
+	return;
+      }
+
+      // Trigger the Event Loop here if it hasn't run yet!
+      for(auto& resultPtr : _results) {
+	// Accessing the result triggers the RDataFrame loop
+	auto hist_raw = resultPtr->Clone();
+	auto hn = dynamic_cast<THnSparseD*>(hist_raw);
+            
+	if (hn) {
+	  // Create a directory for this variable (e.g. "rec_Mass_miss/")
+	  TDirectory* subdir = file->mkdir(hn->GetName());
+	  if (!subdir) subdir = file->GetDirectory(hn->GetName());
+	  subdir->cd();
                 
-                UnfoldAndWrite(hn, subdir);
-            }
-            delete hn; // Cleanup clone
-        }
-        file->Close();
+	  UnfoldAndWrite(hn, subdir);
+	}
+	delete hn; // Cleanup clone
+      }
+      file->Close();
     }
 
-    inline void Histogrammer::UnfoldAndWrite(THnSparseD* hn, TDirectory* dir, std::string current_suffix, int axis_depth) {
-        // Base Case: We have constrained all split axes. Project the Main Variable (Axis 0).
-        if (axis_depth > (int)_splits.size()) {
-            dir->cd();
-            
-            // Project Axis 0 (The Variable)
-            // "E" option ensures errors are computed correctly
-            TH1D* h1 = hn->Projection(0, "E"); 
-            
-            std::string baseName = hn->GetName(); 
-            std::string full_name = baseName + current_suffix;
-            
-            h1->SetName(full_name.c_str());
-            h1->SetTitle((std::string(hn->GetTitle()) + current_suffix).c_str());
-            
-            h1->Write();
-            delete h1;
-            return;
+    inline void Histogrammer::UnfoldAndWrite(THnSparseD* hn, TDirectory* dir,
+					     std::string current_suffix,
+					     int axis_depth)
+    {
+      int ndim = hn->GetNdimensions();
+      int nsplits = _splits.size();
+      bool is2D = (ndim == nsplits + 2);
+
+      // Base case: all split axes fixed ? now project
+      if (axis_depth > nsplits) {
+        dir->cd();
+
+        TH1* proj = nullptr;
+
+        if (is2D) {
+	  // Project 2D (axes 0 and 1)
+	  proj = hn->Projection(0, 1, "E");
+        } else {
+	  // Project 1D (axis 0 only)
+	  proj = hn->Projection(0, "E");
         }
 
-        // Recursive Step: Iterate over all bins in the current Split Axis
-        auto axis = hn->GetAxis(axis_depth);
-        int nbins = axis->GetNbins();
-        
-        // Save range to restore later (crucial for recursion)
-        int saved_min = axis->GetFirst();
-        int saved_max = axis->GetLast();
+        std::string full_name = std::string(hn->GetName()) + current_suffix;
+        proj->SetName(full_name.c_str());
+        proj->SetTitle((std::string(hn->GetTitle()) + current_suffix).c_str());
 
-        for(int i=1; i<=nbins; ++i) {
-            // Restrict this axis to bin 'i'
-            axis->SetRange(i, i);
-            
-            // Construct suffix: e.g. "_Sector1"
-            std::string suffix = current_suffix + "_" + axis->GetName() + std::to_string(i);
-            UnfoldAndWrite(hn, dir, suffix, axis_depth + 1);
-        }
-        
-        // Restore Range
-        axis->SetRange(saved_min, saved_max);
+        proj->Write();
+        delete proj;
+        return;
+      }
+
+      // Recursive case: iterate over bins of current split axis
+      auto axis = hn->GetAxis(axis_depth);
+      int nbins = axis->GetNbins();
+
+      int saved_min = axis->GetFirst();
+      int saved_max = axis->GetLast();
+
+      for (int i = 1; i <= nbins; ++i) {
+        axis->SetRange(i, i);
+        std::string suffix = current_suffix + "_" +
+	  axis->GetName() + std::to_string(i);
+        UnfoldAndWrite(hn, dir, suffix, axis_depth + 1);
+      }
+
+      axis->SetRange(saved_min, saved_max);
     }
 
-} // namespace histo
+
+  } // namespace histo
 } // namespace rad
 
 //      * @details Stores parameters passed to Create() so they can be re-applied 

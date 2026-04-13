@@ -1,5 +1,6 @@
 #pragma once
 #include "CommonDefines.h"
+#include "Random.h"
 #include <vector>
 #include <memory>
 #include <cmath>
@@ -50,6 +51,42 @@ namespace rad {
                         const AuxCacheD&, const AuxCacheI&) const override;
     private:
         double _scale;
+    };
+
+  /**
+   * @brief Scales the 3-momentum (px, py, pz) by a random fluctuation.
+   * scale factor is centered on 1 with given width
+   */
+    class ModSmearMomentum : public ModifierBase {
+    public:
+        explicit ModSmearMomentum(double width);
+        ModSmearMomentum(const Indices_t&, const Indices_t&, double width);
+
+        std::unique_ptr<ModifierBase> Clone() const override;
+
+        void operator()(ROOT::RVecD& px, ROOT::RVecD& py, 
+                        ROOT::RVecD& pz, ROOT::RVecD& m,
+                        const AuxCacheD&, const AuxCacheI&) const override;
+    private:
+        double _width;
+    };
+ /**
+   * @brief Scales the 3-momentum (px, py, pz) by a random fluctuation.
+   * assuming calorimeter energy measurement
+   * scale factor is centered on 1 with given width
+   */
+    class ModCalSmearMomentum : public ModifierBase {
+    public:
+        explicit ModCalSmearMomentum(double width);
+        ModCalSmearMomentum(const Indices_t&, const Indices_t&, double width);
+
+        std::unique_ptr<ModifierBase> Clone() const override;
+
+        void operator()(ROOT::RVecD& px, ROOT::RVecD& py, 
+                        ROOT::RVecD& pz, ROOT::RVecD& m,
+                        const AuxCacheD&, const AuxCacheI&) const override;
+    private:
+        double _width;
     };
 
     /**
@@ -109,6 +146,51 @@ namespace rad {
         px[_target_idx] *= _scale;
         py[_target_idx] *= _scale;
         pz[_target_idx] *= _scale;
+    }
+    // --- ModSmearMomentum ---
+    inline ModSmearMomentum::ModSmearMomentum(double width) : _width(width) {}
+    inline ModSmearMomentum::ModSmearMomentum(const Indices_t&, const Indices_t&, double width) : _width(width) {}
+    
+    inline std::unique_ptr<ModifierBase> ModSmearMomentum::Clone() const {
+        return std::make_unique<ModSmearMomentum>(_width);
+    }
+
+    inline void ModSmearMomentum::operator()(ROOT::RVecD& px, ROOT::RVecD& py, 
+                    ROOT::RVecD& pz, ROOT::RVecD& m,
+                    const AuxCacheD&, const AuxCacheI&) const 
+    {
+        if (_target_idx < 0 || _target_idx >= static_cast<Indice_t>(px.size())) return;
+	auto scale = random::Generator().Gaus(1,_width);
+        px[_target_idx] *= scale;
+        py[_target_idx] *= scale;
+        pz[_target_idx] *= scale;
+    }
+   // --- ModCalSmearMomentum ---
+    inline ModCalSmearMomentum::ModCalSmearMomentum(double width) : _width(width) {}
+    inline ModCalSmearMomentum::ModCalSmearMomentum(const Indices_t&, const Indices_t&, double width) : _width(width) {}
+    
+    inline std::unique_ptr<ModifierBase> ModCalSmearMomentum::Clone() const {
+        return std::make_unique<ModCalSmearMomentum>(_width);
+    }
+
+    inline void ModCalSmearMomentum::operator()(ROOT::RVecD& px, ROOT::RVecD& py, 
+                    ROOT::RVecD& pz, ROOT::RVecD& m,
+                    const AuxCacheD&, const AuxCacheI&) const 
+    {
+        if (_target_idx < 0 || _target_idx >= static_cast<Indice_t>(px.size())) return;
+	
+	auto kin_energy = TMath::Sqrt(px[_target_idx]*px[_target_idx]+py[_target_idx]*py[_target_idx]+pz[_target_idx]*pz[_target_idx] +m[_target_idx]*m[_target_idx])-m[_target_idx];
+	
+	auto scale_K = random::Generator().Gaus(1,_width/TMath::Sqrt(kin_energy));
+	kin_energy *=scale_K;
+
+	auto tot_energy = kin_energy + m[_target_idx];
+	auto momentum = TMath::Sqrt(tot_energy*tot_energy - m[_target_idx]*m[_target_idx]);
+	auto scale = momentum/TMath::Sqrt(px[_target_idx]*px[_target_idx]+py[_target_idx]*py[_target_idx]+pz[_target_idx]*pz[_target_idx]);
+	
+        px[_target_idx] *= scale;
+        py[_target_idx] *= scale;
+        pz[_target_idx] *= scale;
     }
 
     // --- ModFixMass ---
