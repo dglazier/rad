@@ -140,6 +140,7 @@ namespace rad {
     
     /** @brief Construct a full column name: prefix + base + suffix. */
     std::string FullName(const std::string& baseName) const;
+    std::string CheckedFullName(const std::string& baseName) const;
 
     /** * @brief Get list of all variables defined via RegisterCalc/Mass/Pt etc.
      * @details This is used by `AnalysisManager::Snapshot` to auto-detect columns.
@@ -175,13 +176,22 @@ namespace rad {
     void DefineKernel(const std::string& name, Lambda&& func);
 
     void DefineTruthFlag();
-  // =================================================================================
+    
+    /**
+     * @brief Passes raw detector arrays through the combinatorial engine to the flat output tree.
+     * @param pName The target particle (e.g., "ele").
+     * @param rawArray The raw data array (e.g., "rec_charge").
+     * @param compSuffix The name to append to the particle for the output (e.g., "_charge").
+     */
+    void PassThrough(const std::string& pName, const std::string& rawArray, const std::string& compSuffix);
+    // =================================================================================
     // Physics Shortcuts
     // =================================================================================
 
     void Mass(const std::string& name, const ParticleNames_t& particles_pos, const ParticleNames_t particles_neg={});
     void Mass2(const std::string& name, const ParticleNames_t& particles_pos, const ParticleNames_t particles_neg={});
     void Pt(const std::string& name, const ParticleNames_t& particles_pos, const ParticleNames_t particles_neg={});
+    void Energy(const std::string& name, const ParticleNames_t& particles_pos, const ParticleNames_t particles_neg={});
 
     void ParticleTheta(const ParticleNames_t& particles);
     void ParticlePhi(const ParticleNames_t& particles);
@@ -225,7 +235,15 @@ namespace rad {
     };
     ROOT::RVec<GroupOverride> _groupOverrides;
 
-        void ApplyGroupOverrides();
+    void ApplyGroupOverrides();
+    
+    struct PassThroughDef {
+        std::string pName;
+        std::string rawArray;
+        std::string compSuffix;
+    };
+    ROOT::RVec<PassThroughDef> _passThroughs; // Stores deferred passthrough requests
+    
   };
 
   // =================================================================================
@@ -257,6 +275,18 @@ namespace rad {
     
     for(auto& calc : _calculations) {
       calc.Define(this); 
+    }
+
+    // Execute deferred PassThroughs AFTER the clear!
+    for(const auto& pt : _passThroughs) {
+        std::string outNameBase = pt.pName + pt.compSuffix; 
+        std::string colName = FullName(outNameBase);  
+        std::string candCol = CheckedFullName(pt.pName); 
+        
+        // Use FastTake to avoid the ROOT condition vector crash!
+        _reaction->Define(colName, "ROOT::VecOps::Take(" + pt.rawArray + ", " + candCol + ")");
+        
+        _registered_vars.push_back(outNameBase);
     }
   }
 
@@ -313,7 +343,20 @@ namespace rad {
   inline std::string KinematicsProcessor::GetPrefix() const { return _prefix; }
   
   inline std::string KinematicsProcessor::FullName(const std::string& baseName) const { 
-      return _prefix + baseName + _suffix; 
+    return _prefix + baseName + _suffix; 
+  }
+  inline std::string KinematicsProcessor::CheckedFullName(const std::string& baseName) const {
+    auto fullName = _prefix + baseName + _suffix;
+    if(_reaction->ColumnExists(fullName)==false){
+      fullName = _prefix + baseName;
+         if(_reaction->ColumnExists(fullName)==false){
+	   fullName = baseName;
+	 }
+	 if(_reaction->ColumnExists(fullName)==false){
+	   throw std::runtime_error("KinematicsProcessor::FullName, Column '" + fullName + "' does not exist with any known perfic or suffix.");
+	 }
+    }
+    return fullName; 
   }
 
   // --- Core Operator ---
@@ -340,7 +383,7 @@ namespace rad {
     AuxCacheI cache_pre_i(aux_pre_i.size(), ROOT::RVecI(Nparticles));
     AuxCacheD cache_post_d(aux_post_d.size(), ROOT::RVecD(Nparticles));
     AuxCacheI cache_post_i(aux_post_i.size(), ROOT::RVecI(Nparticles));
-    
+    //cout<< "KinematicsProcessor::operator() "<<Nparticles0<<" "<<Nparticles<<" "<<Ncombis<<endl;
     for (size_t icombi = 0; icombi < Ncombis; ++icombi) {
       
       for (size_t ip = 0; ip < Nparticles0; ++ip) {
@@ -414,53 +457,7 @@ namespace rad {
            }
        }
   }
-  // // --- Snapshot Support ---
-  // inline void KinematicsProcessor::DefineNewComponentVecs() {
-
-  //   // 1. Get particle names
-  //      auto particle_names = _creator.GetParticleNames();
-       
-  //      // 2. Define Components mapping
-  //      const ROOT::RVec<std::pair<std::string, int>> components = {
-  //        {"_px", 0}, {"_py", 1}, {"_pz", 2}, {"_m", 3}
-  //      };
-       
-  //      // Correctly use the Suffixed result name (e.g. rec_Components_loose)
-  //      std::string resultColName = _prefix + consts::KineComponents() + _suffix;
-
-  //      for (const auto& pName : particle_names) {
-  //          size_t idx = _creator.GetReactionIndex(pName);
-  //          // Correctly construct suffixed output name (e.g. rec_ele_px_loose)
-  //          std::string full_pName = FullName(pName);
-
-  //          for (const auto& comp : components) {
-  //              std::string suffix = comp.first;
-  //              auto compIdx = comp.second;
-        
-  //              // IMPORTANT: Register these so AnalysisManager::CollectStreamColumns 
-  //              // knows they exist and adds them to the Snapshot list.
-  //              // We only register the Base Name + Suffix (e.g., "ele_px")
-  //              // The Manager adds the prefix later.
-  //              _registered_vars.push_back(pName+suffix); 
-
-  //              // Direct Component Copy
-  //              _reaction->Define(full_pName + suffix, 
-  //                [idx,compIdx](const CombiOutputVec_t& res) {
-  //                  ROOT::RVec<double> out(res.size());
-  //                  for(size_t i=0; i<res.size(); ++i) {
-  //                    // res[i] = List of Components (RVec<RVec<double>>)
-  //                    // res[i][compIdx] = List of Particles (RVec<double>)
-  //                    // res[i][compIdx][idx] = Value (double)
-  //                    out[i] = res[i][compIdx][idx];
-  //                  }
-  //                  return out;
-  //                }, 
-  //                {resultColName}
-  //                );
-  //          }
-  //      }
-  // }
-  
+ 
   // --- Definitions ---
   
   /**
@@ -492,8 +489,12 @@ namespace rad {
     //         // and save it to the tree.
     //         _registered_vars.push_back(baseName);
     //     }
-    // } 
-  
+    // }
+
+  inline void KinematicsProcessor::PassThrough(const std::string& pName, const std::string& rawArray, const std::string& compSuffix) {
+    _passThroughs.push_back({pName, rawArray, compSuffix});
+  }
+ 
   inline void KinematicsProcessor::Define(const std::string& name, const std::string& func) {
       std::string colName = FullName(name); 
       _reaction->Define(colName, util::createFunctionCallStringFromVec("rad::util::ApplyKinematics", 
@@ -525,6 +526,9 @@ namespace rad {
   inline void KinematicsProcessor::Pt(const std::string& name, const ParticleNames_t& particles_pos, const ParticleNames_t particles_neg) {
     RegisterCalc(name, rad::FourVectorPtCalc<rad::RVecResultType, rad::RVecResultType>, {particles_pos, particles_neg});
   }
+  inline void KinematicsProcessor::Energy(const std::string& name, const ParticleNames_t& particles_pos, const ParticleNames_t particles_neg) {
+    RegisterCalc(name, rad::FourVectorECalc<rad::RVecResultType, rad::RVecResultType>, {particles_pos, particles_neg});
+  }
   inline void KinematicsProcessor::ParticleTheta(const ParticleNames_t& particles) {
     //here we actually perform a loop over combies
     //so we need to call a dunction which returns
@@ -545,12 +549,12 @@ namespace rad {
       RegisterCalc(p+"_pmag", rad::ThreeVectorMag, {{p}});
     }
   }
-  inline void KinematicsProcessor::ParticleEta(const ParticleNames_t& particles) {
+ inline void KinematicsProcessor::ParticleEta(const ParticleNames_t& particles) {
     for(const auto& p: particles){
-      RegisterCalc(p+"_eta", rad::ThreeVectorPhi, {{p}});
+      RegisterCalc(p+"_eta", rad::ThreeVectorEta, {{p}});
     }
-  }
-
+ }
+ 
   inline void KinematicsProcessor::PrintReactionMap() const {
     std::cout << "\n=== KinematicsProcessor [" << _prefix << "] " << _suffix << " Reaction Map ===" << std::endl;
     std::cout << std::left << std::setw(20) << "Particle Name" << "Index" << std::endl;
