@@ -222,7 +222,9 @@ namespace rad {
         
         /** @brief Returns the C++ type string of a column (e.g. "double", "vector<int>"). */
         string ColObjTypeString(const string& name);
-        
+      /** @brief Extracts inner type string from "RVec<T>". Needed for template metaprogramming. */
+        std::string GetElementTypeName(const std::string& colName);
+      
     protected:
         ROOT::RDataFrame _orig_df;
         RDFstep _curr_df;
@@ -396,5 +398,13 @@ namespace rad {
     inline string RDFInterface::ColObjTypeString(const string& name){ 
         return CurrFrame().GetColumnType(name); 
     }
-
+  inline std::string RDFInterface::GetElementTypeName(const std::string& colName) {
+    std::string fullType = ColObjTypeString(colName);
+    auto start = fullType.find('<');
+    auto end   = fullType.rfind('>');
+    if(start != std::string::npos && end != std::string::npos) {
+      return fullType.substr(start + 1, end - start - 1);
+    }
+    return fullType;
+  }
 } // namespace rad
