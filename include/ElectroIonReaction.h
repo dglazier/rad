@@ -208,7 +208,7 @@ namespace rad {
       PxPyPzMVector _p4ion_beam;  ///< Internal storage for Ion Beam P4
         
  
-      bool _useBeamsFromMC = true; ///< Flag to determine if beams should be read from MC
+      bool _useBeamsFromMC = false; ///< Flag to determine if beams should be read from MC
         
      private:
 
@@ -285,6 +285,7 @@ namespace rad {
     inline void ElectroIonReaction::SetMCBeamIndices(int eleIdx, int ionIdx) {
         _mcBeamEleIdx = eleIdx;
         _mcBeamIonIdx = ionIdx;
+	_useBeamsFromMC = true;
     }
 
     inline void ElectroIonReaction::SetBeamElectronColumns(const std::string& px, const std::string& py, 

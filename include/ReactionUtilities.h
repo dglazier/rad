@@ -35,7 +35,19 @@ namespace rad{
        */
       template<typename T> 
       void ResolutionFraction(T* const rdf, const std::string& var);
- 
+
+      /**
+     * @brief Returns mass in GeV for detector-stable particles.
+     * @details Evaluated entirely at compile-time. Uses absolute value 
+     * to automatically handle anti-particles perfectly.
+     */
+      constexpr double PdgToMass(int pdg);
+
+      /**
+       * @brief returns synched vector of masses given PDG codes
+       */      
+      ROOT::RVecD AssignMasses( const ROOT::RVecI &pid);
+      
     } // namespace util
 } // namespace rad
 
@@ -61,7 +73,7 @@ namespace rad {
      * @param topo Vector of pairs: `{Required_Count, PID}`.
      */
     template<typename T>
-    void CountTopo(T* rdf, const std::string& type, const ROOT::RVec<std::pair<unsigned int, int>>& topo) {
+    inline void CountTopo(T* rdf, const std::string& type, const ROOT::RVec<std::pair<unsigned int, int>>& topo) {
       
       std::string col_name = type + "has_topo_debug";
 
@@ -103,7 +115,7 @@ namespace rad {
      * * **Lazy Execution:** Queues definitions and runs the event loop only ONCE at the end.
      */
     template<typename T>
-    void CheckCandidateStats(T* reaction, const std::string& prefix) {
+    inline void CheckCandidateStats(T* reaction, const std::string& prefix) {
       
       auto names = reaction->ParticleNames();
       if(names.empty()) return;
@@ -173,7 +185,7 @@ namespace rad {
       std::cout << "==========================================================\n" << std::endl;
     }
       template<typename T>
-      void CountParticles(T* rdf, const std::string& type){
+      inline void CountParticles(T* rdf, const std::string& type){
         rdf->Define(type+"Ngamma",   Form("rad::util::Count(%spid,22)",   type.data()) );
         rdf->Define(type+"Npip",     Form("rad::util::Count(%spid,211)",  type.data()) );
         rdf->Define(type+"Npim",     Form("rad::util::Count(%spid,-211)", type.data()) );
@@ -186,14 +198,50 @@ namespace rad {
       }
 
       template<typename T> 
-      void Resolution(T* const rdf, const std::string& var){
+      inline void Resolution(T* const rdf, const std::string& var){
         rdf->Define(string("res_")+var, Form("%s-%s", (Truth()+var).data(), (Rec()+var).data() ));
       }
 
       template<typename T> 
-      void ResolutionFraction(T* const rdf, const std::string& var){
+      inline void ResolutionFraction(T* const rdf, const std::string& var){
         rdf->Define(string("res_")+var, Form("(%s-%s)/%s", (Truth()+var).data(), (Rec()+var).data(), (Truth()+var).data() ));
       }
+
+   
+
+    inline constexpr ResultType_t PdgToMass(int pdg) {
+        // Safe constexpr absolute value
+        int abs_pdg = (pdg < 0) ? -pdg : pdg;
+
+        switch (abs_pdg) {
+            case 22:   return 0.0;              // Photon
+            case 11:   return 0.00051099895;    // Electron / Positron
+            case 13:   return 0.10565837;       // Muon / Anti-muon
+            case 211:  return 0.13957039;       // Charged Pion
+            case 321:  return 0.493677;         // Charged Kaon
+            case 2212: return 0.93827208;       // Proton / Anti-proton
+            case 2112: return 0.93956541;       // Neutron / Anti-neutron
+            
+            // Light Nuclei
+            case 45:         return 1.875612;   // Deuteron (CLAS12 old convention)
+            case 1000010020: return 1.875612;   // Deuteron (Strict PDG convention)
+            case 1000020030: return 2.80839;    // Helium-3
+            case 1000020040: return 3.72738;    // Alpha
+            
+            default: return 0.0; // Fallback for unmatched/undefined PID
+        }
+    }
+    
+
+    ///////////////////////////////////////////////////////
+    inline RVecResultType AssignMasses( const ROOT::RVecI &pid){
+      auto n = pid.size();
+      RVecResultType masses(n);
+      for(size_t i=0;i<n;++i){
+	masses[i] = PdgToMass(pid[i]);
+      }
+      return masses;
+    }
 
   }
 }

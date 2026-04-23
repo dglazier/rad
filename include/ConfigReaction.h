@@ -3,6 +3,7 @@
  * @brief Central configuration manager for RAD analysis.
  */
 
+
 #pragma once
 
 #include "RDFInterface.h" 
@@ -61,8 +62,8 @@ namespace rad {
 
       /** @brief Get the standard name for the matching column (e.g. "rec_match_id"). */
       virtual std::string GetMatchName(const std::string& type) const {
-        // Standard convention: prefix + "match_id"
-        return type + "match_id";
+        // Standard convention: prefix + consts::NameMatchId()
+        return type + consts::NameMatchId();
       }
 
       /** @brief Define Signal Combination flag using standard naming. 
@@ -77,8 +78,15 @@ namespace rad {
 	  // define a default "Always True" signal flag so snapshots don't break.
 	  std::cout<<"[ConfigReaction] DefineTrueMatchCombi " <<col<<" does not exist all set TruthMatchedCombi()=1 for all."<< std::endl;
 	  Define(consts::TruthMatchedCombi(), "1"); 
-        }
+	  
+	}
       }
+      
+      /** * @brief Defines the true PID column based on MC matching.
+       * @details Safely verifies that the required matching and truth columns exist.
+       * @param prefix Data prefix (e.g. "rec_").
+       */
+      void DefineTruePID(const std::string& prefix);
       
       // --- Symmetry Interface ---
       template<typename... Args>
@@ -217,7 +225,7 @@ namespace rad {
             const std::string& name = match.first; 
             int role = match.second;
             
-            std::string flagName = name + "_is_true";// + DoNotWriteTag();
+	    std::string flagName = name + "_is_true";// + DoNotWriteTag();
             std::string colName = type + name; // e.g. "rec_ele"
             
             // Check: pIndices[i] is the candidate index for the i-th combination.
@@ -238,17 +246,50 @@ namespace rad {
               
                 }, 
                 {colName, matchIdCol});
-
+	    
+	    
             if (!logic.empty()) logic += " && ";
             logic += flagName;
         }
 
         if(logic.empty()) logic = "1";
 	Define(consts::TruthMatchedCombi(), logic);
+	Define(type + consts::TruthMatchedCombi(), consts::TruthMatchedCombi());
     }
+  inline void ConfigReaction::DefineTruePID(const std::string& prefix) {
+        
+        std::string match_col = prefix + consts::NameMatchId();
+        std::string truth_pid_col = consts::data_type::Truth() + consts::NamePid();
+        
+        // Define the output using standard naming from DefineNames.h (if added), 
+        // or just hardcode "true_pid" if you prefer.
+        std::string out_col = prefix + "true_pid"; 
 
-    // ... [Rest of implementation remains unchanged] ...
-    inline void ConfigReaction::SetParticleCandidatesExpr(const std::string& name, const std::string& type, const std::string& expression) {
+        // 1. Strict Robustness Checks
+        if (!ColumnExists(match_col)) {
+            throw std::runtime_error("[DefineTruePID] ERROR: Required matching column '" + match_col + "' does not exist. Did you forget to call SetupMatching()?");
+        }
+        if (!ColumnExists(truth_pid_col)) {
+            throw std::runtime_error("[DefineTruePID] ERROR: Required truth PID column '" + truth_pid_col + "' does not exist. Verify SetupTruth() execution.");
+        }
+
+        // 2. Define the Column safely
+        Define(out_col, 
+            [](const rad::Indices_t& match_id, const rad::Indices_t& tru_pdg) {
+                rad::Indices_t tpid(match_id.size(), 0);
+                for(size_t i = 0; i < match_id.size(); ++i) {
+                    // Safe access: ensure match_id is valid and within bounds of the truth array
+                    if(match_id[i] >= 0 && match_id[i] < (int)tru_pdg.size()) {
+                        tpid[i] = tru_pdg[match_id[i]];
+                    }
+                }
+                return tpid;
+            }, 
+            {match_col, truth_pid_col}
+        );
+    }
+  
+  inline void ConfigReaction::SetParticleCandidatesExpr(const std::string& name, const std::string& type, const std::string& expression) {
       ValidateType(type);
       if (_typeCandidateExpressions[type].count(name) || _typeLambdaDependencies[type].count(name)) {
         throw std::invalid_argument("Candidate '" + name + "' already defined for type '" + type + "'.");
@@ -321,7 +362,7 @@ namespace rad {
           if(colList.size() >= 2 && colList.front() == '{' && colList.back() == '}') colList = colList.substr(1, colList.size() - 2);
 
           if (_symmetryGroups.empty()) {
-              Define(comboColName, Form("rad::combinatorics::GenerateAllCombinations(%s)", colList.c_str()));
+              Define(comboColName, Form("rad::combinatorics::GenerateAllCombinations({%s})", colList.c_str()));
           } else {
               ROOT::RVec<std::string> groupStrs;
               for(const auto& group : _symmetryGroups) {

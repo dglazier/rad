@@ -171,6 +171,20 @@ namespace rad {
     return psum.Pt();
   }
 
+  template<typename Tp, typename Tm>
+  inline ResultType_t FourVectorECalc(const RVecIndices &indices, const Tp &px, const Tp &py, const Tp &pz, const Tm &m) {
+    const auto& ipos = indices[0];
+    const auto& ineg = indices[1];
+    
+    // Note: Assuming error checking for invalid indices is performed in the wrapper or upstream.
+    
+    PxPyPzMVector psum(0,0,0,0);
+    SumFourVector(psum, ipos, px, py, pz, m);
+    SubtractFourVector(psum, ineg, px, py, pz, m);
+    
+    return psum.E();
+    }
+
   //---------------------- 3-Vector Components (RVec Ops) ----------------------
 
   /**
