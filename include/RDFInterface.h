@@ -171,7 +171,10 @@ namespace rad {
         template<typename Lambda>
         void Filter(Lambda&& func, const ROOT::RDF::ColumnNames_t& columns = {}, std::string name = "");
         
-        // --- Output & Snapshots ---
+      /** @brief Creates an alias for an existing column. */
+      void SetBranchAlias(const string_view aliasName, const string_view columnName);
+
+      // --- Output & Snapshots ---
         
         /** @brief Immediate Snapshot (Virtual, implementation specific). */
         virtual void Snapshot(const string& filename) = 0;
@@ -328,6 +331,9 @@ namespace rad {
         SetCurrFrame(CurrFrame().Filter(func, columns, name));
     }
 
+  inline void RDFInterface::SetBranchAlias(const string_view aliasName, const string_view columnName) {
+    SetCurrFrame(CurrFrame().Alias(columnName,aliasName));//Alias(New, Target)
+    }
     // --- Output & Snapshots ---
 
     inline void RDFInterface::RemoveSnapshotColumns(ROOT::RVec<string>& cols) {

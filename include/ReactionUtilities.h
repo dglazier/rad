@@ -209,7 +209,7 @@ namespace rad {
 
    
 
-    inline constexpr double PdgToMass(int pdg) {
+    inline constexpr ResultType_t PdgToMass(int pdg) {
         // Safe constexpr absolute value
         int abs_pdg = (pdg < 0) ? -pdg : pdg;
 
@@ -234,9 +234,9 @@ namespace rad {
     
 
     ///////////////////////////////////////////////////////
-    inline ROOT::RVecD AssignMasses( const ROOT::RVecI &pid){
+    inline RVecResultType AssignMasses( const ROOT::RVecI &pid){
       auto n = pid.size();
-      ROOT::RVecD masses(n);
+      RVecResultType masses(n);
       for(size_t i=0;i<n;++i){
 	masses[i] = PdgToMass(pid[i]);
       }
