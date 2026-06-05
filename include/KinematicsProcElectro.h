@@ -81,8 +81,9 @@ namespace rad {
       // 3. Define the Virtual Photon: Beam Electron - Scattered Electron
       // This is a "Created" particle that exists in the combinatorial arrays.
       Creator().Diff(consts::VirtGamma(), {{consts::BeamEle()}, {consts::ScatEle()}});
+      
   }
-
+  
   // inline KinematicsProcElectro::KinematicsProcElectro(const KinematicsProcElectro& other, const std::string& new_suffix)
   //     : KinematicsProcessor(other, new_suffix) 
   // {

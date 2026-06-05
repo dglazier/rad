@@ -224,8 +224,8 @@ namespace rad {
          * @brief Helper to generate a Virtual Photon 4-vector (q = k - k').
          * @details Requires the reaction map to locate the "Virtual Gamma" in the created particles list.
          */
-        template<typename Tp, typename Tm>
-        inline PxPyPzMVector PhotoFourVector(const RVecIndexMap& react, const Tp &px, const Tp &py, const Tp &pz, const Tm &m);
+        template<typename Tp, typename Te>
+        inline LorentzVector PhotoFourVector(const RVecIndexMap& react, const Tp &px, const Tp &py, const Tp &pz, const Te &e);
     }
 
 
@@ -393,14 +393,17 @@ namespace rad {
 
     // --- Physics Helpers ---
 
-    namespace electroion {
-        template<typename Tp, typename Tm>
-        inline PxPyPzMVector PhotoFourVector(const RVecIndexMap& react, const Tp &px, const Tp &py, const Tp &pz, const Tm &m) {
-            // Retrieves the virtual photon from the 'Created' particle group
-            return FourVector(react[consts::OrderCreated()][consts::OrderVirtGamma()], px, py, pz, m);
-        }
+  namespace electroion {
+    template<typename Tp, typename Te>
+    inline LorentzVector PhotoFourVector(const RVecIndexMap& react,
+					 const Tp& px, const Tp& py,
+					 const Tp& pz, const Te& e)
+    {
+      return FourVector(react[consts::OrderCreated()][consts::OrderVirtGamma()], px, py, pz, e);
     }
-
+    
+  }
+  
 } // namespace rad
 
 //required for physics, use this computation for photo4vector
