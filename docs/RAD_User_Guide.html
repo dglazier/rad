@@ -33,108 +33,94 @@
   <section class="mb-12">
     <div class="rad-card p-8 bg-blue-50 border-blue-200">
         <h2 class="text-2xl font-bold text-blue-900 mb-4">The RAD Philosophy</h2>
-        <p class="mb-4 text-blue-800">In modern physics analysis, a single "Event" often contains multiple "Candidates". To study a reaction like <code>e p -> e' K+ X</code>, you must analyze <em>all valid combinations</em>.</p>
+        <p class="mb-4 text-blue-800">In modern physics analysis, a single "Event" often contains multiple "Candidates". To study a reaction like <code>Y(4260) -> J/psi pi+ pi-</code>, you must analyze <em>all valid combinations</em>.</p>
         <ul class="list-disc pl-5 space-y-2 text-blue-800">
-            <li><strong>Define Candidates:</strong> You define what an "Electron" is (e.g., PID=11).</li>
+            <li><strong>Define Candidates:</strong> You define what a particle is (e.g., PID=11).</li>
             <li><strong>Auto-Combinatorics:</strong> RAD automatically generates the Cartesian product of all candidates.</li>
-            <li><strong>Vectorized Physics:</strong> Calculations run on these combinations efficiently in a single pass.</li>
+            <li><strong>Vectorized Physics:</strong> Calculations run on these combinations efficiently in a single pass using SIMD instructions.</li>
         </ul>
     </div>
   </section>
 
   <section>
     <h2 class="section-title"><span class="step-number">1</span>Setup & Beams</h2>
-    <p class="mb-4 text-lg">Initialize the reaction and define the colliding beams.</p>
+    <p class="mb-4 text-lg">Initialize the reaction and let RAD handle the Podio data reading and Truth matching.</p>
     <div class="code-block">
-<span class="comment">// 1. Initialize the Reaction (Data Source)</span>
-<span class="type">epic::ePICReaction</span> <span class="func">reaction</span>(<span class="string">"events"</span>, <span class="string">"data/*.root"</span>);
+<span class="comment">// 1. Enable Parallel Processing</span>
+ROOT::<span class="func">EnableImplicitMT</span>();
 
-<span class="comment">// 2. Setup Beams (e.g. from MC header)</span>
-reaction.<span class="func">SetBeamsFromMC</span>(0, 1); 
-reaction.<span class="func">SetupMatching</span>(); <span class="comment">// Prepares Rec-to-Truth tables</span>
-
-<span class="comment">// 3. Register Data Tiers</span>
-<span class="comment">// Reaction handles "rec_" and "mc_" prefixes automatically</span>
+<span class="comment">// 2. Initialize Reaction & Data Source</span>
+<span class="comment">// ePICReaction handles Podio file reading and Rec-to-Truth matching automatically</span>
+<span class="type">epic::ePICReaction</span> <span class="func">rad_df</span>{<span class="string">"events"</span>, <span class="string">"input_data/*.root"</span>};
+rad_df.<span class="func">SetBeamsFromMC</span>(0, 1); <span class="comment">// Alias MC Beams to Rec namespace</span>
+rad_df.<span class="func">SetupMatching</span>();      <span class="comment">// Traverse Podio Association Arrays</span>
     </div>
   </section>
 
   <section>
-    <h2 class="section-title"><span class="step-number">2</span>Topology & Particles</h2>
-    <p class="mb-4 text-lg">Define Candidates (Inputs) and Composite Particles (Sum/Diff).</p>
+    <h2 class="section-title"><span class="step-number">2</span>Candidates & Combinatorics</h2>
+    <p class="mb-4 text-lg">Define Candidates (Inputs) and generate the combinatorial arrays before attaching the processor.</p>
     <div class="code-block">
-<span class="comment">// --- A. Define Roles (For Truth Matching) ---</span>
-<span class="keyword">const int</span> Role_ScatEle = 2;
-<span class="keyword">const int</span> Role_Proton  = 3;
+<span class="comment">// 3. Define Candidates (Name, MC_Role_ID, Filter, Columns)</span>
+rad_df.<span class="func">SetParticleCandidates</span>(<span class="string">"ele"</span>, 6, rad::index::<span class="func">FilterIndices</span>(11),  {<span class="string">"rec_true_pid"</span>});
+rad_df.<span class="func">SetParticleCandidates</span>(<span class="string">"pos"</span>, 7, rad::index::<span class="func">FilterIndices</span>(-11), {<span class="string">"rec_true_pid"</span>});
+rad_df.<span class="func">SetParticleCandidates</span>(<span class="string">"pip"</span>, 4, rad::index::<span class="func">FilterIndices</span>(211), {<span class="string">"rec_true_pid"</span>});
+rad_df.<span class="func">SetParticleCandidates</span>(<span class="string">"pim"</span>, 5, rad::index::<span class="func">FilterIndices</span>(-211),{<span class="string">"rec_true_pid"</span>});
 
-<span class="comment">// --- B. Select Candidates ---</span>
-<span class="comment">// "scat_ele" = All Rec tracks with PID 11</span>
-reaction.<span class="func">SetParticleCandidates</span>(<span class="string">"scat_ele"</span>, Role_ScatEle, rad::index::FilterIndices(11), {<span class="string">"rec_pid"</span>});
-reaction.<span class="func">SetParticleCandidates</span>(<span class="string">"p"</span>, Role_Proton, rad::index::FilterIndices(2212), {<span class="string">"rec_pid"</span>});
-
-<span class="comment">// --- C. Configure Master Processor ---</span>
-<span class="type">KinematicsProcessor</span> <span class="func">kine</span>(&reaction, <span class="string">"rec_"</span>);
-
-<span class="comment">// --- D. Create Composite Particles ---</span>
-<span class="comment">// J/psi -> e+ e- (Sum)</span>
-kine.<span class="func">Creator</span>().<span class="func">Sum</span>(<span class="string">"Jpsi"</span>, {{<span class="string">"ele"</span>}, {<span class="string">"pos"</span>}});
-
-<span class="comment">// Missing Neutron -> (Beam + Target) - (ScatEle + JPsi)</span>
-kine.<span class="func">Creator</span>().<span class="func">Diff</span>(<span class="string">"miss_n"</span>, {{<span class="string">"beam_ele"</span>, <span class="string">"tar_ion"</span>}, {<span class="string">"scat_ele"</span>, <span class="string">"Jpsi"</span>}});
-
-<span class="comment">// --- E. Grouping for Physics ---</span>
-<span class="comment">// Defines systems for Mandelstam calculations</span>
-kine.<span class="func">SetBaryonParticles</span>({<span class="string">"p"</span>});
-kine.<span class="func">SetMesonParticles</span>({<span class="string">"Jpsi"</span>});
+<span class="comment">// 4. Generate Combinations & Flag Signal</span>
+<span class="comment">// CRUCIAL: Must be called before processor instantiation!</span>
+rad_df.<span class="func">MakeCombinations</span>();
+rad_df.<span class="func">DefineTrueMatchedCombi</span>(<span class="string">"rec_is_signal"</span>, rad::<span class="func">Rec</span>());
     </div>
   </section>
 
   <section>
-    <h2 class="section-title"><span class="step-number">3</span>Physics Calculations</h2>
+    <h2 class="section-title"><span class="step-number">3</span>Topology & Kinematics</h2>
+    <p class="mb-4 text-lg">Attach the Kinematics Processor and construct the physics topology cleanly using Sums.</p>
     <div class="code-block">
-<span class="comment">// --- Standard Variables ---</span>
-kine.<span class="func">Q2</span>();          <span class="comment">// Creates "rec_Q2"</span>
-kine.<span class="func">CosThetaCM</span>();  <span class="comment">// Creates "rec_CosThetaCM"</span>
+<span class="comment">// 5. Configure Kinematics (The Processor)</span>
+<span class="type">rad::KinematicsProcessor</span> <span class="func">kine</span>(&rad_df, rad::<span class="func">Rec</span>());
 
-<span class="comment">// --- Mass ---</span>
-kine.<span class="func">Mass</span>(<span class="string">"M_Jpsi"</span>, {<span class="string">"Jpsi"</span>}); 
-kine.<span class="func">Mass</span>(<span class="string">"MM_neutron"</span>, {<span class="string">"miss_n"</span>}); 
+<span class="comment">// Topology: Construct J/psi from e+e-, then Y from J/psi pi+pi-</span>
+kine.<span class="func">Creator</span>().<span class="func">Sum</span>(<span class="string">"Jpsi"</span>, {{<span class="string">"ele"</span>, <span class="string">"pos"</span>}});
+kine.<span class="func">Creator</span>().<span class="func">Sum</span>(<span class="string">"Y"</span>,    {{<span class="string">"Jpsi"</span>, <span class="string">"pip"</span>, <span class="string">"pim"</span>}});
 
-<span class="comment">// --- Custom Physics Kernels ---</span>
-kine.<span class="func">RegisterCalc</span>(<span class="string">"t_prime"</span>, physics::TPrime);
+<span class="comment">// Physics Variables</span>
+kine.<span class="func">Mass</span>(<span class="string">"MassJ"</span>, {<span class="string">"Jpsi"</span>});
+kine.<span class="func">Mass</span>(<span class="string">"MassY"</span>, {<span class="string">"Y"</span>});
+
+<span class="comment">// Initialize the Chain</span>
+kine.<span class="func">Init</span>();
     </div>
   </section>
 
   <section class="mb-20">
-    <h2 class="section-title"><span class="step-number">4</span>Cloning & Execution</h2>
+    <h2 class="section-title"><span class="step-number">4</span>Physics Selection & Execution</h2>
     <div class="rad-card p-6 border-yellow-300 bg-yellow-50">
-        <p class="mb-2 text-yellow-900 font-bold">The Master/Clone Workflow</p>
+        <p class="mb-2 text-yellow-900 font-bold">Lazy Masking vs Filtering</p>
         <p class="text-sm text-yellow-800">
-            Define your analysis ONCE on the Master (Rec). Clone it for Truth and other hypotheses. 
-            Initializing the Master automatically initializes the entire tree.
+            Standard <code>Filter()</code> drops events entirely. RAD instead uses Masking, creating a boolean column so that you can evaluate multiple selections (like Signal vs. Sideband) simultaneously without destroying rows. 
         </p>
     </div>
     <div class="code-block">
-<span class="comment">// 1. Stream Cloning (Rec -> Truth)</span>
-<span class="comment">// Automatically ports groups (e.g. "rec_Jpsi" -> "mc_Jpsi")</span>
-<span class="keyword">auto</span> kine_tru = kine.<span class="func">CloneForType</span>(rad::consts::data_type::Truth());
+<span class="comment">// 6. Physics Selection (Lazy Masking)</span>
+<span class="type">rad::PhysicsSelection</span> <span class="func">sel</span>(kine);
+sel.<span class="func">AddCutRange</span>(<span class="string">"Y_Signal_Region"</span>, <span class="string">"MassY"</span>, 3.8, 4.6);
+sel.<span class="func">Compile</span>();
 
-<span class="comment">// 2. Hypothesis Cloning (Linked)</span>
-<span class="comment">// Compare "Detected Proton" (Master) vs "Missing Proton" (Clone)</span>
-<span class="keyword">auto</span> kine_miss = kine.<span class="func">CloneLinked</span>(<span class="string">"_miss"</span>);
+<span class="comment">// 7. Save Flat Tree (SnapshotCombi) & Trigger Execution</span>
+<span class="comment">// "rec_is_signal" allows you to filter pure signal in the output</span>
+<span class="type">std::vector&lt;std::string&gt;</span> vars = {
+    <span class="string">"rec_MassY"</span>, <span class="string">"rec_MassJ"</span>, 
+    <span class="string">"rec_ele_px"</span>, <span class="string">"rec_ele_py"</span>, <span class="string">"rec_ele_pz"</span>, <span class="comment">// Auto-generated component vectors</span>
+    <span class="string">"rec_is_signal"</span> 
+};
 
-<span class="comment">// Override: Use missing mass vector for Baryon definition</span>
-kine_miss-><span class="func">SetBaryonParticles</span>({<span class="string">"miss_n"</span>});
-kine_miss-><span class="func">RegisterCalc</span>(<span class="string">"t_alt"</span>, physics::TBot);
+<span class="comment">// Pass the mask column to only save valid combinations</span>
+rad_df.<span class="func">BookSnapshotCombi</span>(<span class="string">"Output.root"</span>, <span class="string">"tree"</span>, vars, sel.<span class="func">GetMaskColumn</span>());
 
-<span class="comment">// 3. Truth for the Missing Hypothesis</span>
-<span class="keyword">auto</span> kine_miss_tru = kine_miss-><span class="func">CloneForType</span>(rad::consts::data_type::Truth());
-
-<span class="comment">// 4. EXECUTION (Cascade)</span>
-<span class="comment">// Calling Init() on the Master triggers all clones automatically.</span>
-kine.<span class="func">Init</span>();
-
-<span class="comment">// 5. Save</span>
-reaction.<span class="func">Snapshot</span>(<span class="string">"output.root"</span>);
+<span class="comment">// Execute the RDataFrame event loop</span>
+rad_df.<span class="func">TriggerSnapshots</span>();
     </div>
   </section>
 
