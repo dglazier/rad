@@ -32,95 +32,96 @@
 
   <section class="mb-12">
     <div class="rad-card p-8 bg-blue-50 border-blue-200">
-        <h2 class="text-2xl font-bold text-blue-900 mb-4">The RAD Philosophy</h2>
-        <p class="mb-4 text-blue-800">In modern physics analysis, a single "Event" often contains multiple "Candidates". To study a reaction like <code>Y(4260) -> J/psi pi+ pi-</code>, you must analyze <em>all valid combinations</em>.</p>
+        <h2 class="text-2xl font-bold text-blue-900 mb-4">The Recipe-Based Architecture</h2>
+        <p class="mb-4 text-blue-800">RAD utilizes an <code>AnalysisManager</code> that compartmentalizes your code into <strong>Recipes</strong> (C++ Lambdas). This ensures execution safety, multi-threading stability, and keeps your analysis logic incredibly clean.</p>
         <ul class="list-disc pl-5 space-y-2 text-blue-800">
-            <li><strong>Define Candidates:</strong> You define what a particle is (e.g., PID=11).</li>
-            <li><strong>Auto-Combinatorics:</strong> RAD automatically generates the Cartesian product of all candidates.</li>
-            <li><strong>Vectorized Physics:</strong> Calculations run on these combinations efficiently in a single pass using SIMD instructions.</li>
+            <li><strong>Initialization:</strong> Define the data source and map your particle candidates.</li>
+            <li><strong>Combinatorics:</strong> The engine automatically maps all valid multiparticle topologies.</li>
+            <li><strong>Topology Recipe:</strong> A sandboxed function where you build the decay chains and define variables.</li>
+            <li><strong>Histogram Recipe:</strong> A dedicated scope for booking 1D and 2D plots.</li>
         </ul>
     </div>
   </section>
 
   <section>
-    <h2 class="section-title"><span class="step-number">1</span>Setup & Beams</h2>
-    <p class="mb-4 text-lg">Initialize the reaction and let RAD handle the Podio data reading and Truth matching.</p>
+    <h2 class="section-title"><span class="step-number">1</span>Setup & Candidates</h2>
+    <p class="mb-4 text-lg">Initialize the Analysis Manager, set your beam parameters, and assign your track roles before generating combinations.</p>
     <div class="code-block">
 <span class="comment">// 1. Enable Parallel Processing</span>
-ROOT::<span class="func">EnableImplicitMT</span>();
+ROOT::<span class="func">EnableImplicitMT</span>(8);
 
-<span class="comment">// 2. Initialize Reaction & Data Source</span>
-<span class="comment">// ePICReaction handles Podio file reading and Rec-to-Truth matching automatically</span>
-<span class="type">epic::ePICReaction</span> <span class="func">rad_df</span>{<span class="string">"events"</span>, <span class="string">"input_data/*.root"</span>};
-rad_df.<span class="func">SetBeamsFromMC</span>(0, 1); <span class="comment">// Alias MC Beams to Rec namespace</span>
-rad_df.<span class="func">SetupMatching</span>();      <span class="comment">// Traverse Podio Association Arrays</span>
+<span class="comment">// 2. Initialize the Manager</span>
+<span class="type">AnalysisManager&lt;HepMCElectro, KinematicsProcElectro&gt;</span> <span class="func">mgr</span>{
+  <span class="string">"Jpsi_Analysis"</span>, <span class="comment">// Analysis Name</span>
+  <span class="string">"hepmc3_tree"</span>,   <span class="comment">// Tree Name</span>
+  <span class="string">"data.root"</span>      <span class="comment">// Input File</span>
+};
+mgr.<span class="func">SetOutputDir</span>(<span class="string">"output"</span>);
+
+<span class="keyword">auto</span>& reaction = mgr.<span class="func">Reaction</span>();
+reaction.<span class="func">SetupMC</span>();
+
+<span class="comment">// 3. Map Particle Roles</span>
+reaction.<span class="func">SetBeamElectronIndex</span>(0);
+reaction.<span class="func">SetBeamIonIndex</span>(1);
+reaction.<span class="func">SetScatElectronIndex</span>(2); 
+
+reaction.<span class="func">SetParticleIndex</span>(<span class="string">"p"</span>, 3);
+reaction.<span class="func">SetParticleIndex</span>(<span class="string">"ele"</span>, 4); 
+reaction.<span class="func">SetParticleIndex</span>(<span class="string">"pos"</span>, 5); 
+
+<span class="comment">// 4. Expand into unique combinations & add data stream</span>
+reaction.<span class="func">MakeCombinations</span>();
+mgr.<span class="func">AddStream</span>(rad::<span class="func">MC</span>());
     </div>
   </section>
 
   <section>
-    <h2 class="section-title"><span class="step-number">2</span>Candidates & Combinatorics</h2>
-    <p class="mb-4 text-lg">Define Candidates (Inputs) and generate the combinatorial arrays before attaching the processor.</p>
+    <h2 class="section-title"><span class="step-number">2</span>The Topology Recipe</h2>
+    <p class="mb-4 text-lg">Define how intermediate particles are constructed (Sums/Diffs) and what physics variables to calculate for every combination.</p>
     <div class="code-block">
-<span class="comment">// 3. Define Candidates (Name, MC_Role_ID, Filter, Columns)</span>
-rad_df.<span class="func">SetParticleCandidates</span>(<span class="string">"ele"</span>, 6, rad::index::<span class="func">FilterIndices</span>(11),  {<span class="string">"rec_true_pid"</span>});
-rad_df.<span class="func">SetParticleCandidates</span>(<span class="string">"pos"</span>, 7, rad::index::<span class="func">FilterIndices</span>(-11), {<span class="string">"rec_true_pid"</span>});
-rad_df.<span class="func">SetParticleCandidates</span>(<span class="string">"pip"</span>, 4, rad::index::<span class="func">FilterIndices</span>(211), {<span class="string">"rec_true_pid"</span>});
-rad_df.<span class="func">SetParticleCandidates</span>(<span class="string">"pim"</span>, 5, rad::index::<span class="func">FilterIndices</span>(-211),{<span class="string">"rec_true_pid"</span>});
+<span class="comment">// 5. The Topology Lambda (Injected to all CPU threads)</span>
+<span class="keyword">auto</span> topology_recipe = [](<span class="type">KinematicsProcElectro</span>& p) {
+  
+  <span class="comment">// A. Reconstruct J/psi -> e+ e- (Vector Sum)</span>
+  p.<span class="func">Creator</span>().<span class="func">Sum</span>(<span class="string">"Jpsi"</span>, {{<span class="string">"ele"</span>, <span class="string">"pos"</span>}});         
+  
+  <span class="comment">// Or reconstruct missing tracks (Vector Diff)</span>
+  <span class="comment">// p.Creator().Diff("miss", {{rad::consts::BeamEle(), rad::consts::BeamIon()}, {rad::consts::ScatEle(), "Jpsi", "p"}});</span>
 
-<span class="comment">// 4. Generate Combinations & Flag Signal</span>
-<span class="comment">// CRUCIAL: Must be called before processor instantiation!</span>
-rad_df.<span class="func">MakeCombinations</span>();
-rad_df.<span class="func">DefineTrueMatchedCombi</span>(<span class="string">"rec_is_signal"</span>, rad::<span class="func">Rec</span>());
-    </div>
-  </section>
-
-  <section>
-    <h2 class="section-title"><span class="step-number">3</span>Topology & Kinematics</h2>
-    <p class="mb-4 text-lg">Attach the Kinematics Processor and construct the physics topology cleanly using Sums.</p>
-    <div class="code-block">
-<span class="comment">// 5. Configure Kinematics (The Processor)</span>
-<span class="type">rad::KinematicsProcessor</span> <span class="func">kine</span>(&rad_df, rad::<span class="func">Rec</span>());
-
-<span class="comment">// Topology: Construct J/psi from e+e-, then Y from J/psi pi+pi-</span>
-kine.<span class="func">Creator</span>().<span class="func">Sum</span>(<span class="string">"Jpsi"</span>, {{<span class="string">"ele"</span>, <span class="string">"pos"</span>}});
-kine.<span class="func">Creator</span>().<span class="func">Sum</span>(<span class="string">"Y"</span>,    {{<span class="string">"Jpsi"</span>, <span class="string">"pip"</span>, <span class="string">"pim"</span>}});
-
-<span class="comment">// Physics Variables</span>
-kine.<span class="func">Mass</span>(<span class="string">"MassJ"</span>, {<span class="string">"Jpsi"</span>});
-kine.<span class="func">Mass</span>(<span class="string">"MassY"</span>, {<span class="string">"Y"</span>});
-
-<span class="comment">// Initialize the Chain</span>
-kine.<span class="func">Init</span>();
+  <span class="comment">// B. Assign Groups</span>
+  p.<span class="func">SetMesonParticles</span>({<span class="string">"Jpsi"</span>});
+  p.<span class="func">SetBaryonParticles</span>({<span class="string">"p"</span>});
+  
+  <span class="comment">// C. Calculate Invariant Masses</span>
+  p.<span class="func">Mass</span>(<span class="string">"MassJ"</span>, {<span class="string">"Jpsi"</span>});             
+  
+  <span class="comment">// D. Standard Calculations & Angles</span>
+  p.<span class="func">RegisterCalc</span>(<span class="string">"tb"</span>, rad::physics::TBot);
+  p.<span class="func">ParticleTheta</span>({{<span class="string">"scat_ele"</span>, <span class="string">"Jpsi"</span>, <span class="string">"p"</span>}});
+  p.<span class="func">ParticleP</span>({{<span class="string">"scat_ele"</span>, <span class="string">"Jpsi"</span>, <span class="string">"p"</span>}});
+};
     </div>
   </section>
 
   <section class="mb-20">
-    <h2 class="section-title"><span class="step-number">4</span>Physics Selection & Execution</h2>
-    <div class="rad-card p-6 border-yellow-300 bg-yellow-50">
-        <p class="mb-2 text-yellow-900 font-bold">Lazy Masking vs Filtering</p>
-        <p class="text-sm text-yellow-800">
-            Standard <code>Filter()</code> drops events entirely. RAD instead uses Masking, creating a boolean column so that you can evaluate multiple selections (like Signal vs. Sideband) simultaneously without destroying rows. 
-        </p>
-    </div>
+    <h2 class="section-title"><span class="step-number">3</span>Histograms & Execution</h2>
+    <p class="mb-4 text-lg">Define your plots targeting the variables created above, configure the manager, and run the lazy evaluation.</p>
     <div class="code-block">
-<span class="comment">// 6. Physics Selection (Lazy Masking)</span>
-<span class="type">rad::PhysicsSelection</span> <span class="func">sel</span>(kine);
-sel.<span class="func">AddCutRange</span>(<span class="string">"Y_Signal_Region"</span>, <span class="string">"MassY"</span>, 3.8, 4.6);
-sel.<span class="func">Compile</span>();
-
-<span class="comment">// 7. Save Flat Tree (SnapshotCombi) & Trigger Execution</span>
-<span class="comment">// "rec_is_signal" allows you to filter pure signal in the output</span>
-<span class="type">std::vector&lt;std::string&gt;</span> vars = {
-    <span class="string">"rec_MassY"</span>, <span class="string">"rec_MassJ"</span>, 
-    <span class="string">"rec_ele_px"</span>, <span class="string">"rec_ele_py"</span>, <span class="string">"rec_ele_pz"</span>, <span class="comment">// Auto-generated component vectors</span>
-    <span class="string">"rec_is_signal"</span> 
+<span class="comment">// 6. The Histogram Recipe</span>
+<span class="keyword">auto</span> histogram_recipe = [](<span class="type">rad::histo::Histogrammer</span>& h) {
+  <span class="comment">// Args: Name, Title/Axes, Bins, Min, Max, Target Column</span>
+  h.<span class="func">Create</span>(<span class="string">"MassJ"</span>, <span class="string">"Invariant Mass J/psi; Mass [GeV]"</span>, 100, 2.0, 4.0, <span class="string">"MassJ"</span>);
+  h.<span class="func">Create2D</span>(<span class="string">"hPvsTheta"</span>, <span class="string">"P vs Theta"</span>, 100, 0.0, 10.0, 100, 0.0, 3.14, <span class="string">"p_pmag"</span>, <span class="string">"p_theta"</span>);
 };
 
-<span class="comment">// Pass the mask column to only save valid combinations</span>
-rad_df.<span class="func">BookSnapshotCombi</span>(<span class="string">"Output.root"</span>, <span class="string">"tree"</span>, vars, sel.<span class="func">GetMaskColumn</span>());
+<span class="comment">// 7. Inject Recipes into the Manager</span>
+mgr.<span class="func">ConfigureKinematics</span>(topology_recipe);
+mgr.<span class="func">ConfigureHistograms</span>(histogram_recipe);
 
-<span class="comment">// Execute the RDataFrame event loop</span>
-rad_df.<span class="func">TriggerSnapshots</span>();
+<span class="comment">// 8. Trigger Lazy Evaluation (The Event Loop)</span>
+mgr.<span class="func">Snapshot</span>(); <span class="comment">// Prepares the flat TTree</span>
+mgr.<span class="func">Run</span>();      <span class="comment">// Executes RDataFrame!</span>
     </div>
   </section>
 
