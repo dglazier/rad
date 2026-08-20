@@ -34,23 +34,23 @@
   <section>
     <h2 class="section-title">1. Architecture Overview</h2>
     <p class="mb-6 text-lg text-slate-300">
-        RAD is designed around a <strong>Structure of Arrays (SoA)</strong> philosophy to maximize cache locality and allow efficient vectorization within the RDataFrame event loop.
+        RAD is a header-only framework designed around a <strong>Structure of Arrays (SoA)</strong> philosophy to maximize cache locality and allow efficient vectorization within the RDataFrame event loop.
     </p>
 
     <div class="bg-slate-900 p-8 rounded-xl border border-slate-700 text-center">
         <div class="flex gap-8 w-full justify-center">
-            <div class="diagram-node bg-slate-600">RDFInterface</div>
-            <p class="text-sm self-center text-slate-400 text-left w-64">Wraps ROOT::RDataFrame state.<br>Handles <code>Define</code>, <code>Filter</code>, <code>Snapshot</code>.</p>
+            <div class="diagram-node bg-emerald-600">AnalysisManager</div>
+            <p class="text-sm self-center text-slate-400 text-left w-64"><strong>The Orchestrator.</strong><br>Manages Data Streams (Rec/Truth), Lambda Recipes, and Lifecycle Execution.</p>
         </div>
         <div class="diagram-arrow text-slate-500 text-2xl my-2">↓</div>
         <div class="flex gap-8 w-full justify-center">
-            <div class="diagram-node bg-indigo-600">ConfigReaction</div>
-            <p class="text-sm self-center text-slate-400 text-left w-64">Manages Data Types (<code>Rec</code>, <code>Truth</code>).<br>Handles Candidate Matching logic.</p>
+            <div class="diagram-node bg-slate-600">ConfigReaction / Interface</div>
+            <p class="text-sm self-center text-slate-400 text-left w-64">Wraps <code>ROOT::RDataFrame</code>.<br>Handles Combinatorics and Podio / HIPO Data Extraction.</p>
         </div>
         <div class="diagram-arrow text-slate-500 text-2xl my-2">↓</div>
         <div class="flex gap-8 w-full justify-center">
             <div class="diagram-node bg-blue-600">KinematicsProcessor</div>
-            <p class="text-sm self-center text-slate-400 text-left w-64"><strong>The Engine.</strong><br>Manages Clones, Initialization Cascade, and Physics Loop.</p>
+            <p class="text-sm self-center text-slate-400 text-left w-64"><strong>The Engine.</strong><br>Operates on raw SoA columns (Px, Py, Pz) using SIMD instructions.</p>
         </div>
         
         <div class="flex gap-4 mt-8 pt-8 border-t border-slate-700 w-full justify-center">
@@ -64,23 +64,23 @@
             </div>
             <div class="p-3 border border-slate-600 rounded bg-slate-800">
                 <span class="role-badge role-modifier">Modifier</span>
-                <p class="text-xs text-slate-400">Calibration & Smearing</p>
+                <p class="text-xs text-slate-400">Calibrations & Smearing</p>
             </div>
         </div>
     </div>
   </section>
 
   <section>
-    <h2 class="section-title">2. Data Layout: The Reaction Map</h2>
+    <h2 class="section-title">2. Data Layout: Zero-Copy Combinatorics</h2>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div>
             <p class="mb-4">
-                To avoid deep copies of particle objects, RAD separates <strong>Topology</strong> (Indices) from <strong>Data</strong> (Momentum Arrays).
+                To avoid deep copies of heavy particle objects (like <code>TLorentzVector</code>), RAD separates <strong>Topology</strong> (Indices) from <strong>Data</strong> (Momentum Arrays).
             </p>
             <ul class="list-disc pl-5 space-y-2 text-slate-400">
                 <li><strong class="text-white">Input:</strong> Flat RVecs (<code class="text-orange-300">rec_px, rec_py...</code>) containing all tracks in the event.</li>
-                <li><strong class="text-white">Map:</strong> <code class="text-orange-300">ReactionMap</code>. A matrix of indices pointing to the flat arrays. <br>Dimensions: <code class="text-sm">[N_Combinations][N_Particles]</code></li>
-                <li><strong class="text-white">Output:</strong> <code class="text-orange-300">RVec&lt;RVec&lt;double&gt;&gt;</code>. Physics results for every combination.</li>
+                <li><strong class="text-white">Map:</strong> <code class="text-orange-300">ReactionMap</code>. A matrix of indices pointing to the flat arrays. The physics engine performs integer lookups directly.</li>
+                <li><strong class="text-white">Output:</strong> Variables are calculated column-wise in a single pass using SIMD vectorization.</li>
             </ul>
         </div>
         <div class="rad-card p-6">
@@ -99,188 +99,90 @@ IndexMap = {
   </section>
 
   <section>
-    <h2 class="section-title">3. The Combinatorial Engine</h2>
-    <div class="rad-card p-6">
-        <p class="mb-4">
-            The core algorithm resides in <code>Combinatorics.h</code>. It converts variable-length lists of candidates into a fixed set of unique combinations.
-        </p>
-        
-        <h3 class="text-xl font-bold text-white mb-2">Algorithm Steps:</h3>
-        <ol class="list-decimal pl-5 space-y-2 text-slate-400">
-            <li><strong>Input:</strong> A list of candidate index lists. <br>
-                Example: Ele candidates <code>{0, 2}</code>, Pos candidates <code>{1}</code>.</li>
-            <li><strong>Cartesian Product:</strong> The engine iterates through an N-dimensional loop of all permutations.</li>
-            <li><strong>Uniqueness Filter:</strong> 
-                <span class="text-highlight">Crucial Step.</span> If a permutation uses the same track index for multiple roles (e.g., trying to use Track 1 as both an Electron and a Pion), it is discarded.
-            </li>
-            <li><strong>Output:</strong> The <code>ReactionMap</code> structure used by the processors.</li>
-        </ol>
-    </div>
-  </section>
-
-  <section>
-    <h2 class="section-title">4. Pattern: Master/Clone Architecture</h2>
-    <p class="mb-4">
-        RAD employs a hierarchical <strong>Master/Clone</strong> system to efficiently process multiple physics streams (Rec vs Truth) and topologies (Detected vs Missing) with minimal code.
-    </p>
-    
-    <div class="grid grid-cols-1 gap-6">
-        <div class="rad-card p-6 border-l-4 border-yellow-500">
-            <h3 class="font-bold text-white mb-2">Core Concepts</h3>
+    <h2 class="section-title">3. Parallel I/O & Masking</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div>
+            <h3 class="font-bold text-white mb-2">Lock-Free TTree Writing</h3>
+            <p class="mb-4 text-slate-400">
+                Writing TTrees from multiple threads typically causes segmentation faults. RAD handles this safely via <code>SnapshotCombi</code>, which is invoked by <code>AnalysisManager::Snapshot()</code>.
+            </p>
             <ul class="list-disc pl-5 space-y-2 text-slate-400">
-                <li><strong>Master Processor:</strong> The root of the tree. Defines the primary topology (usually "Rec Detected"). Owns the initialization trigger.</li>
-                <li><strong>Type Clone (<code>CloneForType</code>):</strong> Creates a copy for a different data stream (e.g., Rec &rarr; Truth). It automatically <strong>Ports Groups</strong> (e.g. converting `rec_scat_ele` to `mc_scat_ele`).</li>
-                <li><strong>Linked Clone (<code>CloneLinked</code>):</strong> Creates a new topology hypothesis (e.g., "Missing Mass") on the same data stream. It shares the Master's index map but calculates different physics variables.</li>
-                <li><strong>Cascading Init:</strong> Calling <code class="text-blue-300">master.Init()</code> automatically initializes the entire tree of clones.</li>
+                <li><strong>Thread-Local Buffers:</strong> Pre-allocates buffers and TTree instances based on the thread pool size.</li>
+                <li><strong>Context Safety:</strong> Guards <code>gDirectory</code> to prevent file operation crashes during the event loop.</li>
+                <li><strong>Lazy Flattening:</strong> Flattens nested combinatorial outputs (Event &rarr; Combination) into a clean N-Tuple. Event-level scalars are automatically broadcasted.</li>
             </ul>
         </div>
-
-        <div class="rad-card p-6">
-            <h3 class="font-bold text-white mb-4">Initialization Flow</h3>
-            <div class="code-block text-sm">
-// 1. User Code
-kine_det_rec.Init(); 
-
-// 2. Framework Execution Order
--> kine_det_rec (Master)
-   -> Init Self (Builds Reaction Map)
-   -> Loop _type_clones:
-        -> kine_det_tru.Init()  // Independent Map (Truth)
-   -> Loop _linked_clones:
-        -> kine_miss_rec.InitLinked(master) // Adopts Master Map
-             -> Loop _type_clones (of linked):
-                  -> kine_miss_tru.Init() // Independent Map (Truth Missing)
-            </div>
+        <div>
+            <h3 class="font-bold text-white mb-2">Lazy Masking vs. Filtering</h3>
+            <p class="mb-4 text-slate-400">
+                Standard <code>Filter()</code> drops events entirely, ruining sideband analyses. RAD employs a Masking strategy:
+            </p>
+            <ul class="list-disc pl-5 space-y-2 text-slate-400">
+                <li>Selections generate a boolean mask column.</li>
+                <li>Trees and histograms only process entries where the mask is true, preserving underlying array alignment for complex topologies.</li>
+            </ul>
         </div>
     </div>
   </section>
 
   <section>
-    <h2 class="section-title">5. Deep Dive: Extending the Managers</h2>
-    <p class="mb-6 text-lg text-slate-300">Detailed guide on extending the three pillars of the framework.</p>
+    <h2 class="section-title">4. Extending the Framework</h2>
+    <p class="mb-6 text-lg text-slate-300">How to write and inject custom physics kernels into the recipe manager.</p>
 
-    <div class="rad-card p-6 border-l-4 border-cyan-500">
-        <h3 class="text-xl font-bold text-white mb-2"><span class="role-badge role-injector">Injector</span> ParticleInjector</h3>
+    <div class="rad-card p-6 border-l-4 border-cyan-500 mb-6">
+        <h3 class="text-xl font-bold text-white mb-2">Writing Custom Physics Kernels</h3>
         <p class="text-slate-300 mb-4">
-            <strong>Role:</strong> The "Normalization Layer". Standardizes disparate input formats (HepMC, Podio, Flat Trees) into the framework's expected columnar format (<code>rec_px</code>, <code>rec_pid</code>, etc.).
+            To add new physics variables (like Helicity Angles or specific Mandelstam variables), developers write a C++ function and register it inside the Topology Recipe. Because RAD uses lazy evaluation, you don't call this function directly to get a return value; instead, you register it as a named column in the RDataFrame graph.
         </p>
-        <h4 class="font-bold text-cyan-400 mb-2">How to Extend (New Data Format):</h4>
-        <div class="code-block">
-// Inside your custom Reaction class (e.g. MyExptReaction.h)
-void Setup() {
-  ParticleInjector injector(this);
-  
-  // 1. Define standard suffixes RAD expects
-  injector.DefineParticleInfo({"px", "py", "pz", "m", "pid"});
-  
-  // 2. Map your raw branches to these suffixes
-  // "rec_" becomes the prefix. "Track_Px" maps to "px", etc.
-  injector.AddSource("rec_", {"Track_Px", "Track_Py", "Track_Pz", "Track_M", "Track_PID"});
-  
-  // 3. Generate the columns
-  injector.CreateUnifiedVectors();
-}
-        </div>
-    </div>
-
-    <div class="rad-card p-6 border-l-4 border-purple-500">
-        <h3 class="text-xl font-bold text-white mb-2"><span class="role-badge role-creator">Creator</span> ParticleCreator</h3>
-        <p class="text-slate-300 mb-4">
-            <strong>Role:</strong> The "Architect". Manages the definition of particles and groups. 
-            Crucially, it handles <strong>Group Porting</strong> for clones, translating definitions like `rec_scat_ele_group` to `mc_scat_ele_group` automatically.
-        </p>
-        <h4 class="font-bold text-purple-400 mb-2">Key Functionality:</h4>
-        <ul class="list-disc pl-5 space-y-2 text-slate-400 text-sm mb-4">
-            <li><strong>PortGroupsFrom(parent):</strong> Scans parent groups, strips the prefix (e.g. `rec_`), adds the new prefix (e.g. `mc_`), and registers the new group if particles exist.</li>
-            <li><strong>Input Aliasing:</strong> Automatically aliases `mc_scat_ele` to `mc_scat_ele_miss` for linked processors to ensure consistent suffix handling.</li>
-        </ul>
-        <h4 class="font-bold text-purple-400 mb-2">How to Extend (New Algorithm):</h4>
-        <div class="code-block">
-// 1. Define the Calculation Logic (The Kernel)
-// indices[0] = Mother, indices[1] = Daughter (passed via dependency list)
-void MyDecayCreator(const Indice_t pos, const RVecIndices& indices, 
-                    RVecD& px, RVecD& py, RVecD& pz, RVecD& m) {
-    // Custom logic to modify px[pos], py[pos]... based on indices
-}
-
-// 2. Register in Analysis Script
-kine.Creator().AddParticle("MyPart", MyDecayCreator, {{"Mother"}, {"Daughter"}});
-        </div>
-    </div>
-
-    <div class="rad-card p-6 border-l-4 border-pink-500">
-        <h3 class="text-xl font-bold text-white mb-2"><span class="role-badge role-modifier">Modifier</span> ParticleModifier</h3>
-        <p class="text-slate-300 mb-4">
-            <strong>Role:</strong> The "Mechanic". Applies in-place corrections to the 4-vectors <em>inside the event loop</em>. Used for Calibration, Smearing, or Constraints.
-        </p>
-        <h4 class="font-bold text-pink-400 mb-2">How to Extend (New Correction):</h4>
-        <div class="code-block">
-// 1. Define Custom Strategy inheriting from ModifierBase
-class MyEnergyScale : public rad::ModifierBase {
-public:
-    MyEnergyScale(double factor) : _factor(factor) {}
-    
-    // Required: Clone pattern for processor copying
-    std::unique_ptr<ModifierBase> Clone() const override { 
-        return std::make_unique<MyEnergyScale>(_factor); 
-    }
-
-    // The Logic: Modifies px, py, pz in-place
-    void operator()(RVecD& px, RVecD& py, RVecD& pz, RVecD& m, 
-                    const AuxCacheD&, const AuxCacheI&) const override {
-        px[_target_idx] *= _factor; 
-        py[_target_idx] *= _factor;
-        pz[_target_idx] *= _factor;
-    }
-private:
-    double _factor;
-};
-
-// 2. Register in Analysis Script ("ele" is the particle to modify)
-kine.PreModifier().AddCustom<MyEnergyScale>("ele", {}, {}, 1.05); 
-        </div>
-    </div>
-  </section>
-
-  <section>
-    <h2 class="section-title">6. Writing Custom Physics Kernels</h2>
-    <p class="mb-4">
-        To add new physics (e.g., a specific angle calculation), create a C++ function and register it via <code>RegisterCalc</code>.
-    </p>
-
-    <div class="rad-card p-6">
-        <h3 class="text-lg font-bold text-white mb-2">The Function Signature</h3>
-        <p class="text-sm text-slate-400 mb-4">
-            The function must accept the <code>RVecIndexMap</code> (topology) and the flat data arrays.
-        </p>
-        <div class="code-block">
-// MyPhysics.h
+        
+        <h4 class="font-bold text-cyan-400 mb-2 mt-6">1. The Implementation (Header File / Separate Cell)</h4>
+        <p class="text-sm text-slate-400 mb-2">Define your calculation in a separate header or macro cell before your main analysis script.</p>
+        <div class="code-block mb-6">
+// MyPhysicsKernels.h
 namespace rad {
   namespace physics {
-
-    // Calculate "Time" (t) transfer
-    inline RVecResultType CalcT(const RVecIndexMap& map, 
-                                const RVecResultType& px, 
-                                const RVecResultType& py, 
-                                const RVecResultType& pz, 
-                                const RVecResultType& m) 
+    // The function must accept the topology map and the SoA momentum arrays
+    inline RVecResultType CalcMyAngle(const RVecIndexMap& map, 
+                                      const RVecResultType& px, 
+                                      const RVecResultType& py) 
     {
-      // 1. Get Indices via Standard Groups
-      auto idx_beam = map[rad::consts::OrderBeamEle()]; 
-      auto idx_scat = map[rad::consts::OrderScatEle()];
+      // A. Integer lookups using standard group names
+      auto idx_ele = map[rad::consts::OrderScatEle()];
+      auto idx_pro = map[rad::consts::OrderBaryon()];
 
-      // 2. Perform Vectorized Calculation
-      auto px_q = px[idx_beam] - px[idx_scat];
-      // ... math ...
-      return t_values; 
+      // B. Perform SIMD math across the vectors
+      auto result = px[idx_ele] * py[idx_pro]; // example
+      return result;
     }
   }
 }
+        </div>
 
-// In Script:
-kine.RegisterCalc("t_val", rad::physics::CalcT);
+        <h4 class="font-bold text-cyan-400 mb-2">2. The User Script (Analysis Macro)</h4>
+        <p class="text-sm text-slate-400 mb-2">Include your custom kernel and inject it via the Lambda recipes.</p>
+        <div class="code-block">
+// MainAnalysis.C
+#include "MyPhysicsKernels.h"
+
+// 1. Inject it via the Topology Recipe Lambda
+auto topology_recipe = [](Processor& p) {
+    // Registers the calculation as a new column named "MyAngleVal"
+    p.RegisterCalc("MyAngleVal", rad::physics::CalcMyAngle);
+};
+
+// 2. Call the registered calculation by its string name in downstream recipes
+auto histogram_recipe = [](rad::histo::Histogrammer& h) {
+    // Use the "MyAngleVal" column to populate a 1D histogram
+    h.Create("hMyAngle", "Custom Angle; #theta [rad]", 100, 0, 3.14, "MyAngleVal");
+};
+
+auto selection_recipe = [](rad::PhysicsSelection& s) {
+    // Or use it to generate a lazy mask
+    s.AddCutMin("AngleCut", "MyAngleVal", 0.5);
+};
         </div>
     </div>
+
   </section>
 
 </body>

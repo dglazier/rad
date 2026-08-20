@@ -18,6 +18,7 @@
 #include "StringUtilities.h"
 #include "TruthMatchRegistry.h" 
 #include "Random.h"
+#include "Indicing.h"
 #include <algorithm> 
 #include <set>
 
@@ -107,7 +108,7 @@ namespace rad {
       template<typename Lambda>
       void SetParticleCandidates(const std::string& name, const std::string& type, Lambda&& func, const ROOT::RDF::ColumnNames_t& columns);
 
-       void SetParticleIndex(const std::string& name, const std::string& type, const int idx);
+      void SetParticleIndex(const std::string& name, const std::string& type, const int idx);
       void SetParticleCandidates(const std::string& name, const std::string& type, const Indices_t idx);
 
       // Overloads
@@ -122,6 +123,8 @@ namespace rad {
       void SetParticleCandidates(const std::string& name, int truthRole,  const Indices_t idx){//use default type and mcmatch
 	SetParticleTruthMatch(name, truthRole, GetDefaultType(), idx);
       }
+      //higher level set particles
+      void SetParticleRecPID(const std::string& name, const int pid);
       
       template<typename Lambda>
       void SetParticleCandidates(const std::string& name, int truthRole, Lambda&& func, const ROOT::RDF::ColumnNames_t& columns) {//use default type and mcmatch
@@ -311,6 +314,9 @@ namespace rad {
     }
     inline void ConfigReaction::SetParticleIndex(const std::string& name, const std::string& type, const int idx) {
        SetParticleCandidates(name, type, [idx](){ return RVecI{idx}; }, {});
+    }
+    inline void ConfigReaction::SetParticleRecPID(const std::string& name, const int pid) {
+      SetParticleCandidates(name, consts::data_type::Rec(), rad::index::FilterIndices(pid), {"rec_pid"});
     }
     inline void ConfigReaction::SetParticleCandidates(const std::string& name, const std::string& type, const Indices_t idx) {
        SetParticleCandidates(name, type, [idx](){ return idx; }, {});

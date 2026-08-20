@@ -450,7 +450,8 @@ namespace rad {
           cols.push_back("rdfentry_");
 	  
 	  //Add the isTruth flag for rec streams
-	  if(stream.source.find(Rec()) == 0){
+	  if((stream.source.find(Rec()) == 0)&&
+	     (stream.source.find(Truth()) == 0)){
 	    cols.push_back(consts::TruthMatchedCombi());
 	    cols.push_back(Rec()+consts::TruthMatchedCombi());
 	    //cols.push_back(Rec()+consts::TruthMatchedCombi()+"_"+stream.label);
