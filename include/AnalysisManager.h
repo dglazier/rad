@@ -175,9 +175,9 @@ namespace rad {
 
     /**
      * @brief Print comprehensive diagnostics for the entire analysis setup.
-     * @details Useful for debugging mapping, combinatorial, and observable issues.
+     * @param verbosity 0 = silent, 1 = high-level stream summary, 2 = deep dive (variables, arrays, mappings).
      */
-    void PrintDiagnostics() const;
+    void PrintDiagnostics(int verbosity = 1);
 
   private:
     /**
@@ -506,18 +506,41 @@ namespace rad {
       }
   }
 
-  template <typename R, typename P>
-  inline void AnalysisManager<R,P>::PrintDiagnostics() const {
+ 
+template <typename R, typename P>
+  inline void AnalysisManager<R,P>::PrintDiagnostics(int verbosity) {
+    if (verbosity <= 0) return; // Silent mode
+
+    // Force the 3-Pass Initialization so arrays and maps are populated
+    Init(); 
+    
     diag::DiagnosticsPrinter::PrintSectionHeader("ANALYSIS MANAGER DIAGNOSTICS", '=', 90);
-    const_cast<R&>(_reaction).PrintReactionDiagnostics();
+    diag::DiagnosticsPrinter::PrintKeyValue("Analysis Name", _name);
+    diag::DiagnosticsPrinter::PrintKeyValue("Output Directory", _outputDir.empty() ? "[none]" : _outputDir);
+    diag::DiagnosticsPrinter::PrintKeyValue("Primary Stream", _primaryStream);
     diag::DiagnosticsPrinter::PrintBlank();
+    
+    // Dump Reaction-level configurations
+    _reaction.PrintReactionDiagnostics();
+    diag::DiagnosticsPrinter::PrintBlank();
+    
+    // Cascade down to the streams
+    diag::DiagnosticsPrinter::PrintSectionHeader("STREAM CONFIGURATIONS", '=', 90);
     std::cout << "Registered Streams: " << _streams.size() << std::endl;
-    for (const auto& entry : _streams) {
-      std::cout << "\nStream: " << entry.first << " (Source: " << entry.second.source << ", Label: " << entry.second.label << ")" << std::endl;
-      if(entry.second.kine) entry.second.kine->PrintReactionMap(); // Use PrintReactionMap or PrintProcessorDiagnostics if available
+    
+    for (const auto& [key, stream] : _streams) {
+      diag::DiagnosticsPrinter::PrintSubsection("Stream: " + stream.fullName, '-', 80);
+      diag::DiagnosticsPrinter::PrintKeyValue("Source", stream.source);
+      diag::DiagnosticsPrinter::PrintKeyValue("Label", stream.label.empty() ? "[default]" : stream.label);
+      diag::DiagnosticsPrinter::PrintBlank();
+      
+      // Deep Dive (Verbosity Level 2)
+      if(stream.kine && verbosity >= 2) {
+          // Prints the full SoA Map, Aliases, Calculations, and Registered Outputs
+          stream.kine->PrintProcessorDiagnostics(); 
+      }
     }
   }
-
   // --- Private Helpers ---
 
   template <typename R, typename P>
