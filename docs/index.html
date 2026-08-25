@@ -29,7 +29,7 @@
       <div class="mt-8 space-x-4">
         <a href="RAD_User_Guide.html" class="inline-block bg-[#24406e] text-white font-semibold py-2 px-5 rounded-lg shadow hover:bg-[#1a3055] transition">Read User Guide</a>
         <a href="RAD_Developer_Guide.html" class="inline-block bg-[#e2e8f0] text-[#0a2540] font-semibold py-2 px-5 rounded-lg shadow hover:bg-[#cbd5e1] transition">Developer Guide</a>
-        <a href="./reference/" target="_blank" class="inline-block bg-[#ffd166] text-[#0a2540] font-semibold py-2 px-5 rounded-lg shadow hover:bg-[#ffb700] transition">Doxygen Reference</a>
+        <a href="reference/" class="inline-block bg-[#ffd166] text-[#0a2540] font-semibold py-2 px-5 rounded-lg shadow hover:bg-[#ffb700] transition">Doxygen Reference</a>
       </div>
     </header>
 
@@ -37,21 +37,21 @@
       <h2 class="section-title text-center">Core Concepts</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div class="rad-card p-6">
-          <h3 class="text-xl font-semibold mb-2 text-[#24406e]">Reaction Configuration</h3>
-          <p>RAD is built around the idea of configuring a physics reaction as a <span class="class-label">ConfigReaction</span> object.</p>
+          <h3 class="text-xl font-semibold mb-2 text-[#24406e]">Analysis Manager & Recipes</h3>
+          <p>RAD completely overhauls the traditional ROOT event loop using an <span class="class-label">AnalysisManager</span> orchestrator.</p>
           <ul class="list-disc pl-5 mt-2 text-slate-600">
-            <li>Simplifies code for complex final states (e.g. <code>e p -> e' K+ X</code>).</li>
-            <li>Handles multiple data types (HepMC, Podio, Flat Trees) uniformly.</li>
-            <li><strong>Master/Clone Architecture:</strong> Analyze multiple hypotheses (Rec/Truth, Detected/Missing) in a single pass.</li>
+            <li><strong>Recipe-Based Architecture:</strong> Analysis logic is safely sandboxed inside C++ Lambdas (Recipes).</li>
+            <li><strong>Parallel Safety:</strong> Thread management and concurrent I/O (TTree writing) are handled automatically under the hood.</li>
+            <li><strong>Zero-Copy Combinatorics:</strong> Instantly evaluates all multiparticle topologies via efficient integer lookup arrays.</li>
           </ul>
         </div>
         <div class="rad-card p-6">
-          <h3 class="text-xl font-semibold mb-2 text-[#24406e]">Modular Utilities</h3>
-          <p>RAD provides a suite of utility classes:</p>
+          <h3 class="text-xl font-semibold mb-2 text-[#24406e]">Modular Streams</h3>
+          <p>The framework easily adapts to any data source using specialized data streams:</p>
           <ul class="list-disc pl-5 mt-2 text-slate-600">
-            <li><span class="subclass-label">ParticleCreator</span>: Define particles and calculate Sums/Diffs.</li>
-            <li><span class="subclass-label">KinematicsProcessor</span>: The execution engine for physics loops.</li>
-            <li><span class="subclass-label">KineCalculation</span>: Wrap custom C++ physics functions.</li>
+            <li><span class="subclass-label">Reactions</span>: Define the IO backend (e.g., <code>ePICReaction</code> for Podio/EDM4hep, <code>HepMCElectro</code> for HepMC3).</li>
+            <li><span class="subclass-label">KinematicsProcessor</span>: The vectorized physics engine that executes your topology recipes.</li>
+            <li><strong>Multi-Hypothesis:</strong> Process Reconstructed (Rec) and Monte Carlo (Truth) streams simultaneously in a single pass.</li>
           </ul>
         </div>
       </div>
@@ -61,38 +61,49 @@
       <h2 class="section-title text-center">Example Usage</h2>
       <div class="rad-card p-6">
         <pre><code class="language-cpp">
-// Setup for MC generator data (HepMC3)
-#include "HepMCElectro.h"
-#include "KinematicsProcElectro.h"
+#include "AnalysisManager.h" 
+#include "HepMCElectro.h"        
+#include "KinematicsProcElectro.h"        
 
-void ProcessHepMCZCombi() {
-  // 1. Create interface to the ROOT file
-  rad::HepMCElectro hepmc{"hepmc3_tree", "data_file.root"};
-  hepmc.SetupMC(); 
+void CombiJpsi() {
+  using namespace rad;
+  ROOT::EnableImplicitMT(8);
+ 
+  // 1. Initialize the Orchestrator
+  AnalysisManager&lt;HepMCElectro, KinematicsProcElectro&gt; mgr{
+    "Jpsi_Analysis", "hepmc3_tree", "data.root"
+  };
+  mgr.SetOutputDir("output");
+  
+  auto& reaction = mgr.Reaction();
+  reaction.SetupMC();
+ 
+  // 2. Define Particles & Combinatorics
+  reaction.SetBeamElectronIndex(0);
+  reaction.SetParticleIndex("ele", 4); 
+  reaction.SetParticleIndex("pos", 5); 
+  reaction.MakeCombinations();
+  mgr.AddStream(MC());
 
-  // 2. Define Topology (Candidates & Roles)
-  hepmc.SetBeamElectronIndex(0); // Beam is Index 0
+  // 3. The Topology Recipe (Injected to all CPU threads)
+  auto topology_recipe = [](KinematicsProcElectro& p) {
+    p.Creator().Sum("Jpsi", {{"ele", "pos"}});         
+    p.Mass("MassJ", {"Jpsi"});             
+  };
   
-  // Define "ele" as any track with PID 11
-  hepmc.SetParticleCandidates("ele", 2 /*Role*/, rad::index::FilterIndices(11), {"pid"});
-  hepmc.SetParticleCandidates("pos", 3 /*Role*/, rad::index::FilterIndices(-11), {"pid"});
+  // 4. The Histogram Recipe
+  auto histogram_recipe = [](histo::Histogrammer& h) {
+    h.Create("MassJ", "Invariant Mass; Mass [GeV]", 100, 2.0, 4.0, "MassJ");
+  };
   
-  // 3. Initialize Kinematics Processor
-  rad::KinematicsProcElectro kine(&hepmc, "rec_");
-  
-  // Define Composite Particles (J/psi -> e+ e-)
-  kine.Creator().Sum("Jpsi", {{"ele", "pos"}});
-  
-  // 4. Calculate Physics
-  kine.Init(); // Triggers Combinatorial Sort
-  kine.Q2(); 
-  kine.Mass("M_Jpsi", {"Jpsi"}); 
-
-  // 5. Snapshot results
-  hepmc.Snapshot("output.root");
+  // 5. Configure & Execute Lazy Event Loop
+  mgr.ConfigureKinematics(topology_recipe);
+  mgr.ConfigureHistograms(histogram_recipe);
+  mgr.Snapshot();
+  mgr.Run();
 }
         </code></pre>
-        <p class="mt-4 text-slate-600 text-center">Standard workflow for combinatorial analysis.</p>
+        <p class="mt-4 text-slate-600 text-center">Standard workflow for combinatorial analysis using the Recipe pattern.</p>
       </div>
     </section>
 

@@ -170,10 +170,10 @@ namespace rad {
        * @param px Reference to Px vector to write to.
        * @param py Reference to Py vector to write to.
        * @param pz Reference to Pz vector to write to.
-       * @param m Reference to Mass vector to write to.
+       * @param e Reference to Mass vector to write to.
        */
       void ApplyCreation(ROOT::RVecD& px, ROOT::RVecD& py, 
-                         ROOT::RVecD& pz, ROOT::RVecD& m) const;
+                         ROOT::RVecD& pz, ROOT::RVecD& e) const;
 
       // =======================================================================
       // Accessors
@@ -288,7 +288,7 @@ namespace rad {
               _forced_inputs.push_back(name);
     }
 
-    inline void ParticleCreator::AddParticle(const std::string& name, ParticleCreatorFunc_t func, const StructuredNames_t& depends) {
+  inline void ParticleCreator::AddParticle(const std::string& name, ParticleCreatorFunc_t func, const StructuredNames_t& depends) {
         _p_names.push_back(name);
         auto flat_depends = util::flattenColumnNames(depends);
         _p_required.push_back(flat_depends);
@@ -313,9 +313,9 @@ namespace rad {
     inline int ParticleCreator::GetIndexSafe(const std::string& name) const {
       auto it = _nameIndex.find(name);
       if (it == _nameIndex.end()) {
-    std::cerr << "\n[ParticleCreator FATAL] Missing Particle Index: " << name << "\n";
-    std::cerr << "  Processor: " << _prefix << " (Suffix: '" << _suffix << "')\n";
-    throw std::runtime_error("Particle '" + name + "' missing in map. Check inputs.");
+	std::cerr << "\n[ParticleCreator FATAL] Missing Particle Index: " << name << "\n";
+	std::cerr << "  Processor: " << _prefix << " (Suffix: '" << _suffix << "')\n";
+	throw std::runtime_error("Particle '" + name + "' missing in map. Check inputs.");
       }
       return it->second;
     }
@@ -455,10 +455,10 @@ namespace rad {
     inline std::string ParticleCreator::GetMapName() const { return _prefix + consts::ReactionMap() + _suffix + DoNotWriteTag(); }
 
     inline void ParticleCreator::ApplyCreation(ROOT::RVecD& px, ROOT::RVecD& py, 
-                        ROOT::RVecD& pz, ROOT::RVecD& m) const 
+                        ROOT::RVecD& pz, ROOT::RVecD& e) const 
     {
        for (size_t i = 0; i < GetNCreated(); ++i) {
-         _p_creators[i](GetIndexSafe(_p_names[i]), _p_dep_indices[i], px, py, pz, m);
+         _p_creators[i](GetIndexSafe(_p_names[i]), _p_dep_indices[i], px, py, pz, e);
       }
     }
 } // end rad

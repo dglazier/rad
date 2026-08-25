@@ -6,6 +6,7 @@
 
 #include <string>
 #include <stdexcept>
+#include <atomic> // Needed for thread-safe counting
 #include <TString.h> // For TString operations if preferred, or std::string
 
 namespace rad {
@@ -86,7 +87,7 @@ namespace rad {
     // =========================================================================
 
 
-  void PrintDefinedColumnNames(RNode  df){
+  inline void PrintDefinedColumnNames(RNode  df){
     std::cout<<"Print Column Names : ";
     auto cols =  df.GetDefinedColumnNames();
     for(auto& col:cols){
@@ -94,7 +95,7 @@ namespace rad {
     }
     cout<<"\n";
   }
-  void PrintAllColumnNames(RNode  df){
+  inline void PrintAllColumnNames(RNode  df){
     std::cout<<"Print Column Names : ";
     auto cols =  df.GetColumnNames();
     for(auto& col:cols){
@@ -103,5 +104,38 @@ namespace rad {
     cout<<"\n";
   }
 
+  template<typename T>
+  inline void PrintColumnValues(T&  radf, 
+                                   const ROOT::RDF::ColumnNames_t& cols, 
+                                   int max_events = -1, 
+                                   const std::string& name = "column_print") {
+  
+  if (cols.empty() ) return;
+
+  // 1. Inject a static, thread-safe atomic counter into the Cling environment.
+  // fetch_add(1) safely increments and returns the PREVIOUS value.
+  std::string code = "static std::atomic<int> print_count{0}; ";
+  if(max_events!=-1){
+    code += "if (print_count.fetch_add(1) < " + std::to_string(max_events) + ") { ";
+  }
+  else{
+    code += "{";
+  }
+  code += "  std::cout << \"--- PrintColumns Event ---\" <<rdfentry_<< std::endl; ";
+  
+  // 2. Dynamically build the print statements for each requested column
+  for (const auto& col : cols) {
+    // This correctly builds the string: std::cout << "colName: " << colName << std::endl;
+    code += "  std::cout << \"_" + col + ": \" << " + col + " << std::endl; ";
+  }
+  
+  
+  // 3. Close the if-statement and return the dummy value for the Define column
+  code += "} return 1;"; 
+
+  // 4. Apply the graph transformations 
+  radf.Define(name, code);
+  radf.Filter(name, name + "_filt");
+}
   
 } // namespace rad

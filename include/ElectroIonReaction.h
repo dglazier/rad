@@ -208,7 +208,7 @@ namespace rad {
       PxPyPzMVector _p4ion_beam;  ///< Internal storage for Ion Beam P4
         
  
-      bool _useBeamsFromMC = true; ///< Flag to determine if beams should be read from MC
+      bool _useBeamsFromMC = false; ///< Flag to determine if beams should be read from MC
         
      private:
 
@@ -224,8 +224,8 @@ namespace rad {
          * @brief Helper to generate a Virtual Photon 4-vector (q = k - k').
          * @details Requires the reaction map to locate the "Virtual Gamma" in the created particles list.
          */
-        template<typename Tp, typename Tm>
-        inline PxPyPzMVector PhotoFourVector(const RVecIndexMap& react, const Tp &px, const Tp &py, const Tp &pz, const Tm &m);
+        template<typename Tp, typename Te>
+        inline LorentzVector PhotoFourVector(const RVecIndexMap& react, const Tp &px, const Tp &py, const Tp &pz, const Te &e);
     }
 
 
@@ -285,6 +285,7 @@ namespace rad {
     inline void ElectroIonReaction::SetMCBeamIndices(int eleIdx, int ionIdx) {
         _mcBeamEleIdx = eleIdx;
         _mcBeamIonIdx = ionIdx;
+	_useBeamsFromMC = true;
     }
 
     inline void ElectroIonReaction::SetBeamElectronColumns(const std::string& px, const std::string& py, 
@@ -392,14 +393,17 @@ namespace rad {
 
     // --- Physics Helpers ---
 
-    namespace electroion {
-        template<typename Tp, typename Tm>
-        inline PxPyPzMVector PhotoFourVector(const RVecIndexMap& react, const Tp &px, const Tp &py, const Tp &pz, const Tm &m) {
-            // Retrieves the virtual photon from the 'Created' particle group
-            return FourVector(react[consts::OrderCreated()][consts::OrderVirtGamma()], px, py, pz, m);
-        }
+  namespace electroion {
+    template<typename Tp, typename Te>
+    inline LorentzVector PhotoFourVector(const RVecIndexMap& react,
+					 const Tp& px, const Tp& py,
+					 const Tp& pz, const Te& e)
+    {
+      return FourVector(react[consts::OrderCreated()][consts::OrderVirtGamma()], px, py, pz, e);
     }
-
+    
+  }
+  
 } // namespace rad
 
 //required for physics, use this computation for photo4vector
