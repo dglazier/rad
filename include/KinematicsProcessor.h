@@ -243,20 +243,42 @@ namespace rad {
         std::string compSuffix;
     };
     ROOT::RVec<PassThroughDef> _passThroughs; // Stores deferred passthrough requests
+
     // =========================================================================
-    // Thread-Local Pre-allocated Buffers
-    // Marked mutable to allow in-place updates within the const operator()
+    // Thread-Local Pre-allocated Buffers & Index Caches
     // =========================================================================
+    
+    /** 
+     * @brief Pre-allocated memory buffers for kinematics.
+     * @details Marked mutable to allow in-place updates within the const operator().
+     */
     mutable RVecResultType _bufferPx;
     mutable RVecResultType _bufferPy;
     mutable RVecResultType _bufferPz;
     mutable RVecResultType _bufferM;
     mutable RVecResultType _bufferE;
     
-    mutable AuxCacheD _cache_pre_d;
-    mutable AuxCacheI _cache_pre_i;
-    mutable AuxCacheD _cache_post_d;
-    mutable AuxCacheI _cache_post_i;
+    /**
+     * @brief Pre-computed SIMD energy buffer for the flat detector arrays.
+     */
+    mutable RVecResultType _baseE;
+
+    /** 
+     * @brief Pre-allocated memory buffers for auxiliary data caches.
+     * @details Marked mutable to allow in-place updates within the const operator().
+     */
+    mutable AuxCacheD _cachePreD;
+    mutable AuxCacheI _cachePreI;
+    mutable AuxCacheD _cachePostD;
+    mutable AuxCacheI _cachePostI;
+
+    /** 
+     * @brief Fast caches for topology indexing to prevent redundant lookups 
+     *        and improve inner-loop cache locality.
+     */
+    mutable std::vector<size_t> _ipartiCache;
+    mutable std::vector<int> _ogIndicesCache;
+    
   };
 
   // =================================================================================
@@ -373,14 +395,13 @@ namespace rad {
   }
 
   // --- Core Operator ---
-// --- Core Operator ---
   template<typename Tp, typename Tm> 
   inline KinematicsProcessor::CombiOutputVec_t KinematicsProcessor::operator()(
         const RVecIndices& indices, const Tp& px, const Tp& py, const Tp& pz, const Tm& m,
         const RVecRVecD& aux_pre_d, const RVecRVecI& aux_pre_i,
         const RVecRVecD& aux_post_d, const RVecRVecI& aux_post_i) const 
   {
-    const auto Ncomponents = 4; // x, y, z, e
+    const auto Ncomponents = 4; // x, y, z, m
     const auto Nparticles0 = indices.size(); // Number of input particles
     const auto Nparticles = Nparticles0 + _creator.GetNCreated(); 
     
@@ -388,8 +409,8 @@ namespace rad {
           
     const auto Ncombis = indices[0].size(); 
     CombiOutputVec_t result(Ncombis, RVec<RVecResultType>(Ncomponents, RVecResultType(Nparticles)));
-    
-    // Resize buffers once per thread/initialization
+
+    // Resize thread-local buffers once per initialization if particle count changes
     if (_bufferPx.size() != Nparticles) {
         _bufferPx.resize(Nparticles);
         _bufferPy.resize(Nparticles);
@@ -397,29 +418,72 @@ namespace rad {
         _bufferM.resize(Nparticles);
         _bufferE.resize(Nparticles);
     }
-    
-    // Initialize standard kinematics to InvalidEntry once per event (replicating original behavior)
-    const ResultType_t invalid_val = consts::InvalidEntry<ResultType_t>();
-    std::fill(_bufferPx.begin(), _bufferPx.end(), invalid_val);
-    std::fill(_bufferPy.begin(), _bufferPy.end(), invalid_val);
-    std::fill(_bufferPz.begin(), _bufferPz.end(), invalid_val);
-    std::fill(_bufferM.begin(),  _bufferM.end(),  invalid_val);
-    std::fill(_bufferE.begin(),  _bufferE.end(),  invalid_val);
 
-    // Resize auxiliary caches if needed
-    if (_cache_pre_d.size() != aux_pre_d.size()) _cache_pre_d.resize(aux_pre_d.size(), ROOT::RVecD(Nparticles));
-    if (_cache_pre_i.size() != aux_pre_i.size()) _cache_pre_i.resize(aux_pre_i.size(), ROOT::RVecI(Nparticles));
-    if (_cache_post_d.size() != aux_post_d.size()) _cache_post_d.resize(aux_post_d.size(), ROOT::RVecD(Nparticles));
-    if (_cache_post_i.size() != aux_post_i.size()) _cache_post_i.resize(aux_post_i.size(), ROOT::RVecI(Nparticles));
+    // Resize fast index caches and pre-compute destination indices ONCE per event
+    if (_ipartiCache.size() != Nparticles0) {
+        _ipartiCache.resize(Nparticles0);
+        _ogIndicesCache.resize(Nparticles0);
+        for (size_t ip = 0; ip < Nparticles0; ++ip) {
+            _ipartiCache[ip] = _creator.GetReactionIndex(ip);
+        }
+    }
+
+    // Resize auxiliary caches if their outer size changed or inner size does not match Nparticles
+    if (_cachePreD.size() != aux_pre_d.size() || (!_cachePreD.empty() && _cachePreD[0].size() != Nparticles)) {
+        _cachePreD = AuxCacheD(aux_pre_d.size(), ROOT::RVecD(Nparticles));
+    }
+    if (_cachePreI.size() != aux_pre_i.size() || (!_cachePreI.empty() && _cachePreI[0].size() != Nparticles)) {
+        _cachePreI = AuxCacheI(aux_pre_i.size(), ROOT::RVecI(Nparticles));
+    }
+    if (_cachePostD.size() != aux_post_d.size() || (!_cachePostD.empty() && _cachePostD[0].size() != Nparticles)) {
+        _cachePostD = AuxCacheD(aux_post_d.size(), ROOT::RVecD(Nparticles));
+    }
+    if (_cachePostI.size() != aux_post_i.size() || (!_cachePostI.empty() && _cachePostI[0].size() != Nparticles)) {
+        _cachePostI = AuxCacheI(aux_post_i.size(), ROOT::RVecI(Nparticles));
+    }
+
+    const ResultType_t invalid_val = consts::InvalidEntry<ResultType_t>();
 
     // ========================================================================
-    // COMBINATORIAL LOOP
+    // SIMD PRE-COMPUTATION
+    // ========================================================================
+    // Calculate energy for all raw input tracks exactly ONCE per event.
+    // The compiler will auto-vectorize this flat loop across the SoA arrays.
+    if (_baseE.size() != px.size()) {
+        _baseE.resize(px.size());
+    }
+    for(size_t i = 0; i < px.size(); ++i) {
+        _baseE[i] = std::sqrt(px[i]*px[i] + py[i]*py[i] + pz[i]*pz[i] + m[i]*m[i]);
+    }
+
+    //cout<< "KinematicsProcessor::operator() "<<Nparticles0<<" "<<Nparticles<<" "<<Ncombis<<endl;
+    // ========================================================================
+    // OPTIMIZED COMBINATORIAL LOOP
     // ========================================================================
     for (size_t icombi = 0; icombi < Ncombis; ++icombi) {
       
+      // Initialize standard kinematics to InvalidEntry once per combination 
+      std::fill(_bufferPx.begin(), _bufferPx.end(), invalid_val);
+      std::fill(_bufferPy.begin(), _bufferPy.end(), invalid_val);
+      std::fill(_bufferPz.begin(), _bufferPz.end(), invalid_val);
+      std::fill(_bufferM.begin(),  _bufferM.end(),  invalid_val);
+      std::fill(_bufferE.begin(),  _bufferE.end(),  invalid_val);
+
+      // Replicate original AuxCache zero-initialization on creation
+      for (auto& vec : _cachePreD) std::fill(vec.begin(), vec.end(), 0.0);
+      for (auto& vec : _cachePreI) std::fill(vec.begin(), vec.end(), 0);
+      for (auto& vec : _cachePostD) std::fill(vec.begin(), vec.end(), 0.0);
+      for (auto& vec : _cachePostI) std::fill(vec.begin(), vec.end(), 0);
+
+      // 1. Core Kinematics & Source Index Extraction
       for (size_t ip = 0; ip < Nparticles0; ++ip) {
-        size_t iparti = _creator.GetReactionIndex(ip);                
+        
+        // Use fast O(1) cache instead of redundant map lookups
+        size_t iparti = _ipartiCache[ip];                
         const int og_idx = indices[ip][icombi];     
+        
+        // Save source index for cache-friendly aux processing
+        _ogIndicesCache[ip] = og_idx;
 
         _bufferPx[iparti] = px[og_idx];
         _bufferPy[iparti] = py[og_idx];
@@ -427,27 +491,44 @@ namespace rad {
         _bufferM[iparti]  = m[og_idx];
 
         // Important: Only for REAL input particles
-        auto this_e = sqrt(px[og_idx]*px[og_idx] + py[og_idx]*py[og_idx] + pz[og_idx]*pz[og_idx] + m[og_idx]*m[og_idx]);
-        _bufferE[iparti]  = this_e;
-                
-        for(size_t v=0; v<aux_pre_d.size(); ++v) _cache_pre_d[v][iparti] = aux_pre_d[v][og_idx];
-        for(size_t v=0; v<aux_pre_i.size(); ++v) _cache_pre_i[v][iparti] = aux_pre_i[v][og_idx];
+        // i.e. M2>0 and relatavistic condition:
+        // E2 = p2 + m2 HOLDS!
+        // O(1) lookup: Fetch pre-calculated energy instead of doing scalar sqrt()
+        _bufferE[iparti]  = _baseE[og_idx];
       }
 
-      _preModifier.Apply(_bufferPx, _bufferPy, _bufferPz, _bufferE, _cache_pre_d, _cache_pre_i);
+      // 2. Cache-Friendly Auxiliary Processing
+      // Iterating arrays (v) first, then tracks (ip), preserves memory contiguity
+      for(size_t v=0; v<aux_pre_d.size(); ++v) {
+          for(size_t ip=0; ip<Nparticles0; ++ip) {
+              _cachePreD[v][_ipartiCache[ip]] = aux_pre_d[v][_ogIndicesCache[ip]];
+          }
+      }
+      for(size_t v=0; v<aux_pre_i.size(); ++v) {
+          for(size_t ip=0; ip<Nparticles0; ++ip) {
+              _cachePreI[v][_ipartiCache[ip]] = aux_pre_i[v][_ogIndicesCache[ip]];
+          }
+      }
+
+      _preModifier.Apply(_bufferPx, _bufferPy, _bufferPz, _bufferE, _cachePreD, _cachePreI);
       
       _creator.ApplyCreation(_bufferPx, _bufferPy, _bufferPz, _bufferE);
       
-      _postModifier.Apply(_bufferPx, _bufferPy, _bufferPz, _bufferE, _cache_post_d, _cache_post_i);
+      _postModifier.Apply(_bufferPx, _bufferPy, _bufferPz, _bufferE, _cachePostD, _cachePostI);
  
       result[icombi][OrderX()] = _bufferPx;
       result[icombi][OrderY()] = _bufferPy;
       result[icombi][OrderZ()] = _bufferPz;
       result[icombi][OrderE()] = _bufferE;
     }
-
+    // auto particle_names = _creator.GetParticleNames();
+    // for(const auto& pname:particle_names){
+    //   cout<<" "<<pname<<" "<<_creator.GetReactionIndex(pname);
+    // }
+    // cout<<endl;
+    // cout<<"KinematicPRoessor "<<endl<<result<<endl;
     return result;
-  } 
+  }
 
  // --- Snapshot Support ---
   inline void KinematicsProcessor::DefineNewComponentVecs() {

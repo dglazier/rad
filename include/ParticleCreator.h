@@ -236,6 +236,7 @@ namespace rad {
       std::map<int, ROOT::RVec<std::string>> _explicit_groups; 
 
       ParticleNames_t _p_names;
+      Indices_t _p_indices; // Cached integer handles for created particles to avoid string hashing
       ROOT::RVec<ParticleCreatorFunc_t> _p_creators;
       ROOT::RVec<ParticleNames_t> _p_required;
       ROOT::RVec<StructuredNames_t> _p_stru_depends;
@@ -434,7 +435,9 @@ namespace rad {
     }
   
     inline void ParticleCreator::ResolveDependencies(){
+        _p_indices.clear(); // Initialize cache
         for (size_t i = 0; i < GetNCreated(); ++i) {
+          _p_indices.push_back(GetIndexSafe(_p_names[i])); // Cache the integer handle once
           RVecIndices vec_indices;
           for(const auto& type_index : _p_stru_depends[i]) {
             Indices_t indices;
@@ -458,7 +461,8 @@ namespace rad {
                         ROOT::RVecD& pz, ROOT::RVecD& e) const 
     {
        for (size_t i = 0; i < GetNCreated(); ++i) {
-         _p_creators[i](GetIndexSafe(_p_names[i]), _p_dep_indices[i], px, py, pz, e);
+         // O(1) integer lookup entirely replaces the string hashing inside the hot loop!
+         _p_creators[i](_p_indices[i], _p_dep_indices[i], px, py, pz, e);
       }
     }
 } // end rad
