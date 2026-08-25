@@ -243,7 +243,20 @@ namespace rad {
         std::string compSuffix;
     };
     ROOT::RVec<PassThroughDef> _passThroughs; // Stores deferred passthrough requests
+    // =========================================================================
+    // Thread-Local Pre-allocated Buffers
+    // Marked mutable to allow in-place updates within the const operator()
+    // =========================================================================
+    mutable RVecResultType _bufferPx;
+    mutable RVecResultType _bufferPy;
+    mutable RVecResultType _bufferPz;
+    mutable RVecResultType _bufferM;
+    mutable RVecResultType _bufferE;
     
+    mutable AuxCacheD _cache_pre_d;
+    mutable AuxCacheI _cache_pre_i;
+    mutable AuxCacheD _cache_post_d;
+    mutable AuxCacheI _cache_post_i;
   };
 
   // =================================================================================
@@ -360,13 +373,14 @@ namespace rad {
   }
 
   // --- Core Operator ---
+// --- Core Operator ---
   template<typename Tp, typename Tm> 
   inline KinematicsProcessor::CombiOutputVec_t KinematicsProcessor::operator()(
         const RVecIndices& indices, const Tp& px, const Tp& py, const Tp& pz, const Tm& m,
         const RVecRVecD& aux_pre_d, const RVecRVecI& aux_pre_i,
         const RVecRVecD& aux_post_d, const RVecRVecI& aux_post_i) const 
   {
-    const auto Ncomponents = 4; // x, y, z, m
+    const auto Ncomponents = 4; // x, y, z, e
     const auto Nparticles0 = indices.size(); // Number of input particles
     const auto Nparticles = Nparticles0 + _creator.GetNCreated(); 
     
@@ -374,59 +388,66 @@ namespace rad {
           
     const auto Ncombis = indices[0].size(); 
     CombiOutputVec_t result(Ncombis, RVec<RVecResultType>(Ncomponents, RVecResultType(Nparticles)));
-    ROOT::RVecD temp_px(Nparticles, consts::InvalidEntry<double>());
-    ROOT::RVecD temp_py(Nparticles, consts::InvalidEntry<double>());
-    ROOT::RVecD temp_pz(Nparticles, consts::InvalidEntry<double>());
-    ROOT::RVecD temp_m(Nparticles, consts::InvalidEntry<double>());
-
-    //this needs to be calculated from masses and then pushed to the calc functions
-    ROOT::RVecD temp_e(Nparticles, consts::InvalidEntry<double>());
     
-    AuxCacheD cache_pre_d(aux_pre_d.size(), ROOT::RVecD(Nparticles));
-    AuxCacheI cache_pre_i(aux_pre_i.size(), ROOT::RVecI(Nparticles));
-    AuxCacheD cache_post_d(aux_post_d.size(), ROOT::RVecD(Nparticles));
-    AuxCacheI cache_post_i(aux_post_i.size(), ROOT::RVecI(Nparticles));
-    //cout<< "KinematicsProcessor::operator() "<<Nparticles0<<" "<<Nparticles<<" "<<Ncombis<<endl;
+    // Resize buffers once per thread/initialization
+    if (_bufferPx.size() != Nparticles) {
+        _bufferPx.resize(Nparticles);
+        _bufferPy.resize(Nparticles);
+        _bufferPz.resize(Nparticles);
+        _bufferM.resize(Nparticles);
+        _bufferE.resize(Nparticles);
+    }
+    
+    // Initialize standard kinematics to InvalidEntry once per event (replicating original behavior)
+    const ResultType_t invalid_val = consts::InvalidEntry<ResultType_t>();
+    std::fill(_bufferPx.begin(), _bufferPx.end(), invalid_val);
+    std::fill(_bufferPy.begin(), _bufferPy.end(), invalid_val);
+    std::fill(_bufferPz.begin(), _bufferPz.end(), invalid_val);
+    std::fill(_bufferM.begin(),  _bufferM.end(),  invalid_val);
+    std::fill(_bufferE.begin(),  _bufferE.end(),  invalid_val);
+
+    // Resize auxiliary caches if needed
+    if (_cache_pre_d.size() != aux_pre_d.size()) _cache_pre_d.resize(aux_pre_d.size(), ROOT::RVecD(Nparticles));
+    if (_cache_pre_i.size() != aux_pre_i.size()) _cache_pre_i.resize(aux_pre_i.size(), ROOT::RVecI(Nparticles));
+    if (_cache_post_d.size() != aux_post_d.size()) _cache_post_d.resize(aux_post_d.size(), ROOT::RVecD(Nparticles));
+    if (_cache_post_i.size() != aux_post_i.size()) _cache_post_i.resize(aux_post_i.size(), ROOT::RVecI(Nparticles));
+
+    // ========================================================================
+    // COMBINATORIAL LOOP
+    // ========================================================================
     for (size_t icombi = 0; icombi < Ncombis; ++icombi) {
       
       for (size_t ip = 0; ip < Nparticles0; ++ip) {
         size_t iparti = _creator.GetReactionIndex(ip);                
         const int og_idx = indices[ip][icombi];     
 
-        temp_px[iparti] = px[og_idx];
-        temp_py[iparti] = py[og_idx];
-        temp_pz[iparti] = pz[og_idx];
-	temp_m[iparti]  = m[og_idx];
+        _bufferPx[iparti] = px[og_idx];
+        _bufferPy[iparti] = py[og_idx];
+        _bufferPz[iparti] = pz[og_idx];
+        _bufferM[iparti]  = m[og_idx];
 
-	// Important: Only for REAL input particles
-	// i.e. M2>0 and relatavistic condition:
-	// E2 = p2 + m2 HOLDS!
-	auto this_e = sqrt(px[og_idx]*px[og_idx] + py[og_idx]*py[og_idx] + pz[og_idx]*pz[og_idx] + m[og_idx]*m[og_idx]);
-	temp_e[iparti]  = this_e;
-		
-        for(size_t v=0; v<aux_pre_d.size(); ++v) cache_pre_d[v][iparti] = aux_pre_d[v][og_idx];
-        for(size_t v=0; v<aux_pre_i.size(); ++v) cache_pre_i[v][iparti] = aux_pre_i[v][og_idx];
+        // Important: Only for REAL input particles
+        auto this_e = sqrt(px[og_idx]*px[og_idx] + py[og_idx]*py[og_idx] + pz[og_idx]*pz[og_idx] + m[og_idx]*m[og_idx]);
+        _bufferE[iparti]  = this_e;
+                
+        for(size_t v=0; v<aux_pre_d.size(); ++v) _cache_pre_d[v][iparti] = aux_pre_d[v][og_idx];
+        for(size_t v=0; v<aux_pre_i.size(); ++v) _cache_pre_i[v][iparti] = aux_pre_i[v][og_idx];
       }
 
-      _preModifier.Apply(temp_px, temp_py, temp_pz, temp_e, cache_pre_d, cache_pre_i);
+      _preModifier.Apply(_bufferPx, _bufferPy, _bufferPz, _bufferE, _cache_pre_d, _cache_pre_i);
       
-      _creator.ApplyCreation(temp_px, temp_py, temp_pz, temp_e);
+      _creator.ApplyCreation(_bufferPx, _bufferPy, _bufferPz, _bufferE);
       
-      _postModifier.Apply(temp_px, temp_py, temp_pz, temp_e, cache_post_d, cache_post_i);
+      _postModifier.Apply(_bufferPx, _bufferPy, _bufferPz, _bufferE, _cache_post_d, _cache_post_i);
  
-      result[icombi][OrderX()] = temp_px;
-      result[icombi][OrderY()] = temp_py;
-      result[icombi][OrderZ()] = temp_pz;
-      result[icombi][OrderE()] = temp_e;
+      result[icombi][OrderX()] = _bufferPx;
+      result[icombi][OrderY()] = _bufferPy;
+      result[icombi][OrderZ()] = _bufferPz;
+      result[icombi][OrderE()] = _bufferE;
     }
-    // auto particle_names = _creator.GetParticleNames();
-    // for(const auto& pname:particle_names){
-    //   cout<<" "<<pname<<" "<<_creator.GetReactionIndex(pname);
-    // }
-    // cout<<endl;
-    // cout<<"KinematicPRoessor "<<endl<<result<<endl;
+
     return result;
-  }
+  } 
 
  // --- Snapshot Support ---
   inline void KinematicsProcessor::DefineNewComponentVecs() {
