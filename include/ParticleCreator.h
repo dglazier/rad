@@ -330,7 +330,7 @@ namespace rad {
         return indices;
     }
 
-    inline void ParticleCreator::InitMap() {
+   inline void ParticleCreator::InitMap() {
       // 1. GATHER INPUT PARTICLES
       ParticleNames_t logicalInputNames;
       logicalInputNames.insert(logicalInputNames.end(), _beam_names.begin(), _beam_names.end());
@@ -363,6 +363,27 @@ namespace rad {
       _inputNames = logicalInputNames;
       _inputNames.insert(_inputNames.end(), dep_names.begin(), dep_names.end());
       util::removeExistingStrings(_inputNames, _p_names); 
+
+      // =========================================================================
+      // 1.5 VALIDATE INPUT ARRAYS (RAD Style Guide 6.1: Safe Getter Interceptor)
+      // =========================================================================
+      for (const auto& name : _inputNames) {
+          std::string masterCol = _prefix + name;
+          if (!_reaction->ColumnExists(masterCol)) {
+              std::string err = "\n\n[RAD TOPOLOGY ERROR] Missing Input Array: '" + masterCol + "'\n";
+              err += "[!] CONTEXT: The topology recipe requires particle '" + name + "' for the '" + _prefix + "' stream.\n";
+              err += "[!] CAUSE: No candidate definition was found to generate this combinatorial array.\n";
+              err += "[!] FIX: \n";
+              
+              if (_prefix.find("tru") != std::string::npos) {
+                  err += "    -> For Truth streams, ensure you defined candidates with an MC Role ID (e.g., SetParticleCandidates).\n";
+                  err += "       Do NOT use Rec-only shortcuts like SetParticleRecPID for truth analysis!\n\n";
+              } else {
+                  err += "    -> Check your candidate definitions. Did you define candidates for '" + name + "' before making combinations?\n\n";
+              }
+              throw std::runtime_error(err);
+          }
+      }
 
       // 2. COLLISION CHECK & MAP REGISTRATION
       // Ensure the key column includes the suffix to allow multiple streams (rec_loose, rec_tight)
