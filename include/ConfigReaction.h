@@ -487,8 +487,23 @@ namespace rad {
       _types.push_back(atype);
     }
     inline void ConfigReaction::ValidateType(const std::string& type) const {
-      if (std::find(_types.begin(), _types.end(), type) == _types.end()) throw std::invalid_argument("Error: Data type '" + type + "' is not registered. "+_types.size());
-    }
+      // 1. Safe Map Access: Check existence before access
+      if (TypeExists(type)==kFALSE) {
+            
+            // 2. Build the descriptive context-aware error message
+            std::string err = "\n\n[RAD CONFIG ERROR] Missing Stream Key: '" + type + "'\n";
+            err += "[!] CONTEXT: Attempted to add or configure an unregistered data stream.\n";
+            err += "[!] CAUSE: The stream map does not contain this prefix. You likely forgot to initialize it.\n";
+            err += "[!] FIX: \n";
+            err += "    -> For Truth only (tru_), you MUST call: SetupTruth();\n";
+            err += "    -> For Reconstructed (rec_), you MUST call:  SetupReconstructed();\n";
+            err += "    -> For Truth Matching (tru_ and rec_), you MUST call: SetupMatching();\n";
+            err += "    Ensure these are called BEFORE mgr.AddStream() and MakeCombinations().\n\n";
+            
+            // 3. Throw the standard runtime_error
+            throw std::runtime_error(err);
+        }
+       }
   inline bool ConfigReaction::TypeExists(const std::string& type) const {
       if (std::find(_types.begin(), _types.end(), type) == _types.end()) return false;
       return true;
