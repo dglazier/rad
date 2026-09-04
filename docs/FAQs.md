@@ -13,3 +13,17 @@ The approach depends entirely on whether your topologies share the same base det
 
 **How do I analyze multiple different reactions?**
 Similar to analyzing topologies with different base tracks, changing the physical reaction (e.g., Deeply Virtual Compton Scattering vs. Meson Production) fundamentally changes the required particle candidates and the Cartesian expansion. Therefore, each distinct physical reaction requires its own dedicated cloned `AnalysisManager` instance (`mgr.Clone("New_Reaction")`). By cloning the Analysis Manager we use same underlying dataframe thereby ensuring optimal data reading.
+
+## Truth Matching FAQ
+
+**What is truth matching?**
+Truth matching is the process of linking a reconstructed detector track back to the original Monte Carlo generated particle that created it. In the framework, this is done by assigning integer "Roles" to your particle candidates (e.g., `Role_ScatEle = 5`) which are their position or index in the mc particle record. The framework automatically traverses the underlying association arrays to map the reconstructed track to the exact MC particle that fulfills that role.
+
+**How does it relate to streams?**
+Reconstructed detector data and Monte Carlo generator data exist in completely separate streams (typically `rec_` and `tru_`). Truth matching acts as the bridge between them. When matching is enabled, the framework can safely pull variables from the truth stream and alias them into the reconstructed stream. This allows you to evaluate both sets of kinematics simultaneously within the same combinatorial matrix.
+
+**How can I calculate resolutions?**
+Resolutions (such as $\Delta P = P_{Rec} - P_{Tru}$) are calculated by subtracting the truth stream variables from the reconstructed stream variables. You can generate these automatically using the `AnalysisManager`'s cross-stream batch wrappers, such as `mgr.CrossStreamDifferences(Rec(), Truth(), {"proton"}, {"pmag", "theta"})`. The framework handles the heavy lifting of broadcasting the single truth value across your entire array of reconstructed combinations to prevent data-size crashes.
+
+**How do I know which is the correct combi?**
+Because the combinatorial engine expands a single event into multiple possible track permutations, you will often end up with a large array of candidate states. When truth matching is active, the framework automatically generates a boolean flag for each combination (typically accessed via `TruthMatchedCombi()`). By applying a selection cut requiring `isTruth == 1`, you instantly mask out the combinatorial background, leaving only the exact track combination that perfectly mirrors the Monte Carlo generated state.
