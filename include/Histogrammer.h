@@ -2,7 +2,7 @@
  * @file Histogrammer.h
  * @brief Manager for creating and persisting multidimensional kinematic histograms.
  * @details Wraps RDataFrame's histogramming capabilities to support automatic 
- *          splitting, masking, and unfolding of N-D histograms into 1D slices.
+ *         splitting, masking, and unfolding of N-D histograms into 1D/2D slices.
  */
 
 #pragma once
@@ -140,7 +140,6 @@ namespace histo {
         std::string _maskCol;
         bool _initialized = false;
         
-        // Style Guide Fix: Internal collections use std::vector, not RVec
         std::vector<SplitDef> _splits;
         std::vector<HistoDef> _defs; 
         std::vector<HistoDef2D> _defs2D; 
@@ -153,8 +152,8 @@ namespace histo {
         /** @brief Internal helper to book a 2D histogram. */
         void BookInternal2D(const HistoDef2D& def);
 
-        /** @brief Recursive helper to project N-D histogram to 1D slices. */
-        void UnfoldAndWrite(THnSparseD* hn, TDirectory* dir, std::string current_suffix = "", int axis_depth = 1);
+        /** @brief Recursive helper to project N-D histogram to slices. */
+        void UnfoldAndWrite(THnSparseD* hn, TDirectory* dir, std::string current_suffix = "", int split_idx = 0);
 
         /** @brief Safely checks if a column exists and throws a descriptive error. */
         void CheckColumn(const std::string& baseName, const std::string& fullName);
@@ -183,7 +182,6 @@ namespace histo {
     }
 
     inline void Histogrammer::CheckColumn(const std::string& baseName, const std::string& fullName) {
-        // Style Guide: Safe Getter Pattern
         if (!_rad.ColumnExists(fullName)) {
             std::string err = "\n\n[RAD Histogrammer ERROR] Missing Column: '" + fullName + "'\n";
             err += " -> Stream Prefix : '" + _proc.GetPrefix() + "'\n";
@@ -216,7 +214,6 @@ namespace histo {
         std::string fullVarName = _proc.FullName(def.varBaseName);
         CheckColumn(def.varBaseName, fullVarName);
         
-        // Style Guide: Column names as std::vector for RDF Interface
         std::vector<std::string> cols;
         cols.push_back(fullVarName);
 
@@ -317,16 +314,30 @@ namespace histo {
         file->Close();
     }
 
-    inline void Histogrammer::UnfoldAndWrite(THnSparseD* hn, TDirectory* dir, std::string current_suffix, int axis_depth) {
+    inline void Histogrammer::UnfoldAndWrite(THnSparseD* hn, TDirectory* dir, std::string current_suffix, int split_idx) {
         int ndim = hn->GetNdimensions();
         int nsplits = _splits.size();
-        bool is2D = (ndim == nsplits + 2);
+        
+        // Dynamically compute the number of physical dimensions (1D, 2D, or 3D)
+        int base_dims = ndim - nsplits;
 
-        if (axis_depth > nsplits) {
+        // Base Case: All split axes have been locked, run the final projection
+        if (split_idx >= nsplits) {
             dir->cd();
             TH1* proj = nullptr;
-            if (is2D) proj = hn->Projection(0, 1, "E");
-            else      proj = hn->Projection(0, "E");
+            
+            if (base_dims == 3) {
+                // ROOT API Inconsistency: THnBase::Projection expects (x, y, z) for 3D
+                proj = hn->Projection(0, 1, 2, "E");
+            } 
+            else if (base_dims == 2) {
+                // ROOT API Inconsistency: THnBase::Projection expects (y, x) for 2D
+                proj = hn->Projection(1, 0, "E");
+            } 
+            else {
+                // 1D Projection
+                proj = hn->Projection(0, "E");
+            }
 
             std::string full_name = std::string(hn->GetName()) + current_suffix;
             proj->SetName(full_name.c_str());
@@ -337,7 +348,10 @@ namespace histo {
             return;
         }
 
-        auto axis = hn->GetAxis(axis_depth);
+        // Target the correct axis. Physical dimensions come first (0, 1), so splits start at `base_dims`
+        int axis_to_slice = base_dims + split_idx;
+        
+        auto axis = hn->GetAxis(axis_to_slice);
         int nbins = axis->GetNbins();
         int saved_min = axis->GetFirst();
         int saved_max = axis->GetLast();
@@ -345,8 +359,10 @@ namespace histo {
         for (int i = 1; i <= nbins; ++i) {
             axis->SetRange(i, i);
             std::string suffix = current_suffix + "_" + axis->GetName() + std::to_string(i);
-            UnfoldAndWrite(hn, dir, suffix, axis_depth + 1);
+            UnfoldAndWrite(hn, dir, suffix, split_idx + 1);
         }
+        
+        // Reset range for the next parallel branch in the recursion tree
         axis->SetRange(saved_min, saved_max);
     }
 
