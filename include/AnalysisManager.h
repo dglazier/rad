@@ -226,7 +226,25 @@ namespace detail {
     void CrossStreamSum(const std::string& stream1, const std::string& stream2,
                         const std::string& varBaseName, const std::string& suffix = "",
                         const std::string& outName = "");
-                        
+
+    /**
+     * @brief Batch queues differences between variables in two streams (Stream1 - Stream2).
+     * @param tracks List of particle names (e.g., {"proton", "pip"}).
+     * @param vars List of variable suffixes (e.g., {"pmag", "theta"}).
+     */
+    void CrossStreamDifferences(const std::string& stream1, const std::string& stream2,
+                                const std::vector<std::string>& tracks, 
+                                const std::vector<std::string>& vars,
+                                const std::string& suffix = "");
+
+    /**
+     * @brief Batch queues sums of variables in two streams (Stream1 + Stream2).
+     */
+    void CrossStreamSums(const std::string& stream1, const std::string& stream2,
+                         const std::vector<std::string>& tracks, 
+                         const std::vector<std::string>& vars,
+                         const std::string& suffix = "");
+    
     /**
      * @brief Aliases a variable from one stream into another (e.g., tru_P -> rec_tru_P).
      */
@@ -585,6 +603,32 @@ namespace detail {
       _crossStreams.push_back({stream1, stream2, varBaseName, suffix, outName, true});
   }
 
+  template<typename R, typename P>
+  inline void AnalysisManager<R, P>::CrossStreamDifferences(
+      const std::string& stream1, const std::string& stream2,
+      const std::vector<std::string>& tracks, const std::vector<std::string>& vars,
+      const std::string& suffix) 
+  {
+      for (const auto& track : tracks) {
+          for (const auto& var : vars) {
+              CrossStreamDifference(stream1, stream2, track + "_" + var, suffix, "");
+          }
+      }
+  }
+
+  template<typename R, typename P>
+  inline void AnalysisManager<R, P>::CrossStreamSums(
+      const std::string& stream1, const std::string& stream2,
+      const std::vector<std::string>& tracks, const std::vector<std::string>& vars,
+      const std::string& suffix) 
+  {
+      for (const auto& track : tracks) {
+          for (const auto& var : vars) {
+              CrossStreamSum(stream1, stream2, track + "_" + var, suffix, "");
+          }
+      }
+  }
+  
   template<typename R, typename P>
   inline void AnalysisManager<R, P>::CrossStreamAlias(
       const std::string& sourceStream, const std::string& targetStream,
