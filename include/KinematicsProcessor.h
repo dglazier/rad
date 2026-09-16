@@ -243,7 +243,11 @@ namespace rad {
         std::string compSuffix;
     };
     ROOT::RVec<PassThroughDef> _passThroughs; // Stores deferred passthrough requests
-    
+
+       
+   
+
+   
   };
 
   // =================================================================================
@@ -360,13 +364,14 @@ namespace rad {
   }
 
   // --- Core Operator ---
+  // --- Core Operator ---
   template<typename Tp, typename Tm> 
   inline KinematicsProcessor::CombiOutputVec_t KinematicsProcessor::operator()(
         const RVecIndices& indices, const Tp& px, const Tp& py, const Tp& pz, const Tm& m,
         const RVecRVecD& aux_pre_d, const RVecRVecI& aux_pre_i,
         const RVecRVecD& aux_post_d, const RVecRVecI& aux_post_i) const 
   {
-    const auto Ncomponents = 4; // x, y, z, m
+    const auto Ncomponents = 4; // x, y, z, e
     const auto Nparticles0 = indices.size(); // Number of input particles
     const auto Nparticles = Nparticles0 + _creator.GetNCreated(); 
     
@@ -374,57 +379,90 @@ namespace rad {
           
     const auto Ncombis = indices[0].size(); 
     CombiOutputVec_t result(Ncombis, RVec<RVecResultType>(Ncomponents, RVecResultType(Nparticles)));
-    ROOT::RVecD temp_px(Nparticles, consts::InvalidEntry<double>());
-    ROOT::RVecD temp_py(Nparticles, consts::InvalidEntry<double>());
-    ROOT::RVecD temp_pz(Nparticles, consts::InvalidEntry<double>());
-    ROOT::RVecD temp_m(Nparticles, consts::InvalidEntry<double>());
 
-    //this needs to be calculated from masses and then pushed to the calc functions
-    ROOT::RVecD temp_e(Nparticles, consts::InvalidEntry<double>());
+    // =========================================================================
+    // THREAD-SAFE PRE-ALLOCATED BUFFERS
+    // =========================================================================
+    // thread_local guarantees isolated memory per thread to prevent race conditions
+    thread_local RVecResultType bufferPx;
+    thread_local RVecResultType bufferPy;
+    thread_local RVecResultType bufferPz;
+    thread_local RVecResultType bufferM;
+    thread_local RVecResultType bufferE;
     
-    AuxCacheD cache_pre_d(aux_pre_d.size(), ROOT::RVecD(Nparticles));
-    AuxCacheI cache_pre_i(aux_pre_i.size(), ROOT::RVecI(Nparticles));
-    AuxCacheD cache_post_d(aux_post_d.size(), ROOT::RVecD(Nparticles));
-    AuxCacheI cache_post_i(aux_post_i.size(), ROOT::RVecI(Nparticles));
-    //cout<< "KinematicsProcessor::operator() "<<Nparticles0<<" "<<Nparticles<<" "<<Ncombis<<endl;
+    thread_local AuxCacheD cachePreD;
+    thread_local AuxCacheI cachePreI;
+    thread_local AuxCacheD cachePostD;
+    thread_local AuxCacheI cachePostI;
+
+    // Resize thread-local buffers once per thread if particle count changes
+    if (bufferPx.size() != Nparticles) {
+        bufferPx.resize(Nparticles);
+        bufferPy.resize(Nparticles);
+        bufferPz.resize(Nparticles);
+        bufferM.resize(Nparticles);
+        bufferE.resize(Nparticles);
+    }
+
+    // Resize auxiliary caches if their outer size changed or inner size does not match
+    if (cachePreD.size() != aux_pre_d.size() || (!cachePreD.empty() && cachePreD[0].size() != Nparticles)) {
+        cachePreD = AuxCacheD(aux_pre_d.size(), ROOT::RVecD(Nparticles));
+    }
+    if (cachePreI.size() != aux_pre_i.size() || (!cachePreI.empty() && cachePreI[0].size() != Nparticles)) {
+        cachePreI = AuxCacheI(aux_pre_i.size(), ROOT::RVecI(Nparticles));
+    }
+    if (cachePostD.size() != aux_post_d.size() || (!cachePostD.empty() && cachePostD[0].size() != Nparticles)) {
+        cachePostD = AuxCacheD(aux_post_d.size(), ROOT::RVecD(Nparticles));
+    }
+    if (cachePostI.size() != aux_post_i.size() || (!cachePostI.empty() && cachePostI[0].size() != Nparticles)) {
+        cachePostI = AuxCacheI(aux_post_i.size(), ROOT::RVecI(Nparticles));
+    }
+
+    // Initialize standard kinematics to InvalidEntry
+    const ResultType_t invalid_val = consts::InvalidEntry<ResultType_t>();
+    std::fill(bufferPx.begin(), bufferPx.end(), invalid_val);
+    std::fill(bufferPy.begin(), bufferPy.end(), invalid_val);
+    std::fill(bufferPz.begin(), bufferPz.end(), invalid_val);
+    std::fill(bufferM.begin(),  bufferM.end(),  invalid_val);
+    std::fill(bufferE.begin(),  bufferE.end(),  invalid_val);
+
+    // Replicate original AuxCache zero-initialization
+    for (auto& vec : cachePreD) std::fill(vec.begin(), vec.end(), 0.0);
+    for (auto& vec : cachePreI) std::fill(vec.begin(), vec.end(), 0);
+    for (auto& vec : cachePostD) std::fill(vec.begin(), vec.end(), 0.0);
+    for (auto& vec : cachePostI) std::fill(vec.begin(), vec.end(), 0);
+
+    // ========================================================================
+    // COMBINATORIAL LOOP
+    // ========================================================================
     for (size_t icombi = 0; icombi < Ncombis; ++icombi) {
       
       for (size_t ip = 0; ip < Nparticles0; ++ip) {
         size_t iparti = _creator.GetReactionIndex(ip);                
         const int og_idx = indices[ip][icombi];     
 
-        temp_px[iparti] = px[og_idx];
-        temp_py[iparti] = py[og_idx];
-        temp_pz[iparti] = pz[og_idx];
-	temp_m[iparti]  = m[og_idx];
+        bufferPx[iparti] = px[og_idx];
+        bufferPy[iparti] = py[og_idx];
+        bufferPz[iparti] = pz[og_idx];
+        bufferM[iparti]  = m[og_idx];
 
-	// Important: Only for REAL input particles
-	// i.e. M2>0 and relatavistic condition:
-	// E2 = p2 + m2 HOLDS!
-	auto this_e = sqrt(px[og_idx]*px[og_idx] + py[og_idx]*py[og_idx] + pz[og_idx]*pz[og_idx] + m[og_idx]*m[og_idx]);
-	temp_e[iparti]  = this_e;
-		
-        for(size_t v=0; v<aux_pre_d.size(); ++v) cache_pre_d[v][iparti] = aux_pre_d[v][og_idx];
-        for(size_t v=0; v<aux_pre_i.size(); ++v) cache_pre_i[v][iparti] = aux_pre_i[v][og_idx];
+        auto this_e = sqrt(px[og_idx]*px[og_idx] + py[og_idx]*py[og_idx] + pz[og_idx]*pz[og_idx] + m[og_idx]*m[og_idx]);
+        bufferE[iparti]  = this_e;
+        
+        for(size_t v=0; v<aux_pre_d.size(); ++v) cachePreD[v][iparti] = aux_pre_d[v][og_idx];
+        for(size_t v=0; v<aux_pre_i.size(); ++v) cachePreI[v][iparti] = aux_pre_i[v][og_idx];
       }
 
-      _preModifier.Apply(temp_px, temp_py, temp_pz, temp_e, cache_pre_d, cache_pre_i);
-      
-      _creator.ApplyCreation(temp_px, temp_py, temp_pz, temp_e);
-      
-      _postModifier.Apply(temp_px, temp_py, temp_pz, temp_e, cache_post_d, cache_post_i);
+      _preModifier.Apply(bufferPx, bufferPy, bufferPz, bufferE, cachePreD, cachePreI);
+      _creator.ApplyCreation(bufferPx, bufferPy, bufferPz, bufferE);
+      _postModifier.Apply(bufferPx, bufferPy, bufferPz, bufferE, cachePostD, cachePostI);
  
-      result[icombi][OrderX()] = temp_px;
-      result[icombi][OrderY()] = temp_py;
-      result[icombi][OrderZ()] = temp_pz;
-      result[icombi][OrderE()] = temp_e;
+      result[icombi][OrderX()] = bufferPx;
+      result[icombi][OrderY()] = bufferPy;
+      result[icombi][OrderZ()] = bufferPz;
+      result[icombi][OrderE()] = bufferE;
     }
-    // auto particle_names = _creator.GetParticleNames();
-    // for(const auto& pname:particle_names){
-    //   cout<<" "<<pname<<" "<<_creator.GetReactionIndex(pname);
-    // }
-    // cout<<endl;
-    // cout<<"KinematicPRoessor "<<endl<<result<<endl;
+
     return result;
   }
 
