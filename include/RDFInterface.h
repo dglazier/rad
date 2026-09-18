@@ -280,14 +280,28 @@ namespace rad {
     inline RDFInterface::RDFInterface(ROOT::RDataFrame rdf) 
           : _orig_df{rdf}, _curr_df{rdf}, _base_df{rdf} 
     {
-        _orig_col_names = _orig_df.GetColumnNames();
+      _orig_col_names = _orig_df.GetColumnNames();
+      if (_orig_col_names.empty()) {
+        throw std::runtime_error(
+				 "\n\n[RAD RDFInterface ERROR] Dataframe initialized with 0 columns!\n"
+				 "[!] CAUSE: The input file does not exist, is corrupted, or contains an empty tree/bank schema.\n"
+				 "[!] FIX: Ensure the input data source points to valid data before initializing reactions.\n\n"
+				 );
+      }
     }
    inline RDFInterface::RDFInterface(ROOT::RDF::RNode rdf) 
      : _orig_df(0), _curr_df{rdf}, _base_df{rdf} 
     {
         _orig_col_names = _orig_df.GetColumnNames();
+	if (_orig_col_names.empty()) {
+	  throw std::runtime_error(
+				   "\n\n[RAD RDFInterface ERROR] Dataframe initialized with 0 columns!\n"
+				   "[!] CAUSE: The input file does not exist, is corrupted, or contains an empty tree/bank schema.\n"
+				   "[!] FIX: Ensure the input data source points to valid data before initializing reactions.\n\n"
+				   );
+	}
     }
-
+  
     inline RDFInterface::~RDFInterface() { 
       TriggerSnapshots();
     }
