@@ -8,7 +8,9 @@
  * 3. Execution phases (Initialization, Snapshotting, Running).
  * 
  * It uses a "Three-Pass Initialization" strategy to handle dependencies:
- * - Pass 1: Define Kinematics (Variables).
+ * - Pass 0: Execute Pre-Kinematics (Dependency overrides).
+ * - Pass 1: Define Kinematics (Mint baseline Variables).
+ * - Pass 1.5: Execute Post-Kinematics (Detector synthesis).
  * - Pass 2: Compile Selections (Cuts depending on Variables).
  * - Pass 3: Book Histograms (Plots depending on Variables and Cuts).
  */
@@ -77,6 +79,10 @@ namespace detail {
         std::unique_ptr<PhysicsSelection> sel;
         std::unique_ptr<histo::Histogrammer> hist;
         
+        // Action Queues
+        std::vector<std::function<void(ProcessorClass&)>> preKineRecipes;
+        std::vector<std::function<void(ProcessorClass&)>> postKineRecipes;
+
         bool hasHistograms = false; // Tracks if a histogram recipe was applied
 
         // Dumb Constructor: All string logic is handled securely by AnalysisManager
@@ -87,6 +93,22 @@ namespace detail {
               sel(std::make_unique<PhysicsSelection>(*kine)),
               hist(std::make_unique<histo::Histogrammer>(*kine, sel.get())) 
         {}
+
+        // --- Execution Helpers ---
+        /** @brief Executes all queued actions before Kinematics initialization. */
+        void ExecutePreKine()  { if(kine) { for(auto& r : preKineRecipes) r(*kine); } }
+        
+        /** @brief Executes all queued actions immediately after Kinematics initialization. */
+        void ExecutePostKine() { if(kine) { for(auto& r : postKineRecipes) r(*kine); } }
+        
+        /** @brief Safely initializes the underlying Kinematics Processor. */
+        void InitKine() { if(kine) kine->Init(); }
+        
+        /** @brief Safely initializes the underlying Physics Selection. */
+        void InitSel()  { if(sel)  sel->Init(); }
+        
+        /** @brief Safely initializes the underlying Histogrammer. */
+        void InitHist() { if(hist) hist->Init(); }
     };
 
     /**
@@ -167,10 +189,20 @@ namespace detail {
     // Configuration (Pattern Matching Enabled)
     // =====================================================================
 
+    /** @brief Queue a Pre-Kinematics recipe for ALL active streams. */
+    void ConfigurePreKinematics(KineRecipe recipe);
+    /** @brief Queue a Pre-Kinematics recipe for streams matching the pattern. */
+    void ConfigurePreKinematics(const std::string& pattern, KineRecipe recipe);
+
     /** @brief Apply a Kinematics recipe to ALL active streams. */
     void ConfigureKinematics(KineRecipe recipe);
     /** @brief Apply a Kinematics recipe to streams matching the pattern. */
     void ConfigureKinematics(const std::string& pattern, KineRecipe recipe);
+
+    /** @brief Queue a Post-Kinematics recipe for ALL active streams. */
+    void ConfigurePostKinematics(KineRecipe recipe);
+    /** @brief Queue a Post-Kinematics recipe for streams matching the pattern. */
+    void ConfigurePostKinematics(const std::string& pattern, KineRecipe recipe);
 
     /** @brief Apply a Selection recipe to ALL active streams. */
     void ConfigureSelection(SelRecipe recipe);
@@ -221,16 +253,7 @@ namespace detail {
                                const std::string& outName = "");
 
     /**
-     * @brief Queues the sum of variables in two streams (Stream1 + Stream2).
-     */
-    void CrossStreamSum(const std::string& stream1, const std::string& stream2,
-                        const std::string& varBaseName, const std::string& suffix = "",
-                        const std::string& outName = "");
-
-    /**
      * @brief Batch queues differences between variables in two streams (Stream1 - Stream2).
-     * @param tracks List of particle names (e.g., {"proton", "pip"}).
-     * @param vars List of variable suffixes (e.g., {"pmag", "theta"}).
      */
     void CrossStreamDifferences(const std::string& stream1, const std::string& stream2,
                                 const std::vector<std::string>& tracks, 
@@ -238,13 +261,20 @@ namespace detail {
                                 const std::string& suffix = "");
 
     /**
+     * @brief Queues the sum of variables in two streams (Stream1 + Stream2).
+     */
+    void CrossStreamSum(const std::string& stream1, const std::string& stream2,
+                        const std::string& varBaseName, const std::string& suffix = "",
+                        const std::string& outName = "");
+                        
+    /**
      * @brief Batch queues sums of variables in two streams (Stream1 + Stream2).
      */
     void CrossStreamSums(const std::string& stream1, const std::string& stream2,
                          const std::vector<std::string>& tracks, 
                          const std::vector<std::string>& vars,
                          const std::string& suffix = "");
-    
+
     /**
      * @brief Aliases a variable from one stream into another (e.g., tru_P -> rec_tru_P).
      */
@@ -271,6 +301,25 @@ namespace detail {
     ROOT::RDF::ColumnNames_t CollectGlobalTruth();
     std::string ConstructSnapshotFilename(const std::string& filenameBase, const std::string& streamFullName);
     std::string GenerateFallbackMask(detail::AnalysisStream<ReactionClass, ProcessorClass>& stream);
+
+    /** 
+     * @brief Generic applicator to execute an action on matching streams. 
+     * @param pattern The stream pattern to match, or empty string to match all.
+     * @param action The lambda or functor to execute on the matched stream.
+     */
+    template <typename Action>
+    void ApplyToStreams(const std::string& pattern, Action action) {
+        bool found = false;
+        for(auto& [key, stream] : _streams) {
+            if(pattern.empty() || detail::StreamMatches(stream, pattern)) {
+                action(stream);
+                found = true;
+            }
+        }
+        if(!found && !pattern.empty()) {
+            std::cerr << "AnalysisManager Warning: No streams matched pattern '" << pattern << "'" << std::endl;
+        }
+    }
   };
 
   // ===========================================================================
@@ -323,14 +372,13 @@ namespace detail {
           return;
       }
 
-      // Isolate string formatting from the constructor logic
       std::string fullName = dataSource;
       std::string outputSuffix = "";
       if(!label.empty()) {
           fullName += label;
           outputSuffix = "_" + label;
       } else {
-          if(!fullName.empty()) fullName.pop_back(); // Remove trailing underscore for default names
+          if(!fullName.empty()) fullName.pop_back(); 
       }
       
       std::string inputPrefix = dataSource;
@@ -347,60 +395,53 @@ namespace detail {
   // --- Configuration ---
 
   template <typename R, typename P>
-  inline void AnalysisManager<R,P>::ConfigureKinematics(KineRecipe recipe) {
-      for(auto& [key, stream] : _streams) { if(stream.kine) recipe(*stream.kine); }
+  inline void AnalysisManager<R,P>::ConfigurePreKinematics(KineRecipe recipe) { 
+      ApplyToStreams("", [&recipe](detail::AnalysisStream<R,P>& s){ s.preKineRecipes.push_back(recipe); }); 
   }
 
   template <typename R, typename P>
-  inline void AnalysisManager<R,P>::ConfigureKinematics(const std::string& pattern, KineRecipe recipe) {
-      bool found = false;
-      for(auto& [key, stream] : _streams) {
-          if(detail::StreamMatches(stream, pattern) && stream.kine) {
-              recipe(*stream.kine);
-              found = true;
-          }
-      }
-      if(!found) std::cerr << "AnalysisManager Warning: No streams matched pattern '" << pattern << "'" << std::endl;
+  inline void AnalysisManager<R,P>::ConfigurePreKinematics(const std::string& pattern, KineRecipe recipe) { 
+      ApplyToStreams(pattern, [&recipe](detail::AnalysisStream<R,P>& s){ s.preKineRecipes.push_back(recipe); }); 
   }
 
   template <typename R, typename P>
-  inline void AnalysisManager<R,P>::ConfigureSelection(SelRecipe recipe) {
-      for(auto& [key, stream] : _streams) { if(stream.sel) recipe(*stream.sel); }
+  inline void AnalysisManager<R,P>::ConfigureKinematics(KineRecipe recipe) { 
+      ApplyToStreams("", [&recipe](detail::AnalysisStream<R,P>& s){ if(s.kine) recipe(*s.kine); }); 
   }
 
   template <typename R, typename P>
-  inline void AnalysisManager<R,P>::ConfigureSelection(const std::string& pattern, SelRecipe recipe) {
-      bool found = false;
-      for(auto& [key, stream] : _streams) {
-          if(detail::StreamMatches(stream, pattern) && stream.sel) {
-              recipe(*stream.sel);
-              found = true;
-          }
-      }
-      if(!found) std::cerr << "AnalysisManager Warning: No streams matched pattern '" << pattern << "'" << std::endl;
+  inline void AnalysisManager<R,P>::ConfigureKinematics(const std::string& pattern, KineRecipe recipe) { 
+      ApplyToStreams(pattern, [&recipe](detail::AnalysisStream<R,P>& s){ if(s.kine) recipe(*s.kine); }); 
   }
 
   template <typename R, typename P>
-  inline void AnalysisManager<R,P>::ConfigureHistograms(HistoRecipe recipe) {
-      for(auto& [key, stream] : _streams) { 
-          if(stream.hist) {
-              recipe(*stream.hist); 
-              stream.hasHistograms = true;
-          }
-      }
+  inline void AnalysisManager<R,P>::ConfigurePostKinematics(KineRecipe recipe) { 
+      ApplyToStreams("", [&recipe](detail::AnalysisStream<R,P>& s){ s.postKineRecipes.push_back(recipe); }); 
   }
 
   template <typename R, typename P>
-  inline void AnalysisManager<R,P>::ConfigureHistograms(const std::string& pattern, HistoRecipe recipe) {
-      bool found = false;
-      for(auto& [key, stream] : _streams) {
-          if(detail::StreamMatches(stream, pattern) && stream.hist) {
-              recipe(*stream.hist);
-              stream.hasHistograms = true;
-              found = true;
-          }
-      }
-      if(!found) std::cerr << "AnalysisManager Warning: No streams matched pattern '" << pattern << "'" << std::endl;
+  inline void AnalysisManager<R,P>::ConfigurePostKinematics(const std::string& pattern, KineRecipe recipe) { 
+      ApplyToStreams(pattern, [&recipe](detail::AnalysisStream<R,P>& s){ s.postKineRecipes.push_back(recipe); }); 
+  }
+
+  template <typename R, typename P>
+  inline void AnalysisManager<R,P>::ConfigureSelection(SelRecipe recipe) { 
+      ApplyToStreams("", [&recipe](detail::AnalysisStream<R,P>& s){ if(s.sel) recipe(*s.sel); }); 
+  }
+
+  template <typename R, typename P>
+  inline void AnalysisManager<R,P>::ConfigureSelection(const std::string& pattern, SelRecipe recipe) { 
+      ApplyToStreams(pattern, [&recipe](detail::AnalysisStream<R,P>& s){ if(s.sel) recipe(*s.sel); }); 
+  }
+
+  template <typename R, typename P>
+  inline void AnalysisManager<R,P>::ConfigureHistograms(HistoRecipe recipe) { 
+      ApplyToStreams("", [&recipe](detail::AnalysisStream<R,P>& s){ if(s.hist) { recipe(*s.hist); s.hasHistograms = true; } }); 
+  }
+
+  template <typename R, typename P>
+  inline void AnalysisManager<R,P>::ConfigureHistograms(const std::string& pattern, HistoRecipe recipe) { 
+      ApplyToStreams(pattern, [&recipe](detail::AnalysisStream<R,P>& s){ if(s.hist) { recipe(*s.hist); s.hasHistograms = true; } }); 
   }
 
   // --- Execution ---
@@ -410,17 +451,23 @@ namespace detail {
       if(_initialized) return;
       if(_primaryStream.empty()) throw std::runtime_error("[AnalysisManager] No streams defined! Call AddStream().");
        
+      // PASS 0: Execute Pre-Kinematics Hooks (Forced dependencies)
+      for(auto& [key, stream] : _streams) stream.ExecutePreKine();
+
       // PASS 1: Initialize Kinematics (Create Variables)
-      for(auto& [key, stream] : _streams) stream.kine->Init();
+      for(auto& [key, stream] : _streams) stream.InitKine();
       
+      // PASS 1.5: Execute Post-Kinematics Hooks (Detector synthesis, timing calculations)
+      for(auto& [key, stream] : _streams) stream.ExecutePostKine();
+
       // PROCESS CROSS-STREAMS (After Kinematics, Before Selections/Histograms)
       ProcessCrossStreams();
         
       // PASS 2: Compile Selections (Create Masks)
-      for(auto& [key, stream] : _streams) { if(stream.sel) stream.sel->Init(); }
+      for(auto& [key, stream] : _streams) stream.InitSel();
 
       // PASS 3: Initialize Histograms (Book Actions)
-      for(auto& [key, stream] : _streams) { if(stream.hist) stream.hist->Init(); }
+      for(auto& [key, stream] : _streams) stream.InitHist();
 
       _initialized = true;
   }
@@ -493,7 +540,6 @@ namespace detail {
           auto streamCols = CollectStreamColumns(*stream.kine);
           cols.insert(cols.end(), streamCols.begin(), streamCols.end());
 
-          // Append Truth columns to Reconstruction trees
           if(stream.source.find(Rec()) == 0) {
               cols.insert(cols.end(), globalTruthCols.begin(), globalTruthCols.end());
           }
@@ -596,14 +642,6 @@ namespace detail {
   }
 
   template<typename R, typename P>
-  inline void AnalysisManager<R, P>::CrossStreamSum(
-      const std::string& stream1, const std::string& stream2,
-      const std::string& varBaseName, const std::string& suffix, const std::string& outName) 
-  {
-      _crossStreams.push_back({stream1, stream2, varBaseName, suffix, outName, true});
-  }
-
-  template<typename R, typename P>
   inline void AnalysisManager<R, P>::CrossStreamDifferences(
       const std::string& stream1, const std::string& stream2,
       const std::vector<std::string>& tracks, const std::vector<std::string>& vars,
@@ -614,6 +652,14 @@ namespace detail {
               CrossStreamDifference(stream1, stream2, track + "_" + var, suffix, "");
           }
       }
+  }
+
+  template<typename R, typename P>
+  inline void AnalysisManager<R, P>::CrossStreamSum(
+      const std::string& stream1, const std::string& stream2,
+      const std::string& varBaseName, const std::string& suffix, const std::string& outName) 
+  {
+      _crossStreams.push_back({stream1, stream2, varBaseName, suffix, outName, true});
   }
 
   template<typename R, typename P>
@@ -628,7 +674,7 @@ namespace detail {
           }
       }
   }
-  
+
   template<typename R, typename P>
   inline void AnalysisManager<R, P>::CrossStreamAlias(
       const std::string& sourceStream, const std::string& targetStream,
@@ -653,7 +699,6 @@ namespace detail {
           if (!_reaction.ColumnExists(col1)) throw std::runtime_error("\n[RAD CROSS-STREAM ERROR] Missing Stream 1 Column: " + col1 + "\n");
           if (!_reaction.ColumnExists(col2)) throw std::runtime_error("\n[RAD CROSS-STREAM ERROR] Missing Stream 2 Column: " + col2 + "\n");
 
-          // ROOT::RVecD cast prevents temporary Expression Templates from causing reallocation segfaults during event loop
           std::string formula = col2 + ".size() > 0 ? ROOT::RVecD(" + col1 + mathOp + col2 + "[0]) : ROOT::RVecD(" + col1 + " * 0.0 - 9999.0)";
           _reaction.Define(out, formula);
       }
@@ -667,7 +712,6 @@ namespace detail {
           if (!_reaction.ColumnExists(sourceCol)) throw std::runtime_error("\n[RAD ALIAS ERROR] Source column missing: " + sourceCol + "\n");
           if (!_reaction.ColumnExists(refCol)) throw std::runtime_error("\n[RAD ALIAS ERROR] Target reference column missing: " + refCol + "\n");
 
-          // ROOT::RVecD cast prevents temporary Expression Templates from causing reallocation segfaults during event loop
           std::string formula = sourceCol + ".size() > 0 ? ROOT::RVecD(" + refCol + " * 0.0 + " + sourceCol + "[0]) : ROOT::RVecD(" + refCol + " * 0.0 - 9999.0)";
           _reaction.Define(targetCol, formula);
       }

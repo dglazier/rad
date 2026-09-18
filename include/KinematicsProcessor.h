@@ -503,41 +503,13 @@ namespace rad {
                  );
            }
        }
+       //register momentum magnitude for all particle as this can be useful
+       ParticleP(particle_names);
+
   }
  
   // --- Definitions ---
   
-  /**
-     * @brief Generates a stream-specific Truth Match vector.
-     * @details 
-     * If truth matching is set up, this creates a boolean vector (e.g. "rec_isTruth_loose")
-     * corresponding exactly to the combinations in this stream ("rec_Indices_loose").
-     */
-    // void DefineTruthFlag() {
-    //     // 1. Only generate for Reconstruction streams (skip "tru_" streams)
-    //     // Heuristic: Check if prefix starts with "rec"
-    //   if(_prefix.find(Rec()) == std::string::npos) return;
-
-    //     // 2. Construct names
-    //     std::string baseName = consts::TruthMatchedCombi(); // "isTruth"
-    //     std::string outputCol = FullName(baseName);         // "rec_isTruth_loose"
-    //     std::string indicesCol = Creator().GetMapName();    // "rec_Indices_loose"
-
-    //     // 3. Define the column via the Reaction's Truth Registry
-    //     // This function (in ConfigReaction) handles looking up the Truth IDs
-    //     // and matching them against the provided indicesCol.
-    //     // It returns true if successful (i.e., truth matching is configured).
-        
-    //     bool success = _reaction->DefineTruthMatch(outputCol, indicesCol);
-        
-    //     if(success) {
-    //         // 4. Register for Snapshotting
-    //         // AnalysisManager will see "isTruth", convert it to "rec_isTruth_loose",
-    //         // and save it to the tree.
-    //         _registered_vars.push_back(baseName);
-    //     }
-    // }
-
   inline void KinematicsProcessor::PassThrough(const std::string& pName, const std::string& rawArray, const std::string& compSuffix) {
     _passThroughs.push_back({pName, rawArray, compSuffix});
   }

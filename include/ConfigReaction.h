@@ -587,8 +587,12 @@ namespace rad {
     }
     inline void ConfigReaction::RegisterParticleName(const std::string& name) {
         if(std::find(_particleNames.begin(), _particleNames.end(), name) == _particleNames.end()) {
-           AddParticleName(name); AddFinalParticleName(name);
-      }
+           AddParticleName(name);
+	   // Beam particles are initial-state entities and should not be treated as final-state tracks
+	   if (name != consts::BeamEle() && name != consts::BeamIon()) {
+	     AddFinalParticleName(name);
+	   }
+     }
     }
     inline void ConfigReaction::Snapshot(const std::string& filename) {
         RDFstep final_df = CurrFrame();
