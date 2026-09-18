@@ -17,6 +17,7 @@
 #include "StringUtilities.h"
 #include "TruthMatchRegistry.h" 
 #include "Random.h"
+#include "Indicing.h"
 #include <algorithm> 
 #include <set>
 
@@ -35,16 +36,6 @@ namespace rad {
       // =======================================================================
       // Truth Matching Interface
       // =======================================================================
-      
-      /** * @brief Define a candidate and immediately register its Truth Role. */
-      void SetParticleTruthMatch(const std::string& name, int truthRole, const std::string& type, const Indices_t idx);
-
-      template<typename Lambda>
-      void SetParticleTruthMatch(const std::string& name, int truthRole, const std::string& type, Lambda&& func, const ROOT::RDF::ColumnNames_t& columns) {
-          SetParticleCandidates(name, type, std::forward<Lambda>(func), columns);
-          _truthMatchRegistry.AddParticleMatch(name, truthRole);
-          SetParticleIndex(name, consts::data_type::Truth(), truthRole);
-      }
 
       void AddTruthMatch(const std::string& name, int truthRole) {
           _truthMatchRegistry.AddParticleMatch(name, truthRole);
@@ -61,8 +52,8 @@ namespace rad {
 
       /** @brief Get the standard name for the matching column (e.g. "rec_match_id"). */
       virtual std::string GetMatchName(const std::string& type) const {
-        // Standard convention: prefix + "match_id"
-        return type + "match_id";
+        // Standard convention: prefix + consts::NameMatchId()
+        return type + consts::NameMatchId();
       }
 
       /** @brief Define Signal Combination flag using standard naming. 
@@ -77,13 +68,20 @@ namespace rad {
 	  // define a default "Always True" signal flag so snapshots don't break.
 	  std::cout<<"[ConfigReaction] DefineTrueMatchCombi " <<col<<" does not exist all set TruthMatchedCombi()=1 for all."<< std::endl;
 	  Define(consts::TruthMatchedCombi(), "1"); 
-        }
+	  
+	}
       }
+      
+      /** * @brief Defines the true PID column based on MC matching.
+       * @details Safely verifies that the required matching and truth columns exist.
+       * @param prefix Data prefix (e.g. "rec_").
+       */
+      void DefineTruePID(const std::string& prefix);
       
       // --- Symmetry Interface ---
       template<typename... Args>
       void SetSymmetryParticles(Args... args) {
-	ROOT::RVec<std::string> group = {args...};
+	      ROOT::RVec<std::string> group = {args...};
           if(group.size() > 1) _symmetryGroups.push_back(group);
       }
 
@@ -93,35 +91,106 @@ namespace rad {
       ROOT::RVec<std::string> GetTypes() const;
       bool TypeExists(const std::string& type) const;
       
-      // --- Candidate Definition ---
-      void SetParticleCandidatesExpr(const std::string& name, const std::string& type, const std::string& expression);
 
+      // =======================================================================
+      // PARTICLE DEFINITION API
+      // =======================================================================
+      
+      /**
+       * @brief Define candidate particles using high-performance, compiled C++ Lambda functions.
+       * @details This is the recommended, type-safe method for complex topological selections in production code.
+       */
+      // 1. Lambda-Based Definition (High Performance)
+
+      // Explicit stream type, no truth matching registration.
       template<typename Lambda>
       void SetParticleCandidates(const std::string& name, const std::string& type, Lambda&& func, const ROOT::RDF::ColumnNames_t& columns);
-
-       void SetParticleIndex(const std::string& name, const std::string& type, const int idx);
-      void SetParticleCandidates(const std::string& name, const std::string& type, const Indices_t idx);
-
-      // Overloads
-      void SetParticleCandidatesExpr(const std::string& name, const std::string& expression);
       
+      // Explicit stream type, WITH truth matching registration.
+      template<typename Lambda>
+      void SetParticleCandidates(const std::string& name, int truthRole, const std::string& type, Lambda&& func, const ROOT::RDF::ColumnNames_t& columns);
+      
+      // Default stream type (e.g. "rec_"), no truth matching registration.
       template<typename Lambda>
       void SetParticleCandidates(const std::string& name, Lambda&& func, const ROOT::RDF::ColumnNames_t& columns);
       
-      void SetParticleIndex(const std::string& name, const int idx);
-      void SetParticleCandidates(const std::string& name, const Indices_t idx);
-
-      void SetParticleCandidates(const std::string& name, int truthRole,  const Indices_t idx){//use default type and mcmatch
-	SetParticleTruthMatch(name, truthRole, GetDefaultType(), idx);
-      }
-      
+      // Default stream type (e.g. "rec_"), WITH truth matching registration.
       template<typename Lambda>
-      void SetParticleCandidates(const std::string& name, int truthRole, Lambda&& func, const ROOT::RDF::ColumnNames_t& columns) {//use default type and mcmatch
-	SetParticleTruthMatch(name,truthRole, GetDefaultType(),func, columns);
-      }
+      void SetParticleCandidates(const std::string& name, int truthRole, Lambda&& func, const ROOT::RDF::ColumnNames_t& columns);
+
+
+      /**
+       * @brief Define candidate particles using string-based JIT compilation.
+       * @details Best for rapid prototyping. Automatically wraps boolean expressions in ROOT::VecOps::Nonzero() to ensure valid index returns.
+       */
+      // 2. String Expression Definition (JIT Compiled)
       
+      // Explicit stream type, no truth matching registration.
+      void SetParticleCandidatesExpr(const std::string& name, const std::string& type, const std::string& expression);
       
-      // --- Grouping Logic ---
+      // Explicit stream type, WITH truth matching registration.
+      void SetParticleCandidatesExpr(const std::string& name, int truthRole, const std::string& type, const std::string& expression);
+      
+      // Default stream type (e.g. "rec_"), no truth matching registration.
+      void SetParticleCandidatesExpr(const std::string& name, const std::string& expression);
+      
+      // Default stream type (e.g. "rec_"), WITH truth matching registration.
+      void SetParticleCandidatesExpr(const std::string& name, int truthRole, const std::string& expression);
+
+
+      /**
+       * @brief Define candidate particles using pre-calculated or fixed index arrays.
+       * @details Useful when track selections are already computed or when explicitly forwarding exact arrays.
+       */
+      // 3. Pre-Calculated / Fixed Indices Definition
+      
+      // Explicit stream type, no truth matching registration.
+      void SetParticleCandidates(const std::string& name, const std::string& type, const Indices_t& idx);
+      
+      // Explicit stream type, WITH truth matching registration.
+      void SetParticleCandidates(const std::string& name, int truthRole, const std::string& type, const Indices_t& idx);
+      
+      // Default stream type (e.g. "rec_"), no truth matching registration.
+      void SetParticleCandidates(const std::string& name, const Indices_t& idx);
+      
+      // Default stream type (e.g. "rec_"), WITH truth matching registration.
+      void SetParticleCandidates(const std::string& name, int truthRole, const Indices_t& idx);
+
+
+      /**
+       * @brief Convenience helpers for the most common, simple particle definitions.
+       * @details Syntactic sugar for setting a single static index (e.g. beam electron) or a standard PDG filter.
+       */
+      // 4. Convenience Definitions 
+      
+      // Single absolute index on an explicit stream (no truth match).
+      void SetParticleIndex(const std::string& name, const std::string& type, int idx);
+      
+      // Single absolute index on an explicit stream (WITH truth match).
+      void SetParticleIndex(const std::string& name, int truthRole, const std::string& type, int idx);
+      
+      // Single absolute index on the default stream (no truth match).
+      void SetParticleIndex(const std::string& name, int idx);
+      
+      // Single absolute index on the default stream (WITH truth match).
+      void SetParticleIndex(const std::string& name, int truthRole, int idx);
+
+      // Simple PDG selection on an explicit stream (no truth match).
+      void SetParticlePID(const std::string& name, const std::string& type, int pid);
+      
+      // Simple PDG selection on an explicit stream (WITH truth match).
+      void SetParticlePID(const std::string& name, int truthRole, const std::string& type, int pid);
+      
+      // Simple PDG selection on the default stream (no truth match).
+      void SetParticlePID(const std::string& name, int pid);
+      
+      // Simple PDG selection on the default stream (WITH truth match).
+      void SetParticlePID(const std::string& name, int truthRole, int pid);
+
+
+      // =======================================================================
+      // Grouping Logic
+      // =======================================================================
       void SetGroupParticles(const std::string& name, const std::string& type, const ROOT::RDF::ColumnNames_t& particles);
       void SetMesonParticles(const std::string& type, const ROOT::RDF::ColumnNames_t& particles);
       void SetBaryonParticles(const std::string& type, const ROOT::RDF::ColumnNames_t& particles);
@@ -201,13 +270,7 @@ namespace rad {
     inline ConfigReaction::ConfigReaction(ROOT::RDataFrame rdf) : RDFInterface(rdf) {}
     inline ConfigReaction::ConfigReaction(ROOT::RDF::RNode rdf) : RDFInterface(rdf) {}
 
-    // --- Candidate Definition & Truth ---
-
-    inline void ConfigReaction::SetParticleTruthMatch(const std::string& name, int truthRole, const std::string& type, const Indices_t idx) {
-        SetParticleCandidates(name, type, idx); 
-        _truthMatchRegistry.AddParticleMatch(name, truthRole);
-        SetParticleIndex(name, consts::data_type::Truth(), truthRole);
-    }
+    // --- Truth Logic Implementation ---
 
     // Lambda now iterates over the RVecI (pIndices) which represents the combinations
     inline void ConfigReaction::DefineTrueMatchedCombi(const std::string& matchIdCol, const std::string& type) {
@@ -217,48 +280,73 @@ namespace rad {
             const std::string& name = match.first; 
             int role = match.second;
             
-            std::string flagName = name + "_is_true";// + DoNotWriteTag();
+	        std::string flagName = name + "_is_true";// + DoNotWriteTag();
             std::string colName = type + name; // e.g. "rec_ele"
             
             // Check: pIndices[i] is the candidate index for the i-th combination.
             // matchIds is the array of truth IDs for ALL tracks.
             Define(flagName, 
                 [role](const Indices_t& pIndices, const Indices_t& matchIds) {
-		  using namespace ROOT::VecOps;
+		          using namespace ROOT::VecOps;
 
-		  // Create a mask of valid indices (filters out -1)
-		  auto valid = pIndices >= 0;
-		  auto currentMatches = Take(matchIds, pIndices);
+		          // Create a mask of valid indices (filters out -1)
+		          auto valid = pIndices >= 0;
+		          auto currentMatches = Take(matchIds, pIndices);
 		  
-		  // Logic: (Is match?) AND (Was index valid?)
-		  //    RVec logic operations automatically return vectors of 1s and 0s.
-
-		  return (currentMatches == role) && valid;
-    
-              
+		          // Logic: (Is match?) AND (Was index valid?)
+		          // RVec logic operations automatically return vectors of 1s and 0s.
+		          return (currentMatches == role) && valid;
                 }, 
                 {colName, matchIdCol});
-
+	    
             if (!logic.empty()) logic += " && ";
             logic += flagName;
         }
 
         if(logic.empty()) logic = "1";
-	Define(consts::TruthMatchedCombi(), logic);
+	    Define(consts::TruthMatchedCombi(), logic);
+	    Define(type + consts::TruthMatchedCombi(), consts::TruthMatchedCombi());
     }
 
-    // ... [Rest of implementation remains unchanged] ...
-    inline void ConfigReaction::SetParticleCandidatesExpr(const std::string& name, const std::string& type, const std::string& expression) {
-      ValidateType(type);
-      if (_typeCandidateExpressions[type].count(name) || _typeLambdaDependencies[type].count(name)) {
-        throw std::invalid_argument("Candidate '" + name + "' already defined for type '" + type + "'.");
-      }
-      _typeCandidateExpressions[type][name] = expression;
-      RegisterParticleName(name);
+    inline void ConfigReaction::DefineTruePID(const std::string& prefix) {
+        std::string match_col = prefix + consts::NameMatchId();
+        std::string truth_pid_col = consts::data_type::Truth() + consts::NamePid();
+        
+        // Define the output using standard naming from DefineNames.h (if added), 
+        // or just hardcode "true_pid" if you prefer.
+        std::string out_col = prefix + "true_pid"; 
+
+        // 1. Strict Robustness Checks
+        if (!ColumnExists(match_col)) {
+            throw std::runtime_error("[DefineTruePID] ERROR: Required matching column '" + match_col + "' does not exist. Did you forget to call SetupMatching()?");
+        }
+        if (!ColumnExists(truth_pid_col)) {
+            throw std::runtime_error("[DefineTruePID] ERROR: Required truth PID column '" + truth_pid_col + "' does not exist. Verify SetupTruth() execution.");
+        }
+
+        // 2. Define the Column safely
+        Define(out_col, 
+            [](const rad::Indices_t& match_id, const rad::Indices_t& tru_pdg) {
+                rad::Indices_t tpid(match_id.size(), 0);
+                for(size_t i = 0; i < match_id.size(); ++i) {
+                    // Safe access: ensure match_id is valid and within bounds of the truth array
+                    if(match_id[i] >= 0 && match_id[i] < (int)tru_pdg.size()) {
+                        tpid[i] = tru_pdg[match_id[i]];
+                    }
+                }
+                return tpid;
+            }, 
+            {match_col, truth_pid_col}
+        );
     }
+
+
+    // =======================================================================
+    // 1. LAMBDA IMPLEMENTATIONS
+    // =======================================================================
+    
     template<typename Lambda>
     inline void ConfigReaction::SetParticleCandidates(const std::string& name, const std::string& type, Lambda&& func, const ROOT::RDF::ColumnNames_t& columns) {
-      
       ValidateType(type);
       if (_typeCandidateExpressions[type].count(name) || _typeLambdaDependencies[type].count(name)) {
         throw std::invalid_argument("Candidate '" + name + "' already defined for type '" + type + "'.");
@@ -268,27 +356,116 @@ namespace rad {
       _typeLambdaDependencies[type][name] = columns; 
       RegisterParticleName(name);
     }
-    inline void ConfigReaction::SetParticleIndex(const std::string& name, const std::string& type, const int idx) {
-       SetParticleCandidates(name, type, [idx](){ return RVecI{idx}; }, {});
+
+    template<typename Lambda>
+    inline void ConfigReaction::SetParticleCandidates(const std::string& name, int truthRole, const std::string& type, Lambda&& func, const ROOT::RDF::ColumnNames_t& columns) {
+        SetParticleCandidates(name, type, std::forward<Lambda>(func), columns);
+        _truthMatchRegistry.AddParticleMatch(name, truthRole);
+        SetParticleIndex(name, consts::data_type::Truth(), truthRole);
     }
-    inline void ConfigReaction::SetParticleCandidates(const std::string& name, const std::string& type, const Indices_t idx) {
-       SetParticleCandidates(name, type, [idx](){ return idx; }, {});
-    }
-    inline void ConfigReaction::SetParticleCandidatesExpr(const std::string& name, const std::string& expression) {
-        SetParticleCandidatesExpr(name, GetDefaultType(), expression);
-    }
+
     template<typename Lambda>
     inline void ConfigReaction::SetParticleCandidates(const std::string& name, Lambda&& func, const ROOT::RDF::ColumnNames_t& columns) {
         SetParticleCandidates(name, GetDefaultType(), std::forward<Lambda>(func), columns);
     }
-    inline void ConfigReaction::SetParticleIndex(const std::string& name, const int idx) {
-        SetParticleIndex(name, GetDefaultType(), idx);
+
+    template<typename Lambda>
+    inline void ConfigReaction::SetParticleCandidates(const std::string& name, int truthRole, Lambda&& func, const ROOT::RDF::ColumnNames_t& columns) {
+        SetParticleCandidates(name, truthRole, GetDefaultType(), std::forward<Lambda>(func), columns);
     }
-    inline void ConfigReaction::SetParticleCandidates(const std::string& name, const Indices_t idx) {
+
+    // =======================================================================
+    // 2. STRING EXPRESSION IMPLEMENTATIONS
+    // =======================================================================
+    
+    inline void ConfigReaction::SetParticleCandidatesExpr(const std::string& name, const std::string& type, const std::string& expression) {
+      ValidateType(type);
+      if (_typeCandidateExpressions[type].count(name) || _typeLambdaDependencies[type].count(name)) {
+        throw std::invalid_argument("Candidate '" + name + "' already defined for type '" + type + "'.");
+      }
+      std::string safe_expr = expression;
+      if (safe_expr.find("Nonzero") == std::string::npos) { safe_expr = "ROOT::VecOps::Nonzero(" + safe_expr + ")"; }
+      _typeCandidateExpressions[type][name] = safe_expr;
+      RegisterParticleName(name);
+    }
+    
+    inline void ConfigReaction::SetParticleCandidatesExpr(const std::string& name, int truthRole, const std::string& type, const std::string& expression) {
+        SetParticleCandidatesExpr(name, type, expression);
+        _truthMatchRegistry.AddParticleMatch(name, truthRole);
+        SetParticleIndex(name, consts::data_type::Truth(), truthRole);
+    }
+    
+    inline void ConfigReaction::SetParticleCandidatesExpr(const std::string& name, const std::string& expression) {
+        SetParticleCandidatesExpr(name, GetDefaultType(), expression);
+    }
+    
+    inline void ConfigReaction::SetParticleCandidatesExpr(const std::string& name, int truthRole, const std::string& expression) {
+        SetParticleCandidatesExpr(name, truthRole, GetDefaultType(), expression);
+    }
+
+    // =======================================================================
+    // 3. FIXED INDICES IMPLEMENTATIONS
+    // =======================================================================
+    
+    inline void ConfigReaction::SetParticleCandidates(const std::string& name, const std::string& type, const Indices_t& idx) {
+       SetParticleCandidates(name, type, [idx](){ return idx; }, {});
+    }
+    
+    inline void ConfigReaction::SetParticleCandidates(const std::string& name, int truthRole, const std::string& type, const Indices_t& idx) {
+        SetParticleCandidates(name, type, idx);
+        _truthMatchRegistry.AddParticleMatch(name, truthRole);
+        SetParticleIndex(name, consts::data_type::Truth(), truthRole);
+    }
+    
+    inline void ConfigReaction::SetParticleCandidates(const std::string& name, const Indices_t& idx) {
         SetParticleCandidates(name, GetDefaultType(), idx);
     }
     
+    inline void ConfigReaction::SetParticleCandidates(const std::string& name, int truthRole, const Indices_t& idx) {
+        SetParticleCandidates(name, truthRole, GetDefaultType(), idx);
+    }
+
+    // =======================================================================
+    // 4. CONVENIENCE IMPLEMENTATIONS
+    // =======================================================================
+    
+    inline void ConfigReaction::SetParticleIndex(const std::string& name, const std::string& type, int idx) {
+        SetParticleCandidates(name, type, Indices_t{idx});
+    }
+    
+    inline void ConfigReaction::SetParticleIndex(const std::string& name, int truthRole, const std::string& type, int idx) {
+        SetParticleCandidates(name, truthRole, type, Indices_t{idx});
+    }
+    
+    inline void ConfigReaction::SetParticleIndex(const std::string& name, int idx) {
+        SetParticleIndex(name, GetDefaultType(), idx);
+    }
+    
+    inline void ConfigReaction::SetParticleIndex(const std::string& name, int truthRole, int idx) {
+        SetParticleIndex(name, truthRole, GetDefaultType(), idx);
+    }
+
+    inline void ConfigReaction::SetParticlePID(const std::string& name, const std::string& type, int pid) {
+        SetParticleCandidates(name, type, rad::index::FilterIndices(pid), {type + "pid"});
+    }
+    
+    inline void ConfigReaction::SetParticlePID(const std::string& name, int truthRole, const std::string& type, int pid) {
+        SetParticleCandidates(name, truthRole, type, rad::index::FilterIndices(pid), {type + "pid"});
+    }
+    
+    inline void ConfigReaction::SetParticlePID(const std::string& name, int pid) {
+        SetParticlePID(name, GetDefaultType(), pid);
+    }
+    
+    inline void ConfigReaction::SetParticlePID(const std::string& name, int truthRole, int pid) {
+        SetParticlePID(name, truthRole, GetDefaultType(), pid);
+    }
+
+
+    // =======================================================================
     // --- Combinatorial Engine ---
+    // =======================================================================
+    
     inline void ConfigReaction::MakeCombinations() {
       if (_types.empty()) throw std::runtime_error("MakeCombinations: No types registered via AddType.");
       _isCombinatorialMode = true;
@@ -321,7 +498,7 @@ namespace rad {
           if(colList.size() >= 2 && colList.front() == '{' && colList.back() == '}') colList = colList.substr(1, colList.size() - 2);
 
           if (_symmetryGroups.empty()) {
-              Define(comboColName, Form("rad::combinatorics::GenerateAllCombinations(%s)", colList.c_str()));
+              Define(comboColName, Form("rad::combinatorics::GenerateAllCombinations({%s})", colList.c_str()));
           } else {
               ROOT::RVec<std::string> groupStrs;
               for(const auto& group : _symmetryGroups) {
@@ -337,17 +514,17 @@ namespace rad {
           }
 
           for(size_t ip=0; ip < candidateCols.size(); ++ip) {
-	    Redefine(candidateCols[ip], [ip](const RVecIndices& part_combos){ return part_combos[ip]; }, {comboColName});
-	    //Could apply filter here that need each particle to have >0 candidates, or could do it earlier
-	    Filter([ip](const RVecIndices& part_combos){ return (part_combos[ip].empty()==false); }, {comboColName}, candidateCols[ip]+"_filt");	    
+	        Redefine(candidateCols[ip], [ip](const RVecIndices& part_combos){ return part_combos[ip]; }, {comboColName});
+	        //Could apply filter here that need each particle to have >0 candidates, or could do it earlier
+	        Filter([ip](const RVecIndices& part_combos){ return (part_combos[ip].empty()==false); }, {comboColName}, candidateCols[ip]+"_filt");	    
           }
       }
       //Now have defined particle indices for all types in terms of combis
       //Apply truth matching if configured
       if( _truthMatchRegistry.GetParticleMatches().empty()==false ){
-	if(TypeExists(consts::data_type::Rec())){
-	  DefineTrueMatchedCombi(consts::data_type::Rec());
-	}
+	    if(TypeExists(consts::data_type::Rec())){
+	      DefineTrueMatchedCombi(consts::data_type::Rec());
+	    }
       }
 
     }
@@ -440,8 +617,23 @@ namespace rad {
       _types.push_back(atype);
     }
     inline void ConfigReaction::ValidateType(const std::string& type) const {
-      if (std::find(_types.begin(), _types.end(), type) == _types.end()) throw std::invalid_argument("Error: Data type '" + type + "' is not registered. "+_types.size());
-    }
+      // 1. Safe Map Access: Check existence before access
+      if (TypeExists(type)==kFALSE) {
+            
+            // 2. Build the descriptive context-aware error message
+            std::string err = "\n\n[RAD CONFIG ERROR] Missing Stream Key: '" + type + "'\n";
+            err += "[!] CONTEXT: Attempted to add or configure an unregistered data stream.\n";
+            err += "[!] CAUSE: The stream map does not contain this prefix. You likely forgot to initialize it.\n";
+            err += "[!] FIX: \n";
+            err += "    -> For Truth only (tru_), you MUST call: SetupTruth();\n";
+            err += "    -> For Reconstructed (rec_), you MUST call:  SetupReconstructed();\n";
+            err += "    -> For Truth Matching (tru_ and rec_), you MUST call: SetupMatching();\n";
+            err += "    Ensure these are called BEFORE mgr.AddStream() and MakeCombinations().\n\n";
+            
+            // 3. Throw the standard runtime_error
+            throw std::runtime_error(err);
+        }
+       }
   inline bool ConfigReaction::TypeExists(const std::string& type) const {
       if (std::find(_types.begin(), _types.end(), type) == _types.end()) return false;
       return true;

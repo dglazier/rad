@@ -42,8 +42,8 @@ jobs:
       - name: Prepare site for deployment
         run: |
           mkdir -p _site
-          # Copy your new custom landing page to be the site's root index.html
-          cp docs/index.html _site/index.html
+          # Copy all documentation files from docs/ to site root
+          cp docs/*.html _site/
           # Move the generated doxygen files into the 'reference' subdirectory
           mv doxygen-html _site/reference
 

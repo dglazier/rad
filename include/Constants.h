@@ -1,6 +1,9 @@
 #pragma once
 #include <limits>
+#include <cmath>
+#include <type_traits>
 
+ 
 namespace rad{
   namespace consts{
 
@@ -16,7 +19,8 @@ namespace rad{
     constexpr double M_K() { return 0.49367700;}
     constexpr double M_K0() { return 0.49761100;}
     constexpr double M_Jpsi() { return 3.0969000;}
-
+    constexpr double M_Lambda() { return 1.1156830;}
+    
 // --- PDG Codes ---
         constexpr int PDG_ele_beam()    { return 10000+11; }
         constexpr int PDG_pro_beam()    { return 10000+2212; }
@@ -64,10 +68,16 @@ namespace rad{
       return std::numeric_limits<unsigned int>::max();
     }
 
-    template<typename T>
+   template<typename T>
     inline bool IsInvalidEntry(const T& entry){
-      return entry==InvalidEntry<T>();
+        if constexpr (std::is_floating_point_v<T>) {
+            return std::isnan(entry);
+        } else {
+            return entry == InvalidEntry<T>();
+        }
     }
+
+    
     // constexpr double InvalidEntry(){return std::numeric_limits<double>::quiet_NaN();};
     constexpr int InvalidIndex(){return -1;};
 

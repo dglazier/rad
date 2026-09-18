@@ -171,7 +171,10 @@ namespace rad {
         template<typename Lambda>
         void Filter(Lambda&& func, const ROOT::RDF::ColumnNames_t& columns = {}, std::string name = "");
         
-        // --- Output & Snapshots ---
+      /** @brief Creates an alias for an existing column. */
+      void SetBranchAlias(const string_view aliasName, const string_view columnName);
+
+      // --- Output & Snapshots ---
         
         /** @brief Immediate Snapshot (Virtual, implementation specific). */
         virtual void Snapshot(const string& filename) = 0;
@@ -222,7 +225,9 @@ namespace rad {
         
         /** @brief Returns the C++ type string of a column (e.g. "double", "vector<int>"). */
         string ColObjTypeString(const string& name);
-        
+      /** @brief Extracts inner type string from "RVec<T>". Needed for template metaprogramming. */
+        std::string GetElementTypeName(const std::string& colName);
+      
     protected:
         ROOT::RDataFrame _orig_df;
         RDFstep _curr_df;
@@ -275,14 +280,28 @@ namespace rad {
     inline RDFInterface::RDFInterface(ROOT::RDataFrame rdf) 
           : _orig_df{rdf}, _curr_df{rdf}, _base_df{rdf} 
     {
-        _orig_col_names = _orig_df.GetColumnNames();
+      _orig_col_names = _orig_df.GetColumnNames();
+      if (_orig_col_names.empty()) {
+        throw std::runtime_error(
+				 "\n\n[RAD RDFInterface ERROR] Dataframe initialized with 0 columns!\n"
+				 "[!] CAUSE: The input file does not exist, is corrupted, or contains an empty tree/bank schema.\n"
+				 "[!] FIX: Ensure the input data source points to valid data before initializing reactions.\n\n"
+				 );
+      }
     }
    inline RDFInterface::RDFInterface(ROOT::RDF::RNode rdf) 
      : _orig_df(0), _curr_df{rdf}, _base_df{rdf} 
     {
         _orig_col_names = _orig_df.GetColumnNames();
+	if (_orig_col_names.empty()) {
+	  throw std::runtime_error(
+				   "\n\n[RAD RDFInterface ERROR] Dataframe initialized with 0 columns!\n"
+				   "[!] CAUSE: The input file does not exist, is corrupted, or contains an empty tree/bank schema.\n"
+				   "[!] FIX: Ensure the input data source points to valid data before initializing reactions.\n\n"
+				   );
+	}
     }
-
+  
     inline RDFInterface::~RDFInterface() { 
       TriggerSnapshots();
     }
@@ -326,6 +345,9 @@ namespace rad {
         SetCurrFrame(CurrFrame().Filter(func, columns, name));
     }
 
+  inline void RDFInterface::SetBranchAlias(const string_view aliasName, const string_view columnName) {
+    SetCurrFrame(CurrFrame().Alias(columnName,aliasName));//Alias(New, Target)
+    }
     // --- Output & Snapshots ---
 
     inline void RDFInterface::RemoveSnapshotColumns(ROOT::RVec<string>& cols) {
@@ -396,5 +418,13 @@ namespace rad {
     inline string RDFInterface::ColObjTypeString(const string& name){ 
         return CurrFrame().GetColumnType(name); 
     }
-
+  inline std::string RDFInterface::GetElementTypeName(const std::string& colName) {
+    std::string fullType = ColObjTypeString(colName);
+    auto start = fullType.find('<');
+    auto end   = fullType.rfind('>');
+    if(start != std::string::npos && end != std::string::npos) {
+      return fullType.substr(start + 1, end - start - 1);
+    }
+    return fullType;
+  }
 } // namespace rad

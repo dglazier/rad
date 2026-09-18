@@ -170,10 +170,10 @@ namespace rad {
        * @param px Reference to Px vector to write to.
        * @param py Reference to Py vector to write to.
        * @param pz Reference to Pz vector to write to.
-       * @param m Reference to Mass vector to write to.
+       * @param e Reference to Mass vector to write to.
        */
       void ApplyCreation(ROOT::RVecD& px, ROOT::RVecD& py, 
-                         ROOT::RVecD& pz, ROOT::RVecD& m) const;
+                         ROOT::RVecD& pz, ROOT::RVecD& e) const;
 
       // =======================================================================
       // Accessors
@@ -236,6 +236,7 @@ namespace rad {
       std::map<int, ROOT::RVec<std::string>> _explicit_groups; 
 
       ParticleNames_t _p_names;
+      Indices_t _p_indices; // Cached integer handles for created particles to avoid string hashing
       ROOT::RVec<ParticleCreatorFunc_t> _p_creators;
       ROOT::RVec<ParticleNames_t> _p_required;
       ROOT::RVec<StructuredNames_t> _p_stru_depends;
@@ -288,7 +289,7 @@ namespace rad {
               _forced_inputs.push_back(name);
     }
 
-    inline void ParticleCreator::AddParticle(const std::string& name, ParticleCreatorFunc_t func, const StructuredNames_t& depends) {
+  inline void ParticleCreator::AddParticle(const std::string& name, ParticleCreatorFunc_t func, const StructuredNames_t& depends) {
         _p_names.push_back(name);
         auto flat_depends = util::flattenColumnNames(depends);
         _p_required.push_back(flat_depends);
@@ -313,9 +314,9 @@ namespace rad {
     inline int ParticleCreator::GetIndexSafe(const std::string& name) const {
       auto it = _nameIndex.find(name);
       if (it == _nameIndex.end()) {
-    std::cerr << "\n[ParticleCreator FATAL] Missing Particle Index: " << name << "\n";
-    std::cerr << "  Processor: " << _prefix << " (Suffix: '" << _suffix << "')\n";
-    throw std::runtime_error("Particle '" + name + "' missing in map. Check inputs.");
+	std::cerr << "\n[ParticleCreator FATAL] Missing Particle Index: " << name << "\n";
+	std::cerr << "  Processor: " << _prefix << " (Suffix: '" << _suffix << "')\n";
+	throw std::runtime_error("Particle '" + name + "' missing in map. Check inputs.");
       }
       return it->second;
     }
@@ -329,7 +330,7 @@ namespace rad {
         return indices;
     }
 
-    inline void ParticleCreator::InitMap() {
+   inline void ParticleCreator::InitMap() {
       // 1. GATHER INPUT PARTICLES
       ParticleNames_t logicalInputNames;
       logicalInputNames.insert(logicalInputNames.end(), _beam_names.begin(), _beam_names.end());
@@ -362,6 +363,27 @@ namespace rad {
       _inputNames = logicalInputNames;
       _inputNames.insert(_inputNames.end(), dep_names.begin(), dep_names.end());
       util::removeExistingStrings(_inputNames, _p_names); 
+
+      // =========================================================================
+      // 1.5 VALIDATE INPUT ARRAYS (RAD Style Guide 6.1: Safe Getter Interceptor)
+      // =========================================================================
+      for (const auto& name : _inputNames) {
+          std::string masterCol = _prefix + name;
+          if (!_reaction->ColumnExists(masterCol)) {
+              std::string err = "\n\n[RAD TOPOLOGY ERROR] Missing Input Array: '" + masterCol + "'\n";
+              err += "[!] CONTEXT: The topology recipe requires particle '" + name + "' for the '" + _prefix + "' stream.\n";
+              err += "[!] CAUSE: No candidate definition was found to generate this combinatorial array.\n";
+              err += "[!] FIX: \n";
+              
+              if (_prefix.find("tru") != std::string::npos) {
+                  err += "    -> For Truth streams, ensure you defined candidates with an MC Role ID (e.g., SetParticleCandidates).\n";
+                  err += "       Do NOT use Rec-only shortcuts like SetParticleRecPID for truth analysis!\n\n";
+              } else {
+                  err += "    -> Check your candidate definitions. Did you define candidates for '" + name + "' before making combinations?\n\n";
+              }
+              throw std::runtime_error(err);
+          }
+      }
 
       // 2. COLLISION CHECK & MAP REGISTRATION
       // Ensure the key column includes the suffix to allow multiple streams (rec_loose, rec_tight)
@@ -434,7 +456,9 @@ namespace rad {
     }
   
     inline void ParticleCreator::ResolveDependencies(){
+        _p_indices.clear(); // Initialize cache
         for (size_t i = 0; i < GetNCreated(); ++i) {
+          _p_indices.push_back(GetIndexSafe(_p_names[i])); // Cache the integer handle once
           RVecIndices vec_indices;
           for(const auto& type_index : _p_stru_depends[i]) {
             Indices_t indices;
@@ -455,10 +479,11 @@ namespace rad {
     inline std::string ParticleCreator::GetMapName() const { return _prefix + consts::ReactionMap() + _suffix + DoNotWriteTag(); }
 
     inline void ParticleCreator::ApplyCreation(ROOT::RVecD& px, ROOT::RVecD& py, 
-                        ROOT::RVecD& pz, ROOT::RVecD& m) const 
+                        ROOT::RVecD& pz, ROOT::RVecD& e) const 
     {
        for (size_t i = 0; i < GetNCreated(); ++i) {
-         _p_creators[i](GetIndexSafe(_p_names[i]), _p_dep_indices[i], px, py, pz, m);
+         // O(1) integer lookup entirely replaces the string hashing inside the hot loop!
+         _p_creators[i](_p_indices[i], _p_dep_indices[i], px, py, pz, e);
       }
     }
 } // end rad
